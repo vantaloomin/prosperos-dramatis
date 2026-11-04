@@ -31,6 +31,8 @@ character creator.
   screen. It gets the live form, the form as its last answer left it and the focused field (`data-field` on each
   `Field`, the same keys as Help me write), and answers `{"reply", "edits"}`; each edit is a proposal the user applies (then marked, with Undo) or dismisses.
   A field it may edit is in `assistant.guides()`.
+- Browser autofill and password managers are off on every field: `src/noAutofill.ts` (started in `main.tsx`) marks each
+  `input`, `textarea` and `select` as it appears, so a new field needs nothing.
 - The model never saves anything: drafts go to the form for review, and only Save writes to the library.
 - Before pushing, from `Program/`: `python -m ruff check .`, `python -m pytest -q`, `npm run build`.
 - `main` takes changes through pull requests.
