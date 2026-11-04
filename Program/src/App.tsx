@@ -15,7 +15,7 @@ function Library({ chosen, onOpen, onNew }: { chosen: string | null; onOpen: (id
       <h2><Users size={16} aria-hidden /> Characters</h2>
       <button type="button" className="primary wide" onClick={onNew}><Plus size={14} aria-hidden /> New character</button>
       {listing.isError && <p className="error small">{listing.error.message}</p>}
-      {listing.data && !listing.data.length && <p className="muted small">Nobody yet. Characters you save live here, and each one exports as a card for any Prospero app.</p>}
+      {listing.data && !listing.data.length && <p className="muted small">Nobody yet. Characters you save live here, and each one exports as a card for the Prospero apps or any chat app.</p>}
       <ul className="choices">
         {listing.data?.map((item) => (
           <li key={item.id}>

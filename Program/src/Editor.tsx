@@ -13,6 +13,37 @@ const LOOKS: [keyof Looks, string][] = [['build', 'Build'], ['skin', 'Skin'], ['
   ['eyes', 'Eyes'], ['eye_shape', 'Eye shape'], ['hair', 'Hair'], ['facial_hair', 'Facial hair'], ['feature', 'Something people notice']]
 const STAGES = ['Just met', 'Getting to know each other', 'Friends', 'Close', 'Very close']
 
+/** Where a card can go: `prospero` keeps everything for Companion, Adventure and Dungeon; `chat` is the card for other
+ * chat apps, without what only the Prospero apps use (dramatis/cards.py). */
+const CARD_TARGETS: { target: 'prospero' | 'chat'; name: string; leaves?: string }[] = [
+  { target: 'prospero', name: 'Prospero apps' },
+  { target: 'chat', name: 'SillyTavern, Marinara, Front Porch and other chat apps', leaves: 'Leaves out what only the Prospero apps use, like the schedule and sliders.' },
+]
+
+function ExportCard({ id }: { id: string }) {
+  const menu = useRef<HTMLDetailsElement>(null)
+  const close = () => { if (menu.current) menu.current.open = false }
+  return (
+    <details className="export" ref={menu}>
+      <summary className="button"><Download size={14} aria-hidden /> Export card</summary>
+      <ul>
+        {CARD_TARGETS.map(({ target, name, leaves }) => (
+          <li key={target}>
+            <span>{name}</span>
+            {leaves && <span className="muted small">{leaves}</span>}
+            <span className="row">
+              {(['png', 'json'] as const).map((kind) => (
+                <a key={kind} className="button" href={`/api/characters/${id}/card.${kind}?for=${target}`} download onClick={close}
+                  aria-label={`${kind.toUpperCase()} for ${name}`}>{kind.toUpperCase()}</a>
+              ))}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </details>
+  )
+}
+
 /** The form as the server takes it: lists without blank lines, numbers as numbers. */
 export function cleaned(character: Character): Character {
   return {
@@ -98,8 +129,7 @@ export function Editor({ saved, start, seed, filledIn, note, onSaved, onDeleted 
         <div className="row">
           <button type="submit" className="primary" disabled={busy || blocked}>{busy ? 'Saving…' : saved ? 'Save' : 'Save to the library'}</button>
           {saved && <>
-            <a className="button" href={`/api/characters/${saved.id}/card.png`} download><Download size={14} aria-hidden /> Card (PNG)</a>
-            <a className="button" href={`/api/characters/${saved.id}/card.json`} download><Download size={14} aria-hidden /> Card (JSON)</a>
+            <ExportCard id={saved.id} />
             <button type="button" className="icon danger" aria-label="Delete them" onClick={() => void remove()}><Trash2 size={15} /></button>
           </>}
         </div>

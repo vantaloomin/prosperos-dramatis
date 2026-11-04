@@ -1,13 +1,20 @@
 """Character cards in and out.
 
-**Out.** A Character Card V3 (chara_card_v3), as JSON or inside a PNG, which every Prospero app and most chat apps
-(SillyTavern, Chub, RisuAI, Backyard) import today. The card's own fields hold the character in words any of them can
-read; `data.extensions.prospero` holds the whole Dramatis character and each app's own shape of it (dramatis/character.py),
-so a Prospero app can take them with nothing lost. A PNG card carries the V3 card in a `ccv3` text chunk and a V2 copy
-in `chara`, for apps that only read V2; the picture is their portrait, or a plain one when they have none.
+**Out.** A Character Card V3 (chara_card_v3), as JSON or inside a PNG, in one of two kinds (`Target`):
 
-**In.** A card file is read with Companion's own card reader (vendored). A card Dramatis made comes back whole, from
-its extension; any other card becomes headed text for the paste box, to split into the fields with the model.
+- `prospero`, for Prospero's Companion, Adventure and Dungeon: `data.extensions.prospero` holds the whole Dramatis
+  character and each app's own shape of it (dramatis/character.py), so a Prospero app takes them with nothing lost.
+- `chat`, for SillyTavern, Marinara Engine, Front Porch AI and other chat apps: the same card with no extensions, so
+  what only the Prospero apps use (Companion's schedule, routine, texting habits, emotional edges, the sliders) never
+  leaves the suite. Those apps keep every extension a card carries and send it on when the card is shared again.
+
+Both kinds describe the character in the card's own fields, in words any app can read. A PNG card carries the V3 card
+in a `ccv3` text chunk and a V2 copy in `chara`: SillyTavern and Marinara read `ccv3` first, Front Porch reads only
+`chara`. The picture is their portrait, or a plain one when they have none.
+
+**In.** A card file is read with Companion's own card reader (vendored). A Prospero card Dramatis made comes back
+whole, from its extension; any other card becomes headed text for the paste box, to split into the fields with the
+model.
 """
 import base64
 import binascii
@@ -16,6 +23,7 @@ import struct
 import zlib
 from datetime import datetime
 from pathlib import PureWindowsPath
+from typing import Literal
 
 from pydantic import ValidationError
 
@@ -27,30 +35,59 @@ from dramatis.formats.companion.errors import DomainError
 FORMAT = 'prospero-character'
 FORMAT_VERSION = 1
 CARD_KEYS = (b'chara', b'ccv3')
+Target = Literal['prospero', 'chat']
 # The plain portrait: a soft ink colour, the Dramatis look, at a card's usual 2:3.
 PLAIN_SIZE, PLAIN_COLOUR = (400, 600), (58, 52, 66)
 
 
+LOOKS = (('height_cm', 'Height', '{} cm'), ('weight_kg', 'Weight', '{} kg'), ('build', 'Build', '{}'),
+         ('skin', 'Skin', '{}'), ('face', 'Face', '{}'), ('jaw', 'Jaw', '{}'), ('nose', 'Nose', '{}'),
+         ('eyes', 'Eyes', '{}'), ('eye_shape', 'Eye shape', '{}'), ('hair', 'Hair', '{}'),
+         ('facial_hair', 'Facial hair', '{}'), ('feature', 'Stands out', '{}'))
+MONTHS = ('January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October',
+          'November', 'December')
+
+
+def looks(character: Character) -> str:
+    found = character.looks.model_dump()
+    return '; '.join(f'{label}: {shape.format(found[key])}' for key, label, shape in LOOKS if found[key])
+
+
+def birthday(value: str) -> str:
+    if not value:
+        return ''
+    month, day = value.split('-')
+    return f'{MONTHS[int(month) - 1]} {int(day)}'
+
+
 def description(character: Character) -> str:
-    """The card's description: who they are, how they look and talk, and their story, in headed paragraphs."""
-    sections = [('', character.about), ('Appearance', character.appearance), ('How they talk', character.voice), ('How they sound', character.sound),
-                ('Background', character.background), ('Wants', character.wants), ('Fears', character.fears),
-                ('Skills', '; '.join(character.skills)), ('Flaws', '; '.join(character.flaws)),
+    """The card's description: who they are, how they look and talk, and their story, in headed paragraphs. Only what
+    describes the person goes in; how a Prospero app runs them (schedule, sliders, texting) does not."""
+    sections = [('', character.about), ('Gender', character.gender),
+                ('Age', '' if character.age is None else str(character.age)), ('Kind', character.kind),
+                ('From', character.setting), ('Birthday', birthday(character.birthday)),
+                ('Appearance', character.appearance), ('Looks', looks(character)), ('How they talk', character.voice),
+                ('How they sound', character.sound), ('Background', character.background), ('Wants', character.wants),
+                ('Fears', character.fears), ('Skills', '; '.join(character.skills)),
+                ('Flaws', '; '.join(character.flaws)), ('Interests', '; '.join(character.interests)),
                 ('How others see them', character.seen_as), ('How they see themselves', character.sees_self)]
     return '\n\n'.join(f'{label}: {text}' if label else text for label, text in sections if text)
 
 
-def card(character: Character, created: str, updated: str) -> dict:
-    """The V3 card."""
-    extension = {'format': FORMAT, 'format_version': FORMAT_VERSION, 'app': NAME, 'app_version': VERSION,
-                 'character': character.model_dump(), 'apps': shapes(character)}
+def card(character: Character, created: str, updated: str, target: Target = 'prospero') -> dict:
+    """The V3 card. Tags stay empty: chat apps file every tag a card brings into the user's own tag list."""
+    extensions = {}
+    if target == 'prospero':
+        extensions['prospero'] = {'format': FORMAT, 'format_version': FORMAT_VERSION, 'app': NAME,
+                                  'app_version': VERSION, 'character': character.model_dump(),
+                                  'apps': shapes(character)}
     data = {
         'name': character.name or 'Unnamed', 'description': description(character),
         'personality': character.personality, 'scenario': character.companion.history_together,
         'first_mes': '', 'mes_example': '', 'creator_notes': f"Made with {NAME}.", 'system_prompt': '',
-        'post_history_instructions': '', 'alternate_greetings': [], 'tags': character.interests[:10],
-        'creator': '', 'character_version': '1', 'extensions': {'prospero': extension},
-        'group_only_greetings': [], 'nickname': '', 'assets': [],
+        'post_history_instructions': '', 'alternate_greetings': [], 'tags': [],
+        'creator': '', 'character_version': '1', 'extensions': extensions,
+        'group_only_greetings': [], 'nickname': '',
         'creation_date': timestamp(created), 'modification_date': timestamp(updated),
     }
     return {'spec': 'chara_card_v3', 'spec_version': '3.0', 'data': data}

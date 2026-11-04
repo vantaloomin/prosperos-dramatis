@@ -48,8 +48,9 @@ def test_cards_carry_every_apps_shape_and_come_back_whole():
     made = api.post('/api/characters', json={'character': CHARACTER}).json()
     full = api.get(f"/api/characters/{made['id']}/card.json").json()
     assert full['spec'] == 'chara_card_v3' and full['data']['name'] == 'Dana Okafor'
-    assert full['data']['description'] == ('An ER nurse.\n\nHow they talk: Short sentences.\n\nHow they sound: A low alto.')
-    assert full['data']['tags'] == ['duckpin bowling']
+    assert full['data']['description'] == ('An ER nurse.\n\nGender: woman\n\nAge: 38\n\nHow they talk: Short sentences.'
+                                           '\n\nHow they sound: A low alto.\n\nInterests: duckpin bowling')
+    assert full['data']['tags'] == []
     extension = full['data']['extensions']['prospero']
     assert extension['format'] == 'prospero-character' and set(extension['apps']) == {'companion', 'adventure', 'dungeon'}
     assert extension['apps']['companion']['identity'] == 'An ER nurse.'
@@ -57,13 +58,27 @@ def test_cards_carry_every_apps_shape_and_come_back_whole():
     portrait = api.put(f"/api/characters/{made['id']}/portrait", json={'filename': 'p.png', 'data': encoded(plain_png((2, 3)))})
     assert portrait.json()['portrait'] is True
     png = api.get(f"/api/characters/{made['id']}/card.png")
-    assert png.headers['content-disposition'] == 'attachment; filename="Dana Okafor.png"'
+    assert png.headers['content-disposition'] == 'attachment; filename="Dana Okafor (Prospero).png"'
     # Any card reader finds the V3 card, and the V2 copy for older ones.
     assert json.loads(reader.embedded_card(png.content))['spec'] == 'chara_card_v3'
     texts = {payload.partition(b'\0')[0] for kind, payload in reader.chunks(png.content) if kind == b'tEXt'}
     assert texts == {b'chara', b'ccv3'}
     opened = api.post('/api/cards/open', json={'filename': 'Dana.png', 'data': encoded(png.content)}).json()
     assert opened['kind'] == 'character' and opened['character']['name'] == 'Dana Okafor'
+
+
+def test_the_chat_app_card_leaves_the_prospero_part_out():
+    api = client()
+    made = api.post('/api/characters', json={'character': CHARACTER}).json()
+    chat = api.get(f"/api/characters/{made['id']}/card.json?for=chat")
+    assert chat.headers['content-disposition'] == 'attachment; filename="Dana Okafor.json"'
+    assert chat.json()['data']['extensions'] == {} and 'Sleep' not in chat.text
+    png = api.get(f"/api/characters/{made['id']}/card.png?for=chat")
+    assert png.status_code == 200 and b'prospero' not in png.content
+    # Without the extension it is any other app's card to Dramatis: text for the paste box.
+    opened = api.post('/api/cards/open', json={'filename': 'Dana.png', 'data': encoded(png.content)}).json()
+    assert opened['kind'] == 'text' and opened['name'] == 'Dana Okafor'
+    assert api.get(f"/api/characters/{made['id']}/card.json?for=tavern").status_code == 422
 
 
 def test_another_apps_card_opens_as_text_for_the_paste_box():

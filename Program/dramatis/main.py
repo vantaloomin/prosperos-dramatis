@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 from typing import Literal
 
-from fastapi import APIRouter, FastAPI, Request
+from fastapi import APIRouter, FastAPI, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -184,12 +184,14 @@ def api() -> APIRouter:  # noqa: C901 - one route each, kept together
         return Response(data, media_type='image/png', headers={'Cache-Control': 'no-store'})
 
     @router.get('/characters/{character_id}/card.{kind}')
-    def card_file(character_id: str, kind: str):
+    def card_file(character_id: str, kind: str, target: cards.Target = Query('prospero', alias='for')):
+        """`?for=prospero` (the default) carries everything for the Prospero apps; `?for=chat` is the card for
+        SillyTavern, Marinara, Front Porch and other chat apps, without what only the Prospero apps use."""
         require(kind in ('json', 'png'), 'Cards are JSON or PNG.', 404)
         record = library.get(character_id)
         found = checked(record['character'])
-        full = cards.card(found, record['created'], record['updated'])
-        name = file_name(found.name, f'.{kind}')
+        full = cards.card(found, record['created'], record['updated'], target)
+        name = file_name(found.name, f" (Prospero).{kind}" if target == 'prospero' else f'.{kind}')
         if kind == 'json':
             return download(json.dumps(full, ensure_ascii=False, indent=1).encode('utf-8'), name, 'application/json')
         picture = library.portrait(character_id) or cards.plain_png()
