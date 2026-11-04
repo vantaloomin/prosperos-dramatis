@@ -86,6 +86,14 @@ puts the card into their portrait, or a plain picture if they have none.
 Both describe the character in the card's own fields (description, personality and scenario), so any app reads the
 same person. The PNG carries the V3 card and a V2 copy, because Front Porch reads only the V2 one.
 
+**Casts.** A cast is a story's people laid out as opposition: four sides who want different things, and any side
+split into its own square of people who want the same thing but fight over how. Start from a genre and a group type,
+or a blank board. Give each corner a why or a how, a few how-tags and a character, either one from the library or
+one drafted for that corner through the quick start. When corners on different sides share a tag, the board draws a
+dashed line between them to confirm or dismiss. Checks and relationships between characters stay live as you edit,
+and **Focus** shows one character's inner square beside the board. **Export** saves the cast file, or a card for each
+of its characters in either kind above.
+
 ## Getting started
 
 ### Windows
