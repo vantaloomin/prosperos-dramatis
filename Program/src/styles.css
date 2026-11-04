@@ -180,7 +180,7 @@ button.badge[aria-pressed='true'] { box-shadow: 0 0 0 3px color-mix(in srgb, var
 .relationship details > summary { margin: 0; font-size: 0.85rem; }
 .pair { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
 .pair select { flex: 1; min-width: 8rem; width: auto; }
-.trust input { padding: 0; }
+.trust input { padding: 0; accent-color: var(--accent); }
 .psyche-square { position: relative; max-width: 30rem; margin: 2.5rem auto 0; border: 2px dashed var(--line); border-radius: 10px; padding: 0.7rem; background: var(--panel); display: grid; gap: 0.5rem; }
 .psyche-square p { margin: 0; }
 .impulses { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }

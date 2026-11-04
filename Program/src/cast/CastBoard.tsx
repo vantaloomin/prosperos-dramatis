@@ -13,7 +13,7 @@ import { HeaderActions } from './slots'
 import { SquareView } from './SquareView'
 
 /** A cast as the board holds it: the saved record (none until the first Save) and the cast as edited. */
-export interface Board { saved: SavedCast | null; cast: Cast }
+export interface Board { saved: SavedCast | null; cast: Cast; note?: string }
 
 interface Props {
   board: Board
@@ -37,7 +37,7 @@ export function CastBoard({ board, update, onSaved, onDeleted, onDraft, onOpenCh
   const [lit, setLit] = useState<CastCheck | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [result, setResult] = useState<{ tone: 'note' | 'error'; text: string } | null>(null)
+  const [result, setResult] = useState<{ tone: 'note' | 'error'; text: string } | null>(board.note ? { tone: 'note', text: board.note } : null)
   const [boardElement, setBoardElement] = useState<HTMLDivElement | null>(null)
   const elements = useRef(new Map<string, HTMLElement>())
   const register = useCallback((key: string, element: HTMLElement | null) => {

@@ -114,7 +114,7 @@ export function App() {
   const castSaved = (key: string, saved: SavedCast) => {
     setBoards((current) => {
       const { [key]: _, ...rest } = current
-      return { ...rest, [saved.id]: { saved, cast: saved.cast } }
+      return { ...rest, [saved.id]: { saved, cast: saved.cast, note: key === saved.id ? undefined : `Saved ${saved.cast.title || 'the cast'}.` } }
     })
     if (key !== saved.id) setView({ kind: 'cast', key: saved.id })
   }
@@ -139,9 +139,9 @@ export function App() {
         if (stored) setBoards((current) => current[castKey] ? { ...current, [castKey]: { ...current[castKey], saved: stored } } : current)
         await client.invalidateQueries({ queryKey: ['casts'] })
       }
-      setLinked({ castKey, text: `${character.character.name || 'They'} now stand in ${where}.` })
+      setLinked({ castKey, text: `Linked ${character.character.name || 'them'} to ${where}.` })
     } catch (failure) {
-      setLinked({ castKey, text: `${character.character.name || 'They'} could not be linked to ${where}: ${failure instanceof Error ? failure.message : 'the cast did not save'}` })
+      setLinked({ castKey, text: `${character.character.name || 'They'} could not be linked to ${where}.${failure instanceof Error ? ` ${failure.message}` : ''}` })
     }
   }
 
