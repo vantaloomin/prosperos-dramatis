@@ -3,7 +3,7 @@ import { emptyPsyche, getJson, type Impulse, type ImpulseKey, type Psyche as Psy
 import { TextArea } from './Fields'
 import { Folded, type Help } from './InnerLife'
 
-const IMPULSES: [ImpulseKey, string, string][] = [
+export const IMPULSES: [ImpulseKey, string, string][] = [
   ['was', 'Who they were', 'who they were'], ['expected', "Who they're expected to be", "who they're expected to be"],
   ['wants_to_be', 'Who they want to be', 'who they want to be'], ['fears_becoming', 'Who they fear becoming', 'who they fear becoming'],
 ]

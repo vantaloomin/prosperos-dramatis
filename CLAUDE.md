@@ -21,6 +21,8 @@ character creator.
   shapes fold it into fields they read, and a card drops the secret unless `?secret=1`. The interview's routes live in
   `dramatis/interview.py`, its own router; Help me write reaches nested fields by dotted keys (`arc.lie`,
   `psyche.was`), listed in `slop.DEPTH`.
+- The Cast board is `src/cast/` with its calls and pure cast edits in `src/castApi.ts`. App keeps each open board
+  (unsaved edits survive leaving it) and the corner a drafted character goes to. AI actions go in `src/cast/slots.tsx`.
 - The model never saves anything: drafts go to the form for review, and only Save writes to the library.
 - Before pushing, from `Program/`: `python -m ruff check .`, `python -m pytest -q`, `npm run build`.
 - `main` takes changes through pull requests.

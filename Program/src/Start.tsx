@@ -4,6 +4,8 @@ import { APPS, APP_NAMES, emptyCharacter, fileData, sendJson, type App, type Cha
 import { Field, TextArea, TextInput, useModelReady } from './Fields'
 
 export interface Begun { character: Character; seed?: string; filledIn?: string[]; note?: string }
+/** Picks the quick start opens with, such as the idea the Cast board writes for a corner. */
+export interface Picks { idea?: string; setting?: string }
 
 const AGES = [['', 'Any age'], ['24', 'Mid-twenties'], ['32', 'Early thirties'], ['38', 'Late thirties'], ['45', 'Mid-forties'],
   ['55', 'Mid-fifties'], ['65', 'Sixties'], ['75', 'Seventies']] as const
@@ -27,9 +29,9 @@ export function AppPicks({ apps, onChange }: { apps: App[]; onChange: (apps: App
 }
 
 /** The quick start: a few picks, and the user's model writes the rest for review. Nothing is saved before the form. */
-function QuickStart({ onBegin }: { onBegin: (begun: Begun) => void }) {
+function QuickStart({ initial, onBegin }: { initial?: Picks; onBegin: (begun: Begun) => void }) {
   const ready = useModelReady()
-  const [picks, setPicks] = useState({ name: '', gender: '' as Gender, age: '', setting: '', idea: '', vibe: '', relationship: 'friendship' as Relationship, emotional_edges: false })
+  const [picks, setPicks] = useState({ name: '', gender: '' as Gender, age: '', setting: '', idea: '', vibe: '', relationship: 'friendship' as Relationship, emotional_edges: false, ...initial })
   const [apps, setApps] = useState<App[]>(APPS)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -74,7 +76,7 @@ function QuickStart({ onBegin }: { onBegin: (begun: Begun) => void }) {
         <TextInput label="Where and when" value={picks.setting} onChange={(setting) => set({ setting })} maxLength={200}
           placeholder="Baltimore, today · a frontier town in 1870 · a generation ship" hint="Optional. Each app can still move them into its own world." />
         <AppPicks apps={apps} onChange={setApps} />
-        <details className="more">
+        <details className="more" open={!!initial?.idea || undefined}>
           <summary>More options</summary>
           <div className="stack">
             <TextArea label="Who are they?" value={picks.idea} onChange={(idea) => set({ idea })} maxLength={2000} rows={2}
@@ -168,10 +170,10 @@ function PasteCharacter({ onBegin }: { onBegin: (begun: Begun) => void }) {
   )
 }
 
-export function Start({ onBegin }: { onBegin: (begun: Begun) => void }) {
+export function Start({ initial, onBegin }: { initial?: Picks; onBegin: (begun: Begun) => void }) {
   return (
     <div className="start">
-      <QuickStart onBegin={onBegin} />
+      <QuickStart initial={initial} onBegin={onBegin} />
       <PasteCharacter onBegin={onBegin} />
     </div>
   )
