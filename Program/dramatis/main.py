@@ -4,7 +4,7 @@ import binascii
 import json
 import re
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, FastAPI, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
@@ -74,7 +74,11 @@ class SaveBody(Body):
 
 
 class CheckBody(Body):
+    """`fields` are the ones a model wrote, the only ones the audit reads (all of them when left out): text the user
+    typed or brought from another app is theirs. `allowed` is what they wrote themselves, such as pasted notes."""
     character: dict
+    fields: list[Annotated[str, Field(max_length=40)]] | None = Field(default=None, max_length=200)
+    allowed: str = Field(default='', max_length=60000)
 
 
 class SlidersBody(Body):
@@ -84,6 +88,8 @@ class SlidersBody(Body):
     seed: str = Field(default='', max_length=40)
     roll: int = Field(default=0, ge=0, le=100000)
     type: str = Field(default='', max_length=4)
+    # A character brought from another app: what their words don't settle stays In between until Roll again.
+    still: bool = False
 
 
 class FileBody(Body):
@@ -114,6 +120,10 @@ def sliders(body: SlidersBody) -> dict:
     seed = f'{body.seed or "dramatis"}-{body.roll}' if body.roll else body.seed or 'dramatis'
     definition = {'identity': character.get('about') or '', **character}
     settled = personality.settle(definition, body.seed or 'dramatis')
+    if body.still and not body.roll:
+        stored = personality.clean(character.get('personality_sliders'))
+        settled = {key: value if value['source'] != 'rolled' or key in stored else personality.slider(1, 'rolled')
+                   for key, value in settled.items()}
     if body.roll:
         settled = personality.reroll(settled, seed)
     if body.type:
@@ -201,7 +211,10 @@ def api() -> APIRouter:  # noqa: C901 - one route each, kept together
     def check(body: CheckBody):
         """What each app's own models make of the form as it stands, and what the AI-slop audit finds in it."""
         found = checked(body.character)
-        return {'problems': problems(found), 'apps': sorted(shapes(found)), 'audit': slop.audit(found.model_dump())}
+        hits = slop.audit(found.model_dump(), body.allowed)
+        if body.fields is not None:
+            hits = [hit for hit in hits if hit['field'] in body.fields]
+        return {'problems': problems(found), 'apps': sorted(shapes(found)), 'audit': hits}
 
     @router.post('/sliders')
     def slider_view(body: SlidersBody):

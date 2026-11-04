@@ -24,7 +24,9 @@ export interface Proposal {
 }
 export type Outcome = 'proposed' | 'kept' | 'put back' | 'replaced'
 
-interface State { form: Form | null; open: Record<string, Proposal>; outcomes: Record<string, Outcome> }
+/** `written` is every field a model has put text into on this form and the user hasn't put back: the fields the
+ * AI-slop audit reads (text the user typed or brought is theirs). */
+interface State { form: Form | null; open: Record<string, Proposal>; outcomes: Record<string, Outcome>; written: string[] }
 
 // Fields under `companion` in the character, as Help me write and the assistant name them.
 const LIFE = new Set(['routine', 'life_themes', 'schedule', 'history_together', 'absence_reaction', 'timezone'])
@@ -70,11 +72,12 @@ export const newId = (kind = 'proposal') => `${kind}-${Date.now().toString(36)}-
 
 // Each form's open proposals, by form key, so a character opened again finds its own still waiting.
 const byForm = new Map<string, Record<string, Proposal>>()
-let state: State = { form: null, open: {}, outcomes: {} }
+const writtenBy = new Map<string, string[]>()
+let state: State = { form: null, open: {}, outcomes: {}, written: [] }
 const listeners = new Set<() => void>()
 const set = (change: Partial<State>) => {
   state = { ...state, ...change }
-  if (state.form) byForm.set(state.form.key, state.open)
+  if (state.form) { byForm.set(state.form.key, state.open); writtenBy.set(state.form.key, state.written) }
   listeners.forEach((listener) => listener())
 }
 const without = (field: string) => Object.fromEntries(Object.entries(state.open).filter(([key]) => key !== field))
@@ -86,10 +89,10 @@ export const proposals = {
   form: () => state.form,
 
   /** The editor registers its form; its own proposals come back with it. */
-  register(form: Form) { set({ form, open: byForm.get(form.key) ?? {} }) },
-  unregister(key: string) { if (state.form?.key === key) set({ form: null, open: {} }) },
+  register(form: Form) { set({ form, open: byForm.get(form.key) ?? {}, written: writtenBy.get(form.key) ?? [] }) },
+  unregister(key: string) { if (state.form?.key === key) set({ form: null, open: {}, written: [] }) },
   /** A form gone for good (saved as another key, or deleted) takes its proposals with it. */
-  forget(key: string) { byForm.delete(key) },
+  forget(key: string) { byForm.delete(key); writtenBy.delete(key) },
 
   /** Puts a model's value into its field as a proposal. Returns its id, or '' when no form is open. */
   propose(found: Omit<Proposal, 'id' | 'before' | 'path'> & { path?: string[]; id?: string }): string {
@@ -103,6 +106,7 @@ export const proposals = {
     set({
       open: { ...state.open, [found.field]: { ...found, id, path, before: earlier ? earlier.before : valueAt(now, path) } },
       outcomes: { ...(earlier ? settle([earlier.id], 'replaced') : state.outcomes), [id]: 'proposed' },
+      written: state.written.includes(found.field) ? state.written : [...state.written, found.field],
     })
     return id
   },
@@ -119,7 +123,7 @@ export const proposals = {
     if (ask && !same(valueAt(now, found.path), found.value) &&
       !window.confirm(`${found.label} has changed since it was proposed. Put back what was there before, and lose that?`)) return
     form.set(withValue(now, found.path, found.before))
-    set({ open: without(field), outcomes: settle([found.id], 'put back') })
+    set({ open: without(field), outcomes: settle([found.id], 'put back'), written: state.written.filter((each) => each !== field) })
   },
   /** Keep every open proposal, or those with these ids. Returns how many were kept. */
   keepAll(ids?: string[]): number {
@@ -143,6 +147,11 @@ export function useProposal(field?: string): Proposal | undefined {
 export function useOpenCount(): number {
   const count = () => Object.keys(state.open).length
   return useSyncExternalStore(proposals.subscribe, count, count)
+}
+
+/** The fields a model wrote on the open form (see State). */
+export function useWritten(): string[] {
+  return useSyncExternalStore(proposals.subscribe, () => state.written, () => state.written)
 }
 
 /** What became of these proposals, for the assistant's chat: re-renders as they are kept or put back. */

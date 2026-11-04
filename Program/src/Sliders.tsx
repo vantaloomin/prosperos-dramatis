@@ -6,8 +6,11 @@ const SOURCE_NAMES = { rolled: 'Rolled', idea: 'From their words', you: 'Set by 
 
 /** The five personality sliders, settled by Companion's own rules on the server: what the user set, then what the
  * character's words say ("shy", "kind"), then rolled from the form's seed. Roll again changes only the Rolled ones.
- * Type shows the four-letter type they read as; typing one sets four sliders from it. */
-export function Sliders({ character, seed, onChange }: { character: () => Character; seed: string; onChange: (sliders: Record<Trait, Slider>) => void }) {
+ * Type shows the four-letter type they read as; typing one sets four sliders from it. A character brought from another
+ * app is `still`: what their words don't settle stays In between, unrolled, until Roll again. */
+export function Sliders({ character, seed, still, onChange }: {
+  character: () => Character; seed: string; still?: boolean; onChange: (sliders: Record<Trait, Slider>) => void
+}) {
   const [view, setView] = useState<SliderView | null>(null)
   const [roll, setRoll] = useState(0)
   // What the user is typing into Type; null shows the type the sliders read as.
@@ -19,7 +22,7 @@ export function Sliders({ character, seed, onChange }: { character: () => Charac
       const current = character()
       const found = await sendJson<SliderView>('/api/sliders', 'POST', {
         character: { ...current, personality_sliders: body.sliders === undefined ? current.personality_sliders : body.sliders },
-        seed, roll: body.roll ?? 0, type: body.type ?? '',
+        seed, roll: body.roll ?? 0, type: body.type ?? '', still: !!still,
       })
       setView(found)
       onChange(found.sliders)
@@ -48,7 +51,7 @@ export function Sliders({ character, seed, onChange }: { character: () => Charac
                 <button key={label} type="button" role="radio" aria-checked={current.level === level} title={trait.shows[level]} onClick={() => set(trait.key, level)}>{label}</button>
               ))}
             </div>
-            <span className="muted small">{trait.shows[current.level]} <em>({SOURCE_NAMES[current.source]})</em>
+            <span className="muted small">{trait.shows[current.level]} {!(still && !roll && current.source === 'rolled') && <em>({SOURCE_NAMES[current.source]})</em>}
               {current.source === 'you' && <button type="button" className="icon" aria-label={`Hand ${trait.name} back to the roll`} onClick={() => handBack(trait.key)}><X size={12} /></button>}
             </span>
           </div>
