@@ -147,6 +147,18 @@ export function Editor({ saved, start, seed, filledIn, note, onSaved, onDeleted 
       </section>
 
       <section>
+        <h3>How they come across</h3>
+        <div className="grid two">
+          <TextArea label={mark('seen_as', 'Outward appearance')} value={character.seen_as} onChange={(seen_as) => set({ seen_as })} maxLength={400} rows={3}
+            hint="How other people see them, reputation included (people think he's a jerk). Other characters hear this when they talk to or about them."
+            help={help('seen_as', 'their outward appearance', character.seen_as, (seen_as) => set({ seen_as }))} />
+          <TextArea label={mark('sees_self', 'How they see themselves')} value={character.sees_self} onChange={(sees_self) => set({ sees_self })} maxLength={1200} rows={3}
+            hint="Private, in their own words. It can disagree with how others see them."
+            help={help('sees_self', 'how they see themselves', character.sees_self, (sees_self) => set({ sees_self }))} />
+        </div>
+      </section>
+
+      <section>
         <h3>Personality sliders</h3>
         <Sliders character={current} seed={seed} onChange={(personality_sliders) => set({ personality_sliders })} />
       </section>
@@ -170,7 +182,7 @@ export function Editor({ saved, start, seed, filledIn, note, onSaved, onDeleted 
 
       <section>
         <h3>How they look</h3>
-        <TextArea label={mark('appearance', 'Appearance')} value={character.appearance} onChange={(appearance) => set({ appearance })} maxLength={600} rows={2}
+        <TextArea label={mark('appearance', 'Appearance')} hint="Plain physical facts: what a portrait shows."  value={character.appearance} onChange={(appearance) => set({ appearance })} maxLength={600} rows={2}
           help={help('appearance', 'their appearance', character.appearance, (appearance) => set({ appearance }))} />
         <details>
           <summary>Looks, field by field</summary>
@@ -188,10 +200,6 @@ export function Editor({ saved, start, seed, filledIn, note, onSaved, onDeleted 
 
       <details className="section">
         <summary>More about them</summary>
-        <TextArea label="How others see them" value={character.seen_as} onChange={(seen_as) => set({ seen_as })} maxLength={400} rows={2}
-          hint="One line: how they come across; a habit people notice; what sets them off. Left empty, the app fills it in." />
-        <TextArea label="How they see themselves" value={character.sees_self} onChange={(sees_self) => set({ sees_self })} maxLength={1200} rows={3}
-          hint="Private, a few first-person lines. Left empty, the app fills it in." />
         <div className="grid three">
           <TextInput label="Kind" value={character.kind} onChange={(kind) => set({ kind: kind.toLowerCase().replace(/[^a-z0-9-]/g, '') })} maxLength={40}
             hint="Empty for an ordinary human, else a word such as elf." />

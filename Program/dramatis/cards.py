@@ -36,7 +36,7 @@ def description(character: Character) -> str:
     sections = [('', character.about), ('Appearance', character.appearance), ('How they talk', character.voice), ('How they sound', character.sound),
                 ('Background', character.background), ('Wants', character.wants), ('Fears', character.fears),
                 ('Skills', '; '.join(character.skills)), ('Flaws', '; '.join(character.flaws)),
-                ('How others see them', character.seen_as)]
+                ('How others see them', character.seen_as), ('How they see themselves', character.sees_self)]
     return '\n\n'.join(f'{label}: {text}' if label else text for label, text in sections if text)
 
 

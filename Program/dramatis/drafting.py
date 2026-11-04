@@ -29,7 +29,7 @@ from dramatis.formats.companion.models import RoutineBlock
 
 PROMPTS = Path(__file__).parent / 'prompts'
 TEXT_LIMITS = {'name': 80, 'about': 2000, 'personality': 8000, 'voice': 600, 'sound': 300, 'appearance': 600,
-               'background': 12000, 'wants': 300, 'fears': 300}
+               'seen_as': 400, 'sees_self': 1200, 'background': 12000, 'wants': 300, 'fears': 300}
 LIST_LIMITS = {'skills': (20, 300), 'flaws': (20, 300), 'interests': (50, 120)}
 LIFE_TEXT = {'routine': 8000, 'absence_reaction': 2000}
 REQUIRED = ('name', 'about', 'personality')
@@ -63,7 +63,9 @@ CORE_SHAPE = '''  "name": "first and last name, or the one name they go by",
   "personality": "a paragraph: temperament, how they treat people, the contradiction, what annoys them",
   "voice": "how they talk: 2 to 4 sentences of instructions for their words, rhythm, humour and what they avoid saying",
   "sound": "how their voice sounds, for text to speech: one short objective line on age, pitch, pace and texture, never personality or their name",
-  "appearance": "2 or 3 plain sentences: what people see",
+  "appearance": "2 or 3 plain sentences of physical facts: what a portrait would show",
+  "seen_as": "their outward appearance: how other people see them, reputation included, in one line: <how they come across>; <a habit people notice>; <what sets them off>. Other characters hear it, so write it as people around them would put it",
+  "sees_self": "how they see themselves: 3 to 5 short first-person lines, private, which may disagree with how others see them",
   "background": "1 or 2 paragraphs of ordinary history",
   "wants": "one sentence: what they are after",
   "fears": "one sentence: what they are afraid of",

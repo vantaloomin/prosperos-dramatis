@@ -23,6 +23,8 @@ def test_a_draft_comes_back_shaped_with_the_users_picks_winning(model):
     assert character['age'] == 38 and character['gender'] == 'woman' and character['setting'] == 'Baltimore, today'
     assert character['companion']['relationship'] == 'romance'
     assert character['companion']['texting']['lowercase'] is True
+    # How others see them and how they see themselves are drafted, apart from plain looks.
+    assert character['seen_as'].startswith('Comes across as curt') and character['sees_self'].startswith('I am')
     # How they talk and how they sound stay two fields.
     assert character['sound'] == 'A low, slightly hoarse alto, unhurried.' and 'never personality or their name' in system_of(model)
     # Emotional edges stay off unless asked for.

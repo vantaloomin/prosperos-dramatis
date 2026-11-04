@@ -36,6 +36,13 @@ def test_adventure_and_dungeon_get_a_persona_and_adventure_its_made_character():
     assert for_dungeon(made())['persona']['about'] == 'An ER nurse.'
 
 
+def test_how_others_see_them_reaches_every_app_that_feeds_it_to_other_characters():
+    character = made(seen_as='Comes across as curt; always early.', sees_self='I keep things moving.')
+    assert for_companion(character)['seen_as'] == 'Comes across as curt; always early.'
+    assert for_adventure(character)['made']['seen_as'] == 'Comes across as curt; always early.'
+    assert for_adventure(character)['made']['sees_self'] == 'I keep things moving.'
+
+
 def test_a_long_lived_kind_keeps_its_age_out_of_companion_looks():
     character = made(age=400, kind='elf', lifespan=1000)
     assert for_companion(character)['looks'].get('age') is None
