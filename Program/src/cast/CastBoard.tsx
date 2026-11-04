@@ -4,6 +4,7 @@ import { Download, Trash2 } from 'lucide-react'
 import { getJson, type Summary } from '../api'
 import { CARD_TARGETS } from '../Editor'
 import { LIMITS, castCalls, editCorner, findCorner, linkedCharacters, type Cast, type CastCheck, type Computed, type SavedCast } from '../castApi'
+import { ProposalsProvider, useBoardProposalState } from './boardProposals'
 import { Checks } from './Checks'
 import type { CornerContext } from './CornerCard'
 import { PsycheSquare, pressLines, useFocus } from './PsycheSquare'
@@ -39,6 +40,11 @@ export function CastBoard({ board, update, onSaved, onDeleted, onDraft, onOpenCh
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<{ tone: 'note' | 'error'; text: string } | null>(board.note ? { tone: 'note', text: board.note } : null)
   const [boardElement, setBoardElement] = useState<HTMLDivElement | null>(null)
+  const proposals = useBoardProposalState(update)
+  // A new board shows its checks from the first edit on, not while it is still blank.
+  const [touched, setTouched] = useState(!!saved)
+  const opened = useRef(cast)
+  useEffect(() => { if (cast !== opened.current) setTouched(true) }, [cast])
   const elements = useRef(new Map<string, HTMLElement>())
   const register = useCallback((key: string, element: HTMLElement | null) => {
     if (element) elements.current.set(key, element)
@@ -89,6 +95,7 @@ export function CastBoard({ board, update, onSaved, onDeleted, onDraft, onOpenCh
     setBusy(true)
     setResult(null)
     try {
+      proposals.keepAll()
       const next = await castCalls.save(cast, saved?.id ?? null)
       await client.invalidateQueries({ queryKey: ['casts'] })
       setComputed(next.computed)
@@ -110,6 +117,7 @@ export function CastBoard({ board, update, onSaved, onDeleted, onDraft, onOpenCh
   }
 
   return (
+    <ProposalsProvider value={proposals}>
     <form className="cast-board" onSubmit={save}>
       <div className="editor-head">
         <input className="cast-title" aria-label="Title" value={cast.title} maxLength={LIMITS.title} placeholder="Untitled cast"
@@ -137,9 +145,10 @@ export function CastBoard({ board, update, onSaved, onDeleted, onDraft, onOpenCh
       {link && <ResonancePanel key={link.key} cast={cast} link={link} tags={tags} update={update} onClose={() => setSelected(null)} />}
       <Dismissed cast={cast} tags={tags} update={update} />
 
-      <Checks cast={cast} checks={computed?.checks ?? null} error={checkError} lit={lit} onLight={light} update={update} />
+      <Checks cast={cast} checks={touched ? computed?.checks ?? null : null} error={checkError} lit={lit} onLight={light} update={update} />
       <Relationships cast={cast} characters={characters.data ?? []} names={names} update={update} />
     </form>
+    </ProposalsProvider>
   )
 }
 

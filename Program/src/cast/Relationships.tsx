@@ -2,6 +2,7 @@ import { useId, type ReactNode } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import type { Summary } from '../api'
 import { LIMITS, linkedCharacters, type Cast, type CastRelationship } from '../castApi'
+import { relationshipKey, useBoardProposals } from './boardProposals'
 import { RelationshipActions } from './slots'
 
 /** How each character sees another: one directed row per ordered pair, never from someone to themself. */
@@ -40,8 +41,9 @@ function RelationshipRow({ row, ids, name, taken, onChange, onRemove, children }
   onChange: (part: Partial<CastRelationship>) => void; onRemove: () => void; children?: ReactNode
 }) {
   const id = useId()
+  const proposed = !!useBoardProposals().open[relationshipKey(row.from, row.to)]
   return (
-    <div className="relationship card">
+    <div className={proposed ? 'relationship card proposed' : 'relationship card'}>
       <div className="pair">
         <select aria-label="Who" value={row.from} onChange={(event) => onChange({ from: event.target.value })}>
           {ids.map((item) => <option key={item} value={item} disabled={item === row.to || taken(item, row.to)}>{name(item)}</option>)}
