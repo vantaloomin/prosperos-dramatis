@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from dramatis import NAME, VERSION, ai, cards, cast_routes, drafting, interview, library, portraits, slop
+from dramatis import NAME, VERSION, ai, cards, cast_ai, cast_routes, drafting, interview, library, portraits, slop
 from dramatis.character import APPS, App, Character, Gender, problems, shapes
 from dramatis.formats.companion import personality
 from dramatis.formats.companion.errors import DomainError, require
@@ -238,6 +238,7 @@ def create_app(dist: Path = DIST) -> FastAPI:
     app.include_router(cast_routes.router())
     app.include_router(interview.router)
     app.include_router(portraits.router())
+    app.include_router(cast_ai.router)
     if (dist / 'index.html').is_file():
         app.mount('/assets', StaticFiles(directory=dist / 'assets'), name='assets')
 

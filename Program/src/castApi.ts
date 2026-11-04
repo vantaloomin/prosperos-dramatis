@@ -1,6 +1,6 @@
 /** Casts: the shapes and calls of the cast routes (the Shared contract of the Cast-layer spec), and the pure edits the
  * board makes to a cast. Kept out of api.ts so the character side and the cast side change without touching each other. */
-import { getJson, sendJson } from './api'
+import { getJson, sendJson, type AuditHit } from './api'
 
 export type AxisKind = 'value' | 'means' | 'cost' | 'purity' | 'leadership' | 'secret' | 'goal-definition' | 'dilemma'
 export type Depth = 'single' | 'partial' | 'full'
@@ -170,3 +170,70 @@ export function draftIdea(cast: Cast, cornerId: string): string {
 
 /** Every character the cast links, in board order, without repeats. */
 export const linkedCharacters = (cast: Cast) => [...new Set(corners(cast).map((item) => item.corner.character_id).filter((id): id is string => !!id))]
+
+// ---- AI help (package D): the model's proposals, and the edits Apply and Undo make --------------------------------
+
+/** A corner the model suggests: for `corner_id`, or a new corner when it is null (in a full square, the author picks
+ * which corner it replaces). */
+export interface CornerProposal { corner_id: string | null; label: string; stance: string; tags: string[]; role: string; fields?: Record<string, string> }
+/** A corner whose stance reads as the wrong kind: a why inside a split, a how on the outer square. */
+export interface SquareFlag { corner_id: string; reads_as: 'value' | 'method' | 'secret'; message: string }
+/** One of the four-corner web's judgement calls, about the corner with that role. */
+export interface Judgement { code: string; corner_id: string; holds: boolean; message: string }
+export interface RelationshipProposal { dynamic: string; hidden_tension: string; trust: number }
+/** What a suggestion target is: the outer square, or the id of the side whose inner square it is. */
+export type SuggestTarget = 'outer' | string
+
+export const aiCalls = {
+  suggest: (cast: Cast, target: SuggestTarget) => sendJson<{ proposals: CornerProposal[]; audit: AuditHit[] }>('/api/cast-ai/suggest', 'POST', { cast, target }),
+  check: (cast: Cast) => sendJson<{ flags: SquareFlag[]; judgements: Judgement[]; audit: AuditHit[] }>('/api/cast-ai/check', 'POST', { cast }),
+  turn: (cast: Cast, a: string, b: string) => sendJson<{ turn: string; audit: AuditHit[] }>('/api/cast-ai/turn', 'POST', { cast, a, b }),
+  relationship: (cast: Cast, from: string, to: string) =>
+    sendJson<{ proposal: RelationshipProposal; audit: AuditHit[] }>('/api/cast-ai/relationship', 'POST', { cast, from, to }),
+}
+
+/** The square a target names, if it is still on the board. */
+export function targetSquare(cast: Cast, target: SuggestTarget): Square | null {
+  return target === 'outer' ? cast.outer : cast.outer.corners.find((side) => side.id === target)?.inner ?? null
+}
+
+/** What a suggestion sets on a corner, and so what Undo puts back. */
+export type Proposed = Pick<Corner, 'label' | 'stance' | 'tags' | 'role' | 'fields'>
+export const proposedOf = (corner: Corner): Proposed => ({ label: corner.label, stance: corner.stance, tags: corner.tags, role: corner.role, fields: corner.fields })
+
+/** Put a suggestion on the board: over corner `into`, or as a new corner of the square when `into` is null. Returns the
+ * cast and the corner it landed in, or null when the square has no room or the corner is gone. */
+export function placeProposal(cast: Cast, target: SuggestTarget, proposal: CornerProposal, into: string | null): { cast: Cast; id: string } | null {
+  const square = targetSquare(cast, target)
+  if (!square) return null
+  // A template's role texts follow the suggested role; a role or text the model left empty keeps what the corner had.
+  const set = (corner: Corner): Corner => ({
+    ...corner, label: proposal.label, stance: proposal.stance, tags: proposal.tags, role: proposal.role || corner.role,
+    fields: proposal.fields ? Object.fromEntries(Object.entries(proposal.fields).map(([key, text]) => [key, text || corner.fields[key] || ''])) : corner.fields,
+  })
+  if (into) return square.corners.some((corner) => corner.id === into) ? { cast: editCorner(cast, into, set), id: into } : null
+  if (square.corners.length >= 4) return null
+  const id = freshId(cast, target === 'outer' ? undefined : target)
+  const added = set(emptyCorner(id))
+  if (target === 'outer') return { cast: { ...cast, outer: { ...cast.outer, corners: [...cast.outer.corners, added] } }, id }
+  return {
+    cast: editCorner(cast, target, (side) => {
+      const inner = { ...side.inner!, corners: [...side.inner!.corners, added] }
+      return { ...side, inner, depth: depthOf(inner) }
+    }), id,
+  }
+}
+
+/** Undo a placed suggestion: the corner's texts as they were, or the corner gone again when the suggestion added it. */
+export const unplaceProposal = (cast: Cast, id: string, before: Proposed | null) =>
+  before ? editCorner(cast, id, (corner) => ({ ...corner, ...before })) : dropCorner(cast, id)
+
+/** Set one stored link's note, which is where a turn goes. */
+export const setLinkNote = (cast: Cast, link: Pick<Resonance, 'a' | 'b' | 'on'>, note: string): Cast => ({
+  ...cast, resonance: cast.resonance.map((item) => item.on === link.on && samePair(item, link) ? { ...item, note } : item),
+})
+
+/** Change the row from one character to another, wherever it sits now. */
+export const editRelationship = (cast: Cast, from: string, to: string, part: Partial<CastRelationship>): Cast => ({
+  ...cast, relationships: cast.relationships.map((row) => row.from === from && row.to === to ? { ...row, ...part } : row),
+})

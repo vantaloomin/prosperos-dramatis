@@ -29,7 +29,7 @@ export function Checks({ cast, checks, error, lit, onLight, update }: {
           <ul>{reminders.map(item)}</ul>
         </details>
       )}
-      <ChecksActions cast={cast} update={update} />
+      <ChecksActions cast={cast} update={update} lit={lit} onLight={onLight} />
     </section>
   )
 }

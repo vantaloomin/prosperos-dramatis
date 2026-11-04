@@ -24,7 +24,7 @@ export function Relationships({ cast, characters, names, update }: {
       {cast.relationships.map((row, index) => (
         <RelationshipRow key={index} row={row} ids={ids} name={name} taken={(from, to) => taken(from, to, index)} onChange={(part) => setRow(index, part)}
           onRemove={() => update((current) => ({ ...current, relationships: current.relationships.filter((_, at) => at !== index) }))}>
-          {!row.dynamic && !row.hidden_tension && <RelationshipActions cast={cast} update={update} index={index} />}
+          <RelationshipActions cast={cast} update={update} index={index} />
         </RelationshipRow>
       ))}
       <button type="button" className="link" disabled={!open || cast.relationships.length >= 120} title={open ? undefined : 'Link two characters first'}

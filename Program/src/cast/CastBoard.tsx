@@ -115,7 +115,7 @@ export function CastBoard({ board, update, onSaved, onDeleted, onDraft, onOpenCh
         <input className="cast-title" aria-label="Title" value={cast.title} maxLength={LIMITS.title} placeholder="Untitled cast"
           onChange={(event) => update((current) => ({ ...current, title: event.target.value }))} />
         <div className="row">
-          <HeaderActions cast={cast} update={update} />
+          <HeaderActions cast={cast} update={update} tags={tags} />
           <button type="submit" className="primary" disabled={busy || !dirty}>{busy ? 'Saving…' : saved ? 'Save' : 'Save the cast'}</button>
           {saved && <ExportCast saved={saved} />}
           {saved && <button type="button" className="icon danger" aria-label="Delete this cast" onClick={() => void remove()}><Trash2 size={15} /></button>}

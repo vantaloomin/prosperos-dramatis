@@ -204,3 +204,19 @@ button.side-toggle { width: 100%; justify-content: flex-start; background: var(-
   .psyche-square { margin-top: 1rem; }
   .impulses { grid-template-columns: 1fr; }
 }
+
+/* Cast board AI help (src/cast/CastAi.tsx). */
+.cast-board .editor-head { z-index: 3; }
+.ai-pop { position: relative; }
+.ai-panel { position: absolute; right: 0; top: calc(100% + 0.3rem); width: min(26rem, calc(100vw - 2rem)); max-height: 70vh; overflow: auto; z-index: 5; display: grid; gap: 0.5rem; padding: 0.7rem; box-shadow: 0 6px 20px rgb(0 0 0 / 0.15); font-weight: normal; text-align: left; }
+.ai-panel:focus { outline: none; }
+.ai-panel p, .ai-panel .row { margin: 0; }
+.proposals { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+.proposal { display: grid; gap: 0.3rem; padding: 0.55rem 0.65rem; border-radius: 6px; background: var(--bg); font-size: 0.9rem; }
+.proposal .row { margin: 0; }
+.proposal select { width: auto; flex: 1; }
+.ai-result { flex-basis: 100%; }
+.ai-check { display: grid; gap: 0.3rem; }
+.checks .ai-check li { flex-wrap: nowrap; align-items: flex-start; gap: 0.2rem; }
+.checks .ai-check li button.icon { width: auto; background: none; }
+@media (max-width: 720px) { .ai-panel { position: fixed; left: 1rem; right: 1rem; top: auto; bottom: 1rem; width: auto; } }

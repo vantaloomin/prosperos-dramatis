@@ -1,9 +1,14 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Cpu, Image as ImageIcon } from 'lucide-react'
 import { getJson, sendJson, type ImageCheck, type ImageConfig, type ModelConfig } from './api'
 
 const PROVIDER_NAMES = { anthropic: 'Claude (Anthropic API)', openai: 'OpenAI-compatible server', 'claude-cli': 'claude command line' }
+
+const OPEN = 'dramatis:set-up-model'
+
+/** Open the model settings from anywhere, such as the Cast board's Set up a text model. */
+export const openModelSettings = () => window.dispatchEvent(new Event(OPEN))
 
 /** Which model drafts: shown in one line, edited in place. Keys go to the system keyring, never the settings file. */
 export function ModelSettings() {
@@ -15,6 +20,11 @@ export function ModelSettings() {
       { provider: form.provider, model: form.model, base_url: form.base_url, key: form.key ? form.key : null }),
     onSuccess: (next) => { client.setQueryData(['models'], next); setEditing(null) },
   })
+  useEffect(() => {
+    const open = () => { if (current.data) setEditing((was) => was ?? { ...current.data, key: '' }) }
+    window.addEventListener(OPEN, open)
+    return () => window.removeEventListener(OPEN, open)
+  }, [current.data])
   if (!current.data) return null
   if (!editing) {
     return (
@@ -26,7 +36,7 @@ export function ModelSettings() {
   }
   return (
     <form className="model-form" onSubmit={(event) => { event.preventDefault(); save.mutate(editing) }}>
-      <select aria-label="Provider" value={editing.provider} onChange={(event) => setEditing({ ...editing, provider: event.target.value as ModelConfig['provider'] })}>
+      <select aria-label="Provider" autoFocus value={editing.provider} onChange={(event) => setEditing({ ...editing, provider: event.target.value as ModelConfig['provider'] })}>
         {Object.entries(PROVIDER_NAMES).map(([value, name]) => <option key={value} value={value}>{name}</option>)}
       </select>
       <input aria-label="Model" placeholder={editing.provider === 'anthropic' ? 'claude-opus-5-5' : 'Model name'} value={editing.model}
