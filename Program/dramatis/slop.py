@@ -2,7 +2,10 @@
 drafts before the form shows it.
 
 The list is Wren Halloway's (data/ai-slop.json, 2026-11-03, with its own notes in ai-slop.md beside the original
-slop_check.py); `scan` is that checker's matching, kept as it works there:
+slop_check.py); `scan` is that checker's matching, kept as it works there. Beside it, data/ai-slop-wikipedia.json adds
+the signs from Wikipedia's "Signs of AI writing" that can turn up in a character (puffed-up significance, its AI
+vocabulary, the chatbot talking to its user, unfilled placeholders, "-ing" analyses, "not just X but Y", "rather
+than", "no X, no Y, just Z", emoji), read the same way:
 
 - **hard** entries are defects: stock names (Elara, Kael, Voss), em dashes, the assistant's voice. A draft with a
   hard hit the user didn't write themselves is sent back once, naming the hits (dramatis/drafting.py), and any still
@@ -19,7 +22,8 @@ import re
 from functools import cache
 from pathlib import Path
 
-LIST = Path(__file__).parent / 'data' / 'ai-slop.json'
+DATA = Path(__file__).parent / 'data'
+LISTS = (DATA / 'ai-slop.json', DATA / 'ai-slop-wikipedia.json')
 # The character's fields the audit reads, with the names the form shows them by.
 FIELDS = {'name': 'Name', 'about': 'About them', 'personality': 'Personality', 'voice': 'How they talk',
           'sound': 'How they sound', 'appearance': 'Appearance', 'seen_as': 'Outward appearance',
@@ -34,7 +38,9 @@ PAD = 30
 
 @cache
 def data() -> dict:
-    return json.loads(LIST.read_text(encoding='utf-8'))
+    """Every list's categories and patterns together."""
+    lists = [json.loads(path.read_text(encoding='utf-8')) for path in LISTS]
+    return {key: [entry for found in lists for entry in found.get(key, [])] for key in ('categories', 'patterns')}
 
 
 def compiled(item: str, kind: str) -> re.Pattern:

@@ -1,0 +1,84 @@
+{
+  "name": "Signs of AI writing, for character fields",
+  "version": "2026-11-04",
+  "source": "https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing",
+  "how_to_use": "Read with Wren Halloway's ai-slop.json, under the same rules. Only the signs that can turn up in a character's fields are here; the page's citation, notability and edit-summary signs are left out, and so is its markdown sign (the suite writes markdown itself). Entries ai-slop.json already has are not repeated.",
+  "categories": [
+    {
+      "id": "wiki_significance",
+      "title": "Puffed-up significance",
+      "severity": "flag",
+      "match": "phrase",
+      "note": "Says a thing matters instead of saying what it is. Most common in backgrounds.",
+      "items": ["stands as", "serves as", "functions as", "a crucial role", "a vital role", "a key role", "a significant role",
+                "a pivotal moment", "deeply rooted", "enduring legacy", "lasting legacy", "lasting impact", "setting the stage for",
+                "set the stage for", "turning point", "marks a shift", "marked a shift", "represents a shift", "focal point",
+                "a broader movement", "reflects broader", "a reminder of"]
+    },
+    {
+      "id": "wiki_vocabulary",
+      "title": "AI vocabulary",
+      "severity": "flag",
+      "match": "word",
+      "note": "Words studies found models overuse; one means little, several together mean a lot. Taken literally: synonyms are not included.",
+      "items": ["showcase", "showcases", "showcased", "showcasing", "highlighting", "emphasize", "emphasizes", "emphasizing",
+                "enhance", "enhances", "enhanced", "enhancing", "garner", "garners", "garnered", "bolster", "bolstered", "crucial",
+                "enduring", "fostering", "fostered", "cultivating", "encompassing", "align with", "aligns with", "aligned with",
+                "valuable insights", "quietly"]
+    },
+    {
+      "id": "wiki_chatbot",
+      "title": "Chatbot talking to its user",
+      "severity": "hard",
+      "match": "phrase",
+      "note": "The model addressing whoever asked for the character.",
+      "items": ["You're absolutely right", "You are absolutely right", "Would you like me to", "Is there anything else I can",
+                "as of my last update", "as of my last knowledge update", "as of my last training update", "my knowledge cutoff",
+                "as a large language model", "as a language model"]
+    }
+  ],
+  "patterns": [
+    {
+      "id": "wiki_here_is",
+      "title": "Chatbot talking to its user",
+      "severity": "hard",
+      "regex": "^\\s*(?:Here is|Here's|Here are) (?:a|an|the|your)\\b"
+    },
+    {
+      "id": "wiki_placeholder",
+      "title": "Unfilled placeholder",
+      "severity": "hard",
+      "regex": "(?i)\\[(?:insert|describe|add|enter|character|name|your|placeholder|todo|tbd|x{2,})\\b[^\\]\\n]{0,80}\\]"
+    },
+    {
+      "id": "wiki_ing_tail",
+      "title": "\"-ing\" ending that adds an analysis",
+      "severity": "flag",
+      "regex": "(?i),\\s+(?:underscoring|reflecting|symbolizing|ensuring|contributing to|cementing|solidifying|demonstrating|illustrating|signaling|signalling|embodying)\\b"
+    },
+    {
+      "id": "wiki_rather_than",
+      "title": "\"Y rather than X\"",
+      "severity": "flag",
+      "regex": "(?i)\\brather than\\b"
+    },
+    {
+      "id": "wiki_not_just",
+      "title": "\"Not just X, but also Y\"",
+      "severity": "flag",
+      "regex": "\\bNot (?:just|only|merely|simply)\\b[^.!?;\\n]{1,80}?\\bbut\\b"
+    },
+    {
+      "id": "wiki_no_no_just",
+      "title": "\"No X, no Y, just Z\"",
+      "severity": "flag",
+      "regex": "(?i)\\bno [^,.!?;\\n]{1,30}, no [^,.!?;\\n]{1,30},? (?:just|only)\\b"
+    },
+    {
+      "id": "wiki_emoji",
+      "title": "Emoji",
+      "severity": "flag",
+      "regex": "[\\U0001F300-\\U0001FAFF\\u2600-\\u27BF]"
+    }
+  ]
+}

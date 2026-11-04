@@ -59,3 +59,16 @@ def test_an_unusable_reply_still_fails_plainly(model):
     model.replies = ['nothing', 'nothing']
     with pytest.raises(DomainError):
         drafting.draft(PICKS)
+
+
+def test_wikipedias_signs_are_read_with_wrens_list():
+    found = slop.scan("Here is a character: [Insert name] stands as a reminder of home, reflecting her roots.")
+    assert {(hit['severity'], hit['match']) for hit in found} == {
+        ('hard', 'Here is a'), ('hard', '[Insert name]'), ('flag', 'stands as'), ('flag', 'a reminder of'),
+        ('flag', ', reflecting')}
+    found = slop.scan("You're absolutely right. Not only a smith but a poet, quietly. No maps, no plans, just nerve.")
+    assert [hit['severity'] for hit in found][:1] == ['hard'] and len(found) == 4
+
+
+def test_card_macros_and_ordinary_brackets_are_not_placeholders():
+    assert slop.scan('Calls {{user}} by a nickname [sometimes]. Here is where she lives.') == []
