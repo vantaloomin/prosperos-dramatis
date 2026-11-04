@@ -7,3 +7,9 @@ Program/node_modules/
 Program/dist/
 Program/*.tsbuildinfo
 .dramatis/
+
+# Reviewer persona prompts (the principal engineer, UX and prompt red-team reviewers) are local agent
+# instructions, never committed. Keep them in a personas/ folder, such as Program/docs/personas/.
+**/personas/
+persona-*.md
+persona.md
