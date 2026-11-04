@@ -91,7 +91,7 @@ function Side({ side, index, cast, axes, genre, group, context, narrow, update }
   const body = (
     <CornerCard corner={side} outer context={context} stanceHint={pick?.stance_hint} fieldKeys={Object.keys(side.fields)} onChange={change(side.id)}
       onRemove={cast.outer.corners.length > 2 ? () => update((current) => dropCorner(current, side.id)) : undefined}
-      actions={<SideActions cast={cast} update={update} side={side} />}>
+      actions={<SideActions cast={cast} update={update} side={side} tags={context.tags} />}>
       {side.inner ? <InnerSquare side={side} cast={cast} axes={axes} context={context} update={update} change={change} />
         : splitting ? <SplitPrompt cast={cast} side={side} mode={splitting} axes={axes} genre={genre} group={group} update={update} onDone={() => setSplitting(null)} />
           : (

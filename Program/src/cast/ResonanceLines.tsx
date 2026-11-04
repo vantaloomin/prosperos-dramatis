@@ -152,7 +152,7 @@ export function ResonancePanel({ cast, link, tags, update, onClose }: {
             onClick={() => { setRole(value); if (stored?.status === 'confirmed') edit({ role: value }) }}>{name}</button>
         ))}
       </div>
-      <textarea aria-label="Note on this link" rows={2} maxLength={LIMITS.resonanceNote} value={note} placeholder="What passes between them"
+      <textarea aria-label="Note on this link" rows={2} maxLength={LIMITS.resonanceNote} value={stored?.status === 'confirmed' ? stored.note : note} placeholder="What passes between them"
         onChange={(event) => { setNote(event.target.value); if (stored?.status === 'confirmed') edit({ note: event.target.value }) }} />
       <div className="row">
         {link.confirmed ? <>

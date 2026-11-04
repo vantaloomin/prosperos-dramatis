@@ -120,8 +120,14 @@ def texts(character: dict) -> list[tuple[str, str, str]]:
 def audit(character: dict, allowed: str = '') -> list[dict]:
     """Every hit in the character's fields, by field. A hit whose text is in `allowed` (what the user typed or pasted)
     is theirs, not the model's, and is left out: a user may want an Elara."""
+    return audit_texts(texts(character), allowed)
+
+
+def audit_texts(found: list[tuple[str, str, str]], allowed: str = '') -> list[dict]:
+    """Every hit in (key, label, text) triples that are not a character's fields, such as a cast's suggestions, with
+    the same rule for what the user wrote themselves."""
     mine = allowed.casefold()
-    return [{'field': key, 'label': label, **hit} for key, label, text in texts(character) for hit in scan(text)
+    return [{'field': key, 'label': label, **hit} for key, label, text in found for hit in scan(text)
             if not (mine and hit['match'].strip().casefold() in mine)]
 
 

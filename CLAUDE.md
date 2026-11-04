@@ -22,7 +22,10 @@ character creator.
   `dramatis/interview.py`, its own router; Help me write reaches nested fields by dotted keys (`arc.lie`,
   `psyche.was`), listed in `slop.DEPTH`.
 - The Cast board is `src/cast/` with its calls and pure cast edits in `src/castApi.ts`. App keeps each open board
-  (unsaved edits survive leaving it) and the corner a drafted character goes to. AI actions go in `src/cast/slots.tsx`.
+  (unsaved edits survive leaving it) and the corner a drafted character goes to.
+- The Cast board's AI help is `dramatis/cast_ai.py` (routes under `/api/cast-ai`, prompts `prompts/cast-*.md`) and
+  `src/cast/CastAi.tsx`, placed on the board by `src/cast/slots.tsx`; Apply and Undo edits live in `src/castApi.ts`.
+  Every result is a proposal: Apply changes the board, never the cast file.
 - The Sidebar Assistant (after Adventure's, which came from Companion's sidecar; both are built on their apps' stories,
   so it is ported, not vendored) is `dramatis/assistant.py` with `prompts/assistant.md`, and `src/assistant/` on the
   screen. It gets the live form, the form as its last answer left it and the focused field (`data-field` on each

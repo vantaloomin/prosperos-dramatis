@@ -111,6 +111,12 @@ dashed line between them to confirm or dismiss. Checks and relationships between
 and **Focus** shows one character's inner square beside the board. **Export** saves the cast file, or a card for each
 of its characters in either kind above.
 
+Your model can help with a cast too. **Suggest corners** offers sides for the outer square, or the people inside a
+split side. **Check my square** points out a stance that reads as the wrong kind, such as a why where a how belongs.
+**Find the turn** says who crosses a confirmed link, when, and what it costs, and **Suggest** fills an empty
+relationship from one character's wants and the other's flaws. Each comes back as a proposal you apply, undo or
+dismiss, and nothing is saved until you save the cast.
+
 ## Getting started
 
 ### Windows

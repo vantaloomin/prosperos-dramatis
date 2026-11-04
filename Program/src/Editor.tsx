@@ -291,7 +291,7 @@ export function Editor({ saved, start, seed, filledIn, note, onSaved, onDeleted 
 
 /** The AI-slop audit of the form as it stands: hard hits (stock names, dashes, the assistant's voice) to fix, and flags
  * worth a look. Nothing here stops a save: a name the user chose is theirs. */
-function Audit({ hits }: { hits: AuditHit[] }) {
+export function Audit({ hits }: { hits: AuditHit[] }) {
   if (!hits.length) return null
   const hard = hits.filter((hit) => hit.severity === 'hard')
   const flags = hits.filter((hit) => hit.severity === 'flag')
