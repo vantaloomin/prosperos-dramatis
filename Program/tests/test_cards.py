@@ -17,7 +17,7 @@ import json
 
 from dramatis.cards import card, plain_png, with_card
 from dramatis.character import Character
-from dramatis.formats.companion import cards as reader
+from dramatis.formats.companion.imports import cards as reader
 from tests.helpers import reply
 
 V2_FIELDS = ('name', 'description', 'personality', 'scenario', 'first_mes', 'mes_example', 'creator_notes',

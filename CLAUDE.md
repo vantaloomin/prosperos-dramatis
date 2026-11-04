@@ -21,6 +21,10 @@ character creator.
   shapes fold it into fields they read. The secret goes everywhere the character does, so they can keep it. The interview's routes live in
   `dramatis/interview.py`, its own router; Help me write reaches nested fields by dotted keys (`arc.lie`,
   `psyche.was`), listed in `slop.DEPTH`.
+- Another app's character file is `dramatis/imports.py`: Companion's own importer (vendored `formats/companion/imports/`)
+  reads it, then it opens in the form with no model (headed lines to their fields) or goes to the paste box for the
+  split, both behind the Paste path's checks. What the card has that Dramatis doesn't make is `Character.card`
+  (`CardParts`), put back in every export and kept out of prompts by `drafting.for_model`.
 - The Cast board is `src/cast/` with its calls and pure cast edits in `src/castApi.ts`. App keeps each open board
   (unsaved edits survive leaving it) and the corner a drafted character goes to.
 - The Cast board's AI help is `dramatis/cast_ai.py` (routes under `/api/cast-ai`, prompts `prompts/cast-*.md`) and

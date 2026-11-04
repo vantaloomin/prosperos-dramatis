@@ -4,7 +4,7 @@ import json
 from fastapi.testclient import TestClient
 
 from dramatis.cards import plain_png
-from dramatis.formats.companion import cards as reader
+from dramatis.formats.companion.imports import cards as reader
 from dramatis.main import create_app
 from tests.helpers import SLEEP, reply
 
@@ -75,17 +75,21 @@ def test_the_chat_app_card_leaves_the_prospero_part_out():
     assert chat.json()['data']['extensions'] == {} and 'Sleep' not in chat.text
     png = api.get(f"/api/characters/{made['id']}/card.png?for=chat")
     assert png.status_code == 200 and b'prospero' not in png.content
-    # Without the extension it is any other app's card to Dramatis: text for the paste box.
+    # Without the extension it is any other app's card to Dramatis, read from its headed description.
     opened = api.post('/api/cards/open', json={'filename': 'Dana.png', 'data': encoded(png.content)}).json()
-    assert opened['kind'] == 'text' and opened['name'] == 'Dana Okafor'
+    assert opened['kind'] == 'file' and opened['name'] == 'Dana Okafor'
+    assert opened['character']['voice'] == 'Short sentences.' and opened['character']['age'] == 38
     assert api.get(f"/api/characters/{made['id']}/card.json?for=tavern").status_code == 422
 
 
-def test_another_apps_card_opens_as_text_for_the_paste_box():
+def test_another_apps_card_opens_as_text_for_the_paste_box_and_as_a_form():
     card = {'spec': 'chara_card_v2', 'data': {'name': 'Mira', 'description': '{{char}} runs a ferry.'}}
     found = client().post('/api/cards/open', json={'filename': 'mira.json', 'data': encoded(json.dumps(card).encode())})
-    assert found.json() == {'kind': 'text', 'name': 'Mira', 'text': 'Name: Mira\n\nDescription:\nMira runs a ferry.',
-                            'truncated': False}
+    opened = found.json()
+    assert {key: opened[key] for key in ('kind', 'format', 'name', 'text', 'truncated')} == {
+        'kind': 'file', 'format': 'Character Card V2', 'name': 'Mira',
+        'text': 'Name: Mira\n\nDescription:\nMira runs a ferry.', 'truncated': False}
+    assert opened['character']['background'] == 'Mira runs a ferry.' and opened['card'] is None
 
 
 def test_portraits_are_pngs():

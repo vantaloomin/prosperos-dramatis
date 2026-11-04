@@ -178,7 +178,7 @@ export function App() {
         {view.kind === 'start' ? <Start key={pending ? `${pending.castKey}-${pending.cornerId}` : 'start'} initial={view.initial} onBegin={begin} />
           : view.kind === 'edit' ? (
             <Editor key={view.key} saved={view.saved} start={view.begun.character} seed={view.saved?.seed ?? view.begun.seed ?? 'dramatis'}
-              filledIn={view.begun.filledIn} note={view.begun.note}
+              filledIn={view.begun.filledIn} note={view.begun.note} portrait={view.begun.portrait}
               onSaved={(saved) => {
                 setView((current) => current.kind === 'edit' ? { ...current, saved, pending: undefined } : current)
                 if (view.pending) void link(view.pending, saved)

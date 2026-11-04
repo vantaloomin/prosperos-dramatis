@@ -206,10 +206,11 @@ def depth_text(depth: tuple[str, ...]) -> str:
 
 def for_model(character: dict, interview: bool = False, secret: bool = False) -> dict:
     """The character as a prompt shows it: no sliders (the brief says them as behaviour), no app list, no library ids,
-    and the long interview only when the request is about it. Their secret only when the request is about them as
+    no parts kept from a card they were imported from (its greetings and system prompt are another app's, and talk to
+    a model), and the long interview only when the request is about it. Their secret only when the request is about them as
     they are inside (`secret`); otherwise only what people believe instead, which is what everyone else knows."""
     shown = {key: value for key, value in character.items()
-             if key not in ('personality_sliders', 'apps') and (interview or key != 'interview')}
+             if key not in ('personality_sliders', 'apps', 'card') and (interview or key != 'interview')}
     if isinstance(shown.get('psyche'), dict):
         shown['psyche'] = {key: value.get('text', '') for key, value in shown['psyche'].items() if isinstance(value, dict)}
     if not secret and 'secret' in shown:
