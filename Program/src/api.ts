@@ -43,13 +43,26 @@ export interface CompanionLife {
   life_themes: string[]; texting: { bursts: boolean; lowercase: boolean; typos: boolean; quick: boolean }
   emotional_traits: EmotionalTrait[]; absence_reaction: string; timezone: string
 }
+/** Their inner arc: the lie they believe, the truth they need, and what could force it. */
+export interface Arc { lie: string; truth: string; catalyst: string }
+/** Kept in the library; a card carries it only with `?secret=1`. */
+export interface Secret { truth: string; cover_story: string; known_by: string }
+/** One pull on them, and the library characters who press on it (never written by a model). */
+export interface Impulse { text: string; pressed_by: string[] }
+export type ImpulseKey = 'was' | 'expected' | 'wants_to_be' | 'fears_becoming'
+export type Psyche = Record<ImpulseKey, Impulse>
 export interface Character {
   name: string; gender: Gender; age: number | null; kind: string; lifespan: number | null; birthday: string; setting: string
   about: string; personality: string; voice: string; sound: string; appearance: string; background: string; wants: string; fears: string
   skills: string[]; flaws: string[]; interests: string[]; looks: Looks
   personality_sliders: Partial<Record<Trait, Slider>> | null; seen_as: string; sees_self: string
   apps: App[]; companion: CompanionLife
+  interview: string; arc: Arc; secret: Secret; psyche: Psyche | null
 }
+/** What the interview suggests for one field, from POST /api/draft/from-interview. */
+export type ProposedField = 'voice' | 'appearance' | 'seen_as' | 'sees_self' | 'flaws' | 'interests'
+export interface Proposal { field: ProposedField; value: string | string[]; reason: string }
+export interface Interviewed { interview: string; sample: string; audit: AuditHit[] }
 export interface AuditHit { field: string; label: string; severity: 'hard' | 'flag'; rule: string; match: string; context: string }
 export type Problems = Partial<Record<App, string[]>>
 export interface Saved { id: string; created: string; updated: string; seed: string; character: Character; portrait: boolean; problems: Problems }
@@ -67,6 +80,11 @@ export const emptyLooks = (): Looks => ({
   facial_hair: '', feature: '',
 })
 
+export const emptyPsyche = (): Psyche => ({
+  was: { text: '', pressed_by: [] }, expected: { text: '', pressed_by: [] }, wants_to_be: { text: '', pressed_by: [] },
+  fears_becoming: { text: '', pressed_by: [] },
+})
+
 export function emptyCharacter(apps: App[] = APPS): Character {
   return {
     name: '', gender: '', age: null, kind: '', lifespan: null, birthday: '', setting: '', about: '', personality: '',
@@ -77,5 +95,6 @@ export function emptyCharacter(apps: App[] = APPS): Character {
       texting: { bursts: false, lowercase: false, typos: false, quick: false }, emotional_traits: [], absence_reaction: '',
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? '',
     },
+    interview: '', arc: { lie: '', truth: '', catalyst: '' }, secret: { truth: '', cover_story: '', known_by: '' }, psyche: null,
   }
 }

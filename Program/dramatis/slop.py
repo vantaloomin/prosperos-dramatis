@@ -28,9 +28,20 @@ LISTS = (DATA / 'ai-slop.json', DATA / 'ai-slop-wikipedia.json')
 FIELDS = {'name': 'Name', 'about': 'About them', 'personality': 'Personality', 'voice': 'How they talk',
           'sound': 'How they sound', 'appearance': 'Appearance', 'seen_as': 'Outward appearance',
           'sees_self': 'How they see themselves', 'background': 'Background', 'wants': 'What they want',
-          'fears': 'What they fear', 'skills': 'Skills', 'flaws': 'Flaws', 'interests': 'Interests'}
+          'fears': 'What they fear', 'skills': 'Skills', 'flaws': 'Flaws', 'interests': 'Interests',
+          'interview': 'Interview'}
 LIFE_FIELDS = {'routine': 'Their routine', 'life_themes': 'Life themes', 'history_together': 'How you know each other',
                'absence_reaction': 'When you are away'}
+# Their depth, inside the character: the key the form and Help me write use, its label, and where it sits.
+DEPTH = {'arc.lie': ('Lie they believe', ('arc', 'lie')), 'arc.truth': ('Truth they need', ('arc', 'truth')),
+         'arc.catalyst': ('What could force it', ('arc', 'catalyst')),
+         'secret.truth': ("What's really true", ('secret', 'truth')),
+         'secret.cover_story': ('What people believe instead', ('secret', 'cover_story')),
+         'secret.known_by': ('Who knows', ('secret', 'known_by')),
+         'psyche.was': ('Who they were', ('psyche', 'was', 'text')),
+         'psyche.expected': ("Who they're expected to be", ('psyche', 'expected', 'text')),
+         'psyche.wants_to_be': ('Who they want to be', ('psyche', 'wants_to_be', 'text')),
+         'psyche.fears_becoming': ('Who they fear becoming', ('psyche', 'fears_becoming', 'text'))}
 # Real words that only count as names mid-sentence, and that never match a longer word.
 NO_DERIVATIVES = ('names_word', 'surnames_overdrawn', 'places_overdrawn')
 PAD = 30
@@ -84,6 +95,12 @@ def scan(text: str) -> list[dict]:
     return [{key: value for key, value in hit.items() if key != 'at'} for hit in hits]
 
 
+def at(source, path: tuple[str, ...]):
+    for key in path:
+        source = source.get(key) if isinstance(source, dict) else None
+    return source
+
+
 def texts(character: dict) -> list[tuple[str, str, str]]:
     """(key, label, text) for each field the audit reads; a list is read one item at a time."""
     life = character.get('companion') or {}
@@ -93,6 +110,10 @@ def texts(character: dict) -> list[tuple[str, str, str]]:
             value = source.get(key)
             items = value if isinstance(value, list) else [value]
             found += [(key, label, item) for item in items if isinstance(item, str) and item.strip()]
+    for key, (label, path) in DEPTH.items():
+        value = at(character, path)
+        if isinstance(value, str) and value.strip():
+            found.append((key, label, value))
     return found
 
 

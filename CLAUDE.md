@@ -17,6 +17,10 @@ character creator.
   `casts/<id>.json` beside the library and pointing at characters by id. Resonance candidates and checks are computed
   there with no model; only structure is a hard error. Genres, group types, axes and tags are data
   (`dramatis/data/cast_*.json`), so a new template is a JSON entry. Routes are in `cast_routes.py`.
+- A character's depth (`interview`, `arc`, `secret`, `psyche`) is optional and no app has a field for it: the app
+  shapes fold it into fields they read, and a card drops the secret unless `?secret=1`. The interview's routes live in
+  `dramatis/interview.py`, its own router; Help me write reaches nested fields by dotted keys (`arc.lie`,
+  `psyche.was`), listed in `slop.DEPTH`.
 - The model never saves anything: drafts go to the form for review, and only Save writes to the library.
 - Before pushing, from `Program/`: `python -m ruff check .`, `python -m pytest -q`, `npm run build`.
 - `main` takes changes through pull requests.

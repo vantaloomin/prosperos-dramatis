@@ -3,6 +3,9 @@ import { useQueryClient } from '@tanstack/react-query'
 import { CheckCircle2, Download, ImagePlus, Trash2, TriangleAlert } from 'lucide-react'
 import { APPS, APP_NAMES, fileData, type AuditHit, sendJson, type App, type Character, type Gender, type Looks, type Problems, type Relationship, type Saved } from './api'
 import { Field, HelpMeWrite, ListArea, TextArea, TextInput, cleanList, useModelReady } from './Fields'
+import { InnerLife, SecretSection } from './InnerLife'
+import { Interview, sampleLine } from './Interview'
+import { Psyche } from './Psyche'
 import { AppPicks } from './Start'
 import { Schedule, scheduleProblems } from './Schedule'
 import { Sliders } from './Sliders'
@@ -20,20 +23,23 @@ const CARD_TARGETS: { target: 'prospero' | 'chat'; name: string; leaves?: string
   { target: 'chat', name: 'SillyTavern, Marinara, Front Porch and other chat apps', leaves: 'Leaves out what only the Prospero apps use, like the schedule and sliders.' },
 ]
 
-function ExportCard({ id }: { id: string }) {
+/** The card menu. A saved secret stays out of every card unless Include their secret is ticked. */
+function ExportCard({ id, hasSecret }: { id: string; hasSecret: boolean }) {
   const menu = useRef<HTMLDetailsElement>(null)
+  const [withSecret, setWithSecret] = useState(false)
   const close = () => { if (menu.current) menu.current.open = false }
   return (
     <details className="export" ref={menu}>
       <summary className="button"><Download size={14} aria-hidden /> Export card</summary>
       <ul>
+        {hasSecret && <li><label className="check"><input type="checkbox" checked={withSecret} onChange={(event) => setWithSecret(event.target.checked)} /> Include their secret</label></li>}
         {CARD_TARGETS.map(({ target, name, leaves }) => (
           <li key={target}>
             <span>{name}</span>
             {leaves && <span className="muted small">{leaves}</span>}
             <span className="row">
               {(['png', 'json'] as const).map((kind) => (
-                <a key={kind} className="button" href={`/api/characters/${id}/card.${kind}?for=${target}`} download onClick={close}
+                <a key={kind} className="button" href={`/api/characters/${id}/card.${kind}?for=${target}${hasSecret && withSecret ? '&secret=1' : ''}`} download onClick={close}
                   aria-label={`${kind.toUpperCase()} for ${name}`}>{kind.toUpperCase()}</a>
               ))}
             </span>
@@ -68,6 +74,7 @@ export function Editor({ saved, start, seed, filledIn, note, onSaved, onDeleted 
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<{ tone: 'note' | 'error'; text: string } | null>(note ? { tone: 'note', text: note } : null)
   const [portraitAt, setPortraitAt] = useState(Date.now())
+  const [sample, setSample] = useState('')
   const picture = useRef<HTMLInputElement>(null)
   const set = (change: Partial<Character>) => setCharacter((current) => ({ ...current, ...change }))
   const setLife = (change: Partial<Character['companion']>) => setCharacter((current) => ({ ...current, companion: { ...current.companion, ...change } }))
@@ -119,6 +126,8 @@ export function Editor({ saved, start, seed, filledIn, note, onSaved, onDeleted 
     } finally { if (picture.current) picture.current.value = '' }
   }
 
+  const said = sampleLine(character.interview, sample)
+  const savedSecret = saved && Object.values(saved.character.secret ?? {}).some(Boolean)
   const filled = new Set(filledIn ?? [])
   const mark = (field: string, label: string) => filled.has(field) ? `${label} (filled in)` : label
   const blocked = has('companion') && scheduleProblems(character.companion.schedule).length > 0
@@ -129,7 +138,7 @@ export function Editor({ saved, start, seed, filledIn, note, onSaved, onDeleted 
         <div className="row">
           <button type="submit" className="primary" disabled={busy || blocked}>{busy ? 'Saving…' : saved ? 'Save' : 'Save to the library'}</button>
           {saved && <>
-            <ExportCard id={saved.id} />
+            <ExportCard id={saved.id} hasSecret={!!savedSecret} />
             <button type="button" className="icon danger" aria-label="Delete them" onClick={() => void remove()}><Trash2 size={15} /></button>
           </>}
         </div>
@@ -172,7 +181,8 @@ export function Editor({ saved, start, seed, filledIn, note, onSaved, onDeleted 
           help={help('personality', 'their personality', character.personality, (personality) => set({ personality }))} />
         <div className="grid two">
           <TextArea label={mark('voice', 'How they talk')} value={character.voice} onChange={(voice) => set({ voice })} maxLength={600} rows={3}
-            hint="Their words, rhythm, humour and what they avoid saying: instructions for writing them." help={help('voice', 'how they talk', character.voice, (voice) => set({ voice }))} />
+            hint="Their words, rhythm, humour and what they avoid saying: instructions for writing them."
+            help={<>{said && <q className="sample">{said}</q>}{help('voice', 'how they talk', character.voice, (voice) => set({ voice }))}</>} />
           <TextArea label={mark('sound', 'How they sound')} value={character.sound} onChange={(sound) => set({ sound })} maxLength={300} rows={3}
             hint="The voice itself, for text to speech: age, pitch, pace, texture. Not personality or their name." help={help('sound', 'how they sound', character.sound, (sound) => set({ sound }))} />
         </div>
@@ -211,6 +221,11 @@ export function Editor({ saved, start, seed, filledIn, note, onSaved, onDeleted 
           <ListArea label={mark('interests', 'Interests')} value={character.interests} onChange={(interests) => set({ interests })} help={help('interests', 'interests', character.interests, (interests) => set({ interests }))} />
         </div>
       </section>
+
+      <Interview character={character} ready={ready} current={current} set={set} onSample={setSample} />
+      <InnerLife arc={character.arc} onChange={(arc) => set({ arc })} help={help} />
+      <Psyche psyche={character.psyche} selfId={saved?.id} onChange={(psyche) => set({ psyche })} help={help} />
+      <SecretSection secret={character.secret} onChange={(secret) => set({ secret })} help={help} />
 
       <section>
         <h3>How they look</h3>

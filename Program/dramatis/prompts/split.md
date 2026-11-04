@@ -18,6 +18,8 @@ The character they pasted:
 
 {{emotional}}
 
+{{depth}}
+
 Reply with one JSON object and nothing else: no Markdown fence, no commentary. Use exactly these keys:
 
 {{shape}}
