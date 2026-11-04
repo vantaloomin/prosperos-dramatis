@@ -8,7 +8,8 @@
   what only the Prospero apps use (Companion's schedule, routine, texting habits, emotional edges, the sliders) never
   leaves the suite. Those apps keep every extension a card carries and send it on when the card is shared again.
 
-Both kinds describe the character in the card's own fields, in words any app can read. A PNG card carries the V3 card
+Both kinds describe the character in the card's own fields, in words any app can read. Their secret stays in the
+library: either kind carries it only when the user includes it. A PNG card carries the V3 card
 in a `ccv3` text chunk and a V2 copy in `chara`: SillyTavern and Marinara read `ccv3` first, Front Porch reads only
 `chara`. The picture is their portrait, or a plain one when they have none.
 
@@ -28,7 +29,7 @@ from typing import Literal
 from pydantic import ValidationError
 
 from dramatis import NAME, VERSION
-from dramatis.character import Character, shapes
+from dramatis.character import Character, Secret, secret_text, shapes
 from dramatis.formats.companion import cards as reader
 from dramatis.formats.companion.errors import DomainError
 
@@ -61,8 +62,9 @@ def birthday(value: str) -> str:
 
 
 def description(character: Character) -> str:
-    """The card's description: who they are, how they look and talk, and their story, in headed paragraphs. Only what
-    describes the person goes in; how a Prospero app runs them (schedule, sliders, texting) does not."""
+    """The card's description: who they are, how they look and talk, their story and inner life, in headed
+    paragraphs. Only what describes the person goes in; how a Prospero app runs them (schedule, sliders, texting)
+    does not."""
     sections = [('', character.about), ('Gender', character.gender),
                 ('Age', '' if character.age is None else str(character.age)), ('Kind', character.kind),
                 ('From', character.setting), ('Birthday', birthday(character.birthday)),
@@ -70,12 +72,17 @@ def description(character: Character) -> str:
                 ('How they sound', character.sound), ('Background', character.background), ('Wants', character.wants),
                 ('Fears', character.fears), ('Skills', '; '.join(character.skills)),
                 ('Flaws', '; '.join(character.flaws)), ('Interests', '; '.join(character.interests)),
-                ('How others see them', character.seen_as), ('How they see themselves', character.sees_self)]
+                ('How others see them', character.seen_as), ('How they see themselves', character.sees_self),
+                ('Lie they believe', character.arc.lie), ('Truth they need', character.arc.truth),
+                ('Secret', secret_text(character.secret))]
     return '\n\n'.join(f'{label}: {text}' if label else text for label, text in sections if text)
 
 
-def card(character: Character, created: str, updated: str, target: Target = 'prospero') -> dict:
-    """The V3 card. Tags stay empty: chat apps file every tag a card brings into the user's own tag list."""
+def card(character: Character, created: str, updated: str, target: Target = 'prospero', secret: bool = False) -> dict:
+    """The V3 card. Tags stay empty: chat apps file every tag a card brings into the user's own tag list. Without
+    `secret`, nothing in it carries their secret: not the description, the app shapes or the extension."""
+    if not secret:
+        character = character.model_copy(update={'secret': Secret()})
     extensions = {}
     if target == 'prospero':
         extensions['prospero'] = {'format': FORMAT, 'format_version': FORMAT_VERSION, 'app': NAME,

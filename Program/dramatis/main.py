@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from dramatis import NAME, VERSION, ai, cards, cast_routes, drafting, library, slop
+from dramatis import NAME, VERSION, ai, cards, cast_routes, drafting, interview, library, slop
 from dramatis.character import APPS, App, Character, Gender, problems, shapes
 from dramatis.formats.companion import personality
 from dramatis.formats.companion.errors import DomainError, require
@@ -148,7 +148,8 @@ def api() -> APIRouter:  # noqa: C901 - one route each, kept together
     @router.get('/characters/{character_id}')
     def character(character_id: str):
         record = library.get(character_id)
-        return record | {'problems': problems(checked(record['character']))}
+        found = checked(record['character'])  # A character saved before a field was added comes back with it empty.
+        return record | {'character': found.model_dump(), 'problems': problems(found)}
 
     @router.post('/characters')
     def create(body: SaveBody):
@@ -184,13 +185,15 @@ def api() -> APIRouter:  # noqa: C901 - one route each, kept together
         return Response(data, media_type='image/png', headers={'Cache-Control': 'no-store'})
 
     @router.get('/characters/{character_id}/card.{kind}')
-    def card_file(character_id: str, kind: str, target: cards.Target = Query('prospero', alias='for')):
+    def card_file(character_id: str, kind: str, target: cards.Target = Query('prospero', alias='for'),
+                  secret: bool = False):
         """`?for=prospero` (the default) carries everything for the Prospero apps; `?for=chat` is the card for
-        SillyTavern, Marinara, Front Porch and other chat apps, without what only the Prospero apps use."""
+        SillyTavern, Marinara, Front Porch and other chat apps, without what only the Prospero apps use. Either leaves
+        their secret out unless `?secret=1`."""
         require(kind in ('json', 'png'), 'Cards are JSON or PNG.', 404)
         record = library.get(character_id)
         found = checked(record['character'])
-        full = cards.card(found, record['created'], record['updated'], target)
+        full = cards.card(found, record['created'], record['updated'], target, secret)
         name = file_name(found.name, f" (Prospero).{kind}" if target == 'prospero' else f'.{kind}')
         if kind == 'json':
             return download(json.dumps(full, ensure_ascii=False, indent=1).encode('utf-8'), name, 'application/json')
@@ -235,6 +238,7 @@ def create_app(dist: Path = DIST) -> FastAPI:
 
     app.include_router(api())
     app.include_router(cast_routes.router())
+    app.include_router(interview.router)
     if (dist / 'index.html').is_file():
         app.mount('/assets', StaticFiles(directory=dist / 'assets'), name='assets')
 

@@ -52,6 +52,16 @@ themselves**. There are also the five personality sliders (roll again, or start 
 field by field, kind and lifespan, and Companion's own part: relationship, closeness, routine, weekly schedule and
 texting habits.
 
+**Hear them talk.** The model interviews the character in their own voice: about fourteen questions on their day,
+their looks, where they come from and what makes their guard drop, answered with small stage directions between the
+lines. A line of it shows under How they talk. **Use what they said** reads the interview back and suggests changes to
+a few fields, each with a reason, which you **Apply**, **Dismiss** or **Undo**. Nothing changes until you apply it.
+
+**Inner life, inner square and a secret.** Optional, folded sections for the lie they believe, the truth they need and
+what could force it; who they were, are expected to be, want to be and fear becoming, each pressed by other characters
+in your library; and a secret, with what people believe instead and who knows. Each app gets them folded into fields
+it already reads. A card leaves the secret out unless you tick **Include their secret**.
+
 **An audit for AI slop.** Everything the model writes is checked against Wren Halloway's list of stock names (Elara
 Voss), words and patterns that mark text as model-written, plus the signs from Wikipedia's
 [Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing) that fit a character. A hard hit,
@@ -149,6 +159,11 @@ system's credential store (Windows Credential Manager), never in a file.
 
 From `Program/`: `python -m pip install -e ".[dev]"` and `npm ci`, then `python -m dramatis` starts the server.
 Before pushing, run `python -m ruff check .`, `python -m pytest -q` and `npm run build`.
+
+## Thanks
+
+The interview, the inner arc and the secret are ideas from WriteforMe (Apache 2.0), rewritten here in
+Dramatis' own words and code.
 
 ## License
 

@@ -103,3 +103,10 @@ input.narrow { width: 13rem; }
 .model-line { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; font-size: 0.85rem; }
 .model-form input, .model-form select { width: auto; }
 code { font-size: 0.85em; }
+/* Interview, inner life, inner square and secret */
+.proposal { display: grid; gap: 0.4rem; }
+.proposal ul { margin: 0; padding-left: 1.2rem; }
+.proposal p { margin: 0; }
+.transcript { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 24rem; overflow: auto; }
+q.sample { font-family: 'Literata', Georgia, serif; font-style: italic; font-size: 0.9rem; }
+.pressed-by .row { gap: 0.3rem; }

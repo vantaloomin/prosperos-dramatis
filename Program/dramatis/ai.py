@@ -6,6 +6,7 @@ saved until the user saves.
 API keys are kept in the system keyring when there is one, never in the settings file.
 """
 import json
+import os
 import shutil
 import subprocess
 
@@ -73,6 +74,8 @@ def complete(system: str, prompt: str) -> str:
 
 def complete_anthropic(chosen: dict, system: str, prompt: str) -> str:
     key = api_key('anthropic')
+    require(bool(key or os.environ.get('ANTHROPIC_API_KEY')), 'No model is set up yet. Add an Anthropic key in Models, '
+            'or pick a local server or the claude command line.', 409)
     client = anthropic.Anthropic(api_key=key) if key else anthropic.Anthropic()
     try:
         # Server-side fallback: a request one model declines is retried on another rather than failing outright.

@@ -14,6 +14,10 @@ companion/character_helper.py at ae9b0ab) and Adventure (adventure/making.py at 
   with the draft for the form to show. The list itself never goes into a prompt.
 - The user's picks win over the model: name, gender, age, where and when, the relationship, and emotional edges,
   which stay off unless the user turns them on or their words ask for them.
+- Their depth is asked for only when the user's words give the model something to go on: an arc when they ask for
+  one, a psyche when they say who the character was, is expected to be, wants to be or fears becoming. A psyche's
+  `pressed_by` is never the model's. Their secret goes to the model only when Help me write is writing the secret, so
+  it cannot leak into a field a card exports without it.
 
 Nothing is saved: a draft goes back to the form for review. The prompts are files in dramatis/prompts.
 """
@@ -90,6 +94,26 @@ SCHEDULE_RULES = ('Schedule rules: 4 to 8 blocks in 24-hour time, in their local
                   'least one recurring thing that is theirs, such as a class, a standing call or a regular errand.')
 FILLED_IN = ''',
   "filled_in": ["the keys of the fields their text said nothing about"]'''
+ARC_KEYS = ('lie', 'truth', 'catalyst')
+PSYCHE_KEYS = ('was', 'expected', 'wants_to_be', 'fears_becoming')
+DEPTH_SHAPES = {
+    'arc': ''',
+  "arc": {"lie": "what they believe that holds them back", "truth": "what they would need to learn", "catalyst": "the kind of event or person that could force it"}''',
+    'psyche': ''',
+  "psyche": {"was": "who they were", "expected": "who they are expected to be", "wants_to_be": "who they want to be", "fears_becoming": "who they fear becoming"}'''}
+DEPTH_ASKS = {
+    'arc': ('The user asked for an arc. Fill "arc" with one plain sentence each: the lie they believe that holds them '
+            'back, the truth they would need to learn, and the kind of event or person that could force it.'),
+    'psyche': ('Fill "psyche" only where the user\'s words say something about it, one plain sentence each about an '
+               'ordinary adult\'s pulls: who they were, who they are expected to be, who they want to be, who they '
+               'fear becoming. Leave the rest as "".')}
+# What in the user's words asks for an arc, or gives the psyche something to work with.
+DEPTH_WORDS = {
+    'arc': re.compile(r"\b(?:arc|redemption|character development|learns? to|believes? a lie|comes? to terms)\b",
+                      re.IGNORECASE),
+    'psyche': re.compile(r"\b(?:used to be|once was|expected to|supposed to be|wants? to (?:be|become)|dreams? of "
+                         r"being|afraid of (?:becoming|turning into)|fears? becoming|turning into|black sheep|golden "
+                         r"child|the (?:eldest|youngest|heir))\b", re.IGNORECASE)}
 
 
 class Unusable(Exception):
@@ -110,10 +134,32 @@ def field_guides() -> dict[str, dict]:
     return json.loads(template('fields.json'))
 
 
-def shape_text(apps: list[str], split: bool = False) -> str:
+def shape_text(apps: list[str], split: bool = False, depth: tuple[str, ...] = ()) -> str:
     life = 'companion' in apps
-    body = CORE_SHAPE + (LIFE_SHAPE if life else '') + (FILLED_IN if split else '')
+    body = CORE_SHAPE + (LIFE_SHAPE if life else '') + ''.join(DEPTH_SHAPES[part] for part in depth) + \
+        (FILLED_IN if split else '')
     return '{\n' + body + '\n}' + (f'\n\n{SCHEDULE_RULES}' if life else '')
+
+
+def depth_asked(picks: dict) -> tuple[str, ...]:
+    """Which of their arc and psyche the user's idea, vibe or pasted text gives the model something to write."""
+    words = ' '.join(str(picks.get(key) or '') for key in ('idea', 'vibe', 'text'))
+    return tuple(part for part, found in DEPTH_WORDS.items() if found.search(words))
+
+
+def depth_text(depth: tuple[str, ...]) -> str:
+    return '\n\n'.join(DEPTH_ASKS[part] for part in depth)
+
+
+def for_model(character: dict, secret: bool = False, interview: bool = False) -> dict:
+    """The character as a prompt shows it: no sliders (the brief says them as behaviour), no app list, no library ids,
+    and the secret and the long interview only when the request is about them."""
+    shown = {key: value for key, value in character.items()
+             if key not in ('personality_sliders', 'apps') and (secret or key != 'secret')
+             and (interview or key != 'interview')}
+    if isinstance(shown.get('psyche'), dict):
+        shown['psyche'] = {key: value.get('text', '') for key, value in shown['psyche'].items() if isinstance(value, dict)}
+    return shown
 
 
 # Asking the model -------------------------------------------------------------------------------------------------
@@ -229,6 +275,7 @@ class Shape:
     def __init__(self, picks: dict, sliders: dict, split: bool = False):
         self.picks, self.sliders, self.split = picks, sliders, split
         self.apps = picks.get('apps') or list(APPS)
+        self.depth = depth_asked(picks)
 
     def __call__(self, raw: dict, final: bool) -> dict:
         if raw.get('under_18') is True:
@@ -245,7 +292,7 @@ class Shape:
         made |= {'age': age if age and age <= 5000 else None, 'kind': kind_value(raw.get('kind')),
                  'gender': self.picks.get('gender') or (raw.get('gender') if raw.get('gender') in GENDERS else ''),
                  'setting': (self.picks.get('setting') or '').strip()[:200], 'apps': self.apps,
-                 'personality_sliders': self.sliders, 'companion': self.life(raw, made, final)}
+                 'personality_sliders': self.sliders, 'companion': self.life(raw, made, final)} | self.inner(raw)
         try:
             character = Character.model_validate(made).model_dump()
         except ValidationError as error:
@@ -256,8 +303,20 @@ class Shape:
         result = {'character': character, 'audit': hits}
         if self.split:
             filled = raw.get('filled_in') if isinstance(raw.get('filled_in'), list) else []
-            result['filled_in'] = [key for key in dict.fromkeys(filled) if key in made and key not in ('name',)]
+            result['filled_in'] = [key for key in dict.fromkeys(filled)
+                                   if key in made and key not in ('name', 'arc', 'psyche')]
         return result
+
+    def inner(self, raw: dict) -> dict:
+        """The arc and psyche, when the user's words asked for them; anything else the model sent is dropped."""
+        found = {}
+        if 'arc' in self.depth:
+            arc = raw.get('arc') if isinstance(raw.get('arc'), dict) else {}
+            found['arc'] = {key: text_value(arc.get(key), 300) for key in ARC_KEYS}
+        if 'psyche' in self.depth:
+            psyche = raw.get('psyche') if isinstance(raw.get('psyche'), dict) else {}
+            found['psyche'] = {key: {'text': text_value(psyche.get(key), 300)} for key in PSYCHE_KEYS}
+        return found
 
     def allowed(self) -> str:
         """What the user typed or pasted: names and words from it are theirs, whatever the audit list says."""
@@ -314,9 +373,10 @@ def draft(picks: dict) -> dict:
     adults_only(picks.get('age'))
     seed = new_seed()
     sliders = rolled(f"{picks.get('idea', '')} {picks.get('vibe', '')}", seed)
+    depth = depth_asked(picks)
     system = fill(template('draft.md'), rules=template('rules.md'), picks=picks_text(picks),
                   personality=personality_brief(sliders), emotional=EDGES if edges_allowed(picks) else NO_EDGES,
-                  shape=shape_text(picks.get('apps') or list(APPS)))
+                  depth=depth_text(depth), shape=shape_text(picks.get('apps') or list(APPS), depth=depth))
     return ask(system, Shape(picks, sliders)) | {'seed': seed}
 
 
@@ -325,9 +385,11 @@ def split(picks: dict) -> dict:
     seed = new_seed()
     text = picks['text']
     sliders = rolled(text, seed)
+    depth = depth_asked(picks)
     # Last, so braces in the user's own text are never read as placeholders.
     system = fill(template('split.md'), rules=template('rules.md'), shape=shape_text(picks.get('apps') or list(APPS),
-                  split=True), emotional=EDGES if edges_allowed(picks) else NO_EDGES, pasted=text)
+                  split=True, depth=depth), emotional=EDGES if edges_allowed(picks) else NO_EDGES,
+                  depth=depth_text(depth), pasted=text)
     return ask(system, Shape({key: value for key, value in picks.items() if key != 'name'}, sliders, split=True)) | \
         {'seed': seed}
 
@@ -338,7 +400,7 @@ def rewrite(character: dict, field: str, request: str = '') -> dict:
     if field not in guides:
         raise DomainError(f'{field} cannot be rewritten.', 422)
     guide = guides[field]
-    current = {key: value for key, value in character.items() if key not in ('personality_sliders', 'apps')}
+    current = for_model(character, secret=field.startswith('secret.'))
     system = fill(template('field.md'), rules=template('rules.md'), field=field, field_guide=guide['guide'],
                   field_shape=guide['shape'], emotional=FIELD_EDGES,
                   request=f'What the user wants changed: {request.strip()}' if request.strip() else '',
@@ -349,10 +411,19 @@ def rewrite(character: dict, field: str, request: str = '') -> dict:
 
 def audited(field: str, value, allowed: str, final: bool) -> dict:
     """A rewritten field through the audit: hard hits the character didn't already have go back once."""
-    hits = slop.audit({field: value} if field in slop.FIELDS else {'companion': {field: value}}, allowed)
+    hits = slop.audit(placed(field, value), allowed)
     if slop.hard(hits) and not final:
         raise Unusable(slop.problem(slop.hard(hits)))
     return {'field': field, 'value': value, 'audit': hits}
+
+
+def placed(field: str, value) -> dict:
+    """One field's value where it sits in a character, for the audit: arc.lie under arc, routine under companion."""
+    if field in slop.DEPTH:
+        for key in reversed(slop.DEPTH[field][1]):
+            value = {key: value}
+        return value
+    return {field: value} if field in slop.FIELDS else {'companion': {field: value}}
 
 
 def field_value(field: str, guide: dict, raw: dict, final: bool):
