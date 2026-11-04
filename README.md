@@ -41,8 +41,10 @@ their week, routine and life themes. Under **More options** you can add an idea,
 Companion, and emotional edges, which are off unless you turn them on. Characters are always adults.
 
 **Bring a character you already have.** Paste notes, a bio or a scene, or open a character card (PNG or JSON, V1 to
-V3). The model splits it into the fields and tells you which ones it had to fill in. You see the card's text before
-anything is sent anywhere, and a card Dramatis made comes back whole without asking the model at all.
+V3). The model splits it into the fields and tells you which ones it had to fill in; a secret in your text goes into
+the secret, not the background. You see the card's text before anything is sent anywhere, and a card Dramatis made
+comes back whole without asking the model at all. A text that makes them younger than 18 is refused before it reaches
+the model, and lines in it written to the app or the model rather than about the character are named back to you.
 
 **The full form.** Every field is yours to edit. **Help me write** rewrites one field to fit the rest of the
 character, and **Put back what was there** undoes it. **How they talk** (their words, rhythm and humour) and **How
@@ -68,7 +70,9 @@ a few fields, each with a reason, which you **Apply**, **Dismiss** or **Undo**. 
 **Inner life, inner square and a secret.** Optional, folded sections for the lie they believe, the truth they need and
 what could force it; who they were, are expected to be, want to be and fear becoming, each pressed by other characters
 in your library; and a secret, with what people believe instead and who knows. Each app gets them folded into fields
-it already reads, the secret included, so the character knows what they are keeping.
+it already reads, the secret included, so the character knows what they are keeping. **Help me write** shows the
+secret only when it writes the secret itself, their inner life or how they see themselves; for every other field it
+sees what people believe instead, so the truth doesn't slip into a field other characters read.
 
 **An audit for AI slop.** Everything the model writes is checked against Wren Halloway's list of stock names (Elara
 Voss), words and patterns that mark text as model-written, plus the signs from Wikipedia's

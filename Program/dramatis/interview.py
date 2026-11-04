@@ -56,7 +56,7 @@ def interview(character: dict) -> dict:
     sliders = character.get('personality_sliders') or {}
     system = fill(template('interview.md'), rules=template('rules.md'),
                   personality=drafting.personality_brief(sliders) if sliders else '',
-                  character=json.dumps(drafting.for_model(character), ensure_ascii=False, indent=1))
+                  character=json.dumps(drafting.for_model(character, secret=True), ensure_ascii=False, indent=1))
     allowed = json.dumps(character, ensure_ascii=False)
 
     def shape(raw: dict, final: bool) -> dict:
@@ -105,6 +105,8 @@ def proposals(character: dict) -> dict:
             if field not in PROPOSABLE or field in found:
                 continue
             value = proposal_value(field, item.get('value'))
+            if field == 'appearance' and drafting.youthful(value):
+                continue
             if value and not unchanged(character, field, value):
                 found[field] = {'field': field, 'value': value, 'reason': text_value(item.get('reason'), 300)}
         hits = slop.audit({field: item['value'] for field, item in found.items()}, allowed)

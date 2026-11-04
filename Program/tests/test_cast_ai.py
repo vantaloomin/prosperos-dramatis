@@ -273,3 +273,12 @@ def test_without_a_model_the_routes_say_so(monkeypatch):
     monkeypatch.delenv('ANTHROPIC_API_KEY', raising=False)
     found = TestClient(create_app()).post('/api/cast-ai/suggest', json={'cast': blank(), 'target': 'outer'})
     assert found.status_code == 409 and 'No model is set up' in found.json()['error']
+
+
+def test_the_one_looked_at_keeps_their_secret_from_the_one_looking(model):
+    raw, ida, tom = linked_board()
+    model.replies = [json.dumps({'dynamic': 'Thinks she is the only honest one.', 'hidden_tension': 'He needs her vote.',
+                                 'trust': 7})]
+    cast_ai.relationship(casts.checked(raw), tom, ida)
+    system = model.asked[0][0]
+    assert 'Lies when cornered' in system and 'She sold the harbour plans.' not in system

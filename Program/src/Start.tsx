@@ -142,7 +142,10 @@ function PasteCharacter({ onBegin }: { onBegin: (begun: Begun) => void }) {
     setError('')
     try {
       const found = await sendJson<Drafted>('/api/draft/split', 'POST', { text, apps, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? '' })
-      onBegin({ character: found.character, seed: found.seed, filledIn: found.filled_in, note: 'Your character, split into the fields.' })
+      const told = found.instructions?.length
+        ? ` Your text had lines that talk to the app or the model rather than describe them (“${found.instructions.join('”, “')}”). The model was told to ignore them; check the fields before you save.`
+        : ''
+      onBegin({ character: found.character, seed: found.seed, filledIn: found.filled_in, note: `Your character, split into the fields.${told}` })
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'The character could not be split.')
     } finally { setBusy('') }

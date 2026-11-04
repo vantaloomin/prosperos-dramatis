@@ -67,7 +67,7 @@ export interface AuditHit { field: string; label: string; severity: 'hard' | 'fl
 export type Problems = Partial<Record<App, string[]>>
 export interface Saved { id: string; created: string; updated: string; seed: string; character: Character; portrait: boolean; problems: Problems }
 export interface Summary { id: string; name: string; about: string; apps: App[]; updated: string; portrait: boolean }
-export interface Drafted { character: Character; seed: string; filled_in?: string[] }
+export interface Drafted { character: Character; seed: string; filled_in?: string[]; instructions?: string[] }
 export interface Opened { kind: 'character'; character: Character }
 export interface OpenedText { kind: 'text'; name: string; text: string; truncated: boolean }
 export interface Health { ok: boolean; name: string; version: string; formats: Record<App, { repo: string; commit: string }> }

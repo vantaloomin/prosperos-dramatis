@@ -33,7 +33,7 @@ JUDGEMENTS = ('challenger-has-flaw', 'comforter-not-villain', 'warning-sympathet
 # What a brief of a character keeps: who they are, what they want and fear, how they fall short, how they're seen,
 # and what they hide.
 BRIEF = ('name', 'kind', 'age', 'about', 'personality', 'wants', 'fears', 'flaws', 'seen_as', 'sees_self', 'arc',
-         'psyche', 'secret')
+         'psyche', 'secret', 'what_people_believe')
 # Endings dropped before a tag is compared with the bank, longest first; 'ation' keeps its t (negotiating, negotiation).
 SUFFIXES = {'ation': 'at', 'ing': '', 'ion': '', 'ed': '', 'es': '', 's': '', 'y': '', 'e': ''}
 
@@ -77,9 +77,10 @@ def board(cast: Cast, names: dict[str, str]) -> str:
     return json.dumps({key: value for key, value in found.items() if value}, ensure_ascii=False, indent=1)
 
 
-def brief(character_id: str) -> dict:
-    """A character the call is about, as much of their form as it needs; library.get refuses one that is gone."""
-    shown = drafting.for_model(library.get(character_id)['character'])
+def brief(character_id: str, secret: bool = True) -> dict:
+    """A character the call is about, as much of their form as it needs; library.get refuses one that is gone. Their
+    secret only when the call is about them (`secret`): someone else looking at them sees what people believe."""
+    shown = drafting.for_model(library.get(character_id)['character'], secret=secret)
     if isinstance(shown.get('secret'), dict):
         shown['secret'] = {key: value for key, value in shown['secret'].items() if value}
     return {key: shown[key] for key in BRIEF if shown.get(key) not in (None, '', [], {})}
@@ -406,7 +407,7 @@ def relationship(cast: Cast, from_id: str, to_id: str) -> dict:
     level, as a proposal for their row; nothing changes here."""
     require(from_id != to_id, 'A relationship is between two different characters.', 422)
     names = casts.known_names(cast)
-    seer, seen = brief(from_id), brief(to_id)
+    seer, seen = brief(from_id), brief(to_id, secret=False)
     who, whom = seer.get('name') or 'the first character', seen.get('name') or 'the second character'
     back = next((row for row in cast.relationships if row.from_id == to_id and row.to_id == from_id), None)
     where = {who: standing(cast, from_id, names), whom: standing(cast, to_id, names)}
