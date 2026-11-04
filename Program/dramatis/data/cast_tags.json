@@ -1,0 +1,23 @@
+[
+ {"id": "negotiation", "label": "Negotiation"}, {"id": "force", "label": "Force"},
+ {"id": "purity", "label": "Purity"}, {"id": "example", "label": "Setting an example"},
+ {"id": "profit", "label": "Profit"}, {"id": "secrecy", "label": "Secrecy"},
+ {"id": "law", "label": "The law"}, {"id": "faith", "label": "Faith"},
+ {"id": "money", "label": "Money"}, {"id": "charm", "label": "Charm"},
+ {"id": "sacrifice", "label": "Sacrifice"}, {"id": "loyalty", "label": "Loyalty"},
+ {"id": "tradition", "label": "Tradition"}, {"id": "reform", "label": "Reform from within"},
+ {"id": "revolt", "label": "Revolt"}, {"id": "compromise", "label": "Compromise"},
+ {"id": "deception", "label": "Deception"}, {"id": "fear", "label": "Fear"},
+ {"id": "knowledge", "label": "Knowledge"}, {"id": "craft", "label": "Skill and craft"},
+ {"id": "patience", "label": "Patience"}, {"id": "speed", "label": "Moving first"},
+ {"id": "persuasion", "label": "Persuasion"}, {"id": "sabotage", "label": "Sabotage"},
+ {"id": "bribery", "label": "Bribery"}, {"id": "blackmail", "label": "Blackmail"},
+ {"id": "mercy", "label": "Mercy"}, {"id": "duty", "label": "Duty"},
+ {"id": "honour", "label": "Honour"}, {"id": "ambition", "label": "Ambition"},
+ {"id": "withdrawal", "label": "Walking away"}, {"id": "publicity", "label": "Going public"},
+ {"id": "alliance", "label": "Alliances"}, {"id": "discipline", "label": "Discipline"},
+ {"id": "intimidation", "label": "Intimidation"}, {"id": "seduction", "label": "Seduction"},
+ {"id": "family-ties", "label": "Family ties"}, {"id": "technology", "label": "Technology"},
+ {"id": "hard-work", "label": "Hard work"}, {"id": "luck", "label": "Luck and nerve"},
+ {"id": "care", "label": "Looking after people"}, {"id": "rules", "label": "Following the rules"}
+]

@@ -1,0 +1,14 @@
+[
+ {"id": "family", "name": "Family", "shares": "An inheritance, a parent's approval", "axis": "means",
+  "roles": ["heir", "wildcard", "insider", "outsider"]},
+ {"id": "crew", "name": "Crew", "shares": "The job or the quest", "axis": "cost",
+  "roles": ["leader", "specialist", "wildcard", "doubter"]},
+ {"id": "team", "name": "Team", "shares": "Winning", "axis": "goal-definition",
+  "roles": ["star", "veteran", "rookie", "favourite"]},
+ {"id": "institution", "name": "Institution", "shares": "The mission", "axis": "purity",
+  "roles": ["true believer", "careerist", "reformer", "fixer"]},
+ {"id": "movement", "name": "Movement", "shares": "The cause", "axis": "means",
+  "roles": ["zealot", "pragmatist", "reformer", "opportunist"]},
+ {"id": "circle", "name": "Circle", "shares": "A person, or a secret", "axis": "secret",
+  "roles": ["best friend", "parent", "ex", "mentor"]}
+]

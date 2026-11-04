@@ -1,0 +1,10 @@
+[
+ {"kind": "value", "label": "Values", "help": "Each side wants a different world. Most outer squares are this."},
+ {"kind": "means", "label": "Means", "help": "They agree on why. They fight about how."},
+ {"kind": "cost", "label": "Cost", "help": "They agree on the goal. They fight about what it's worth paying."},
+ {"kind": "purity", "label": "Purity", "help": "They agree on the mission. They fight about how far it can bend."},
+ {"kind": "leadership", "label": "Leadership", "help": "They agree where to go. They fight about who decides."},
+ {"kind": "secret", "label": "Secret", "help": "They share a motive. Each one hides something different."},
+ {"kind": "goal-definition", "label": "What winning means", "help": "They all want to win. They disagree on what a win looks like."},
+ {"kind": "dilemma", "label": "Dilemma", "help": "One question with no clean answer. Each corner is a way of living with it.", "outer_only": true}
+]

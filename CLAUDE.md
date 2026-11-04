@@ -13,6 +13,10 @@ character creator.
   would pull in a whole app.
 - `dramatis/character.py` is the shared character and each app's shape of it, checked with that app's own models.
   A new field goes there first, with the tightest limit of the apps that read it.
+- `dramatis/casts.py` is the Cast layer: a story's people as a two-layer four-corner opposition, saved in
+  `casts/<id>.json` beside the library and pointing at characters by id. Resonance candidates and checks are computed
+  there with no model; only structure is a hard error. Genres, group types, axes and tags are data
+  (`dramatis/data/cast_*.json`), so a new template is a JSON entry. Routes are in `cast_routes.py`.
 - The model never saves anything: drafts go to the form for review, and only Save writes to the library.
 - Before pushing, from `Program/`: `python -m ruff check .`, `python -m pytest -q`, `npm run build`.
 - `main` takes changes through pull requests.
