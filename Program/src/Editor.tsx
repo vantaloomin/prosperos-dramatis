@@ -18,7 +18,7 @@ const STAGES = ['Just met', 'Getting to know each other', 'Friends', 'Close', 'V
 
 /** Where a card can go: `prospero` keeps everything for Companion, Adventure and Dungeon; `chat` is the card for other
  * chat apps, without what only the Prospero apps use (dramatis/cards.py). */
-const CARD_TARGETS: { target: 'prospero' | 'chat'; name: string; leaves?: string }[] = [
+export const CARD_TARGETS: { target: 'prospero' | 'chat'; name: string; leaves?: string }[] = [
   { target: 'prospero', name: 'Prospero apps' },
   { target: 'chat', name: 'SillyTavern, Marinara, Front Porch and other chat apps', leaves: 'Leaves out what only the Prospero apps use, like the schedule and sliders.' },
 ]
