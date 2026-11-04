@@ -4,20 +4,23 @@
 
 - `prospero`, for Prospero's Companion, Adventure and Dungeon: `data.extensions.prospero` holds the whole Dramatis
   character and each app's own shape of it (dramatis/character.py), so a Prospero app takes them with nothing lost.
-- `chat`, for SillyTavern, Marinara Engine, Front Porch AI and other chat apps: the same card with no extensions, so
-  what only the Prospero apps use (Companion's schedule, routine, texting habits, emotional edges, the sliders) never
-  leaves the suite. Those apps keep every extension a card carries and send it on when the card is shared again.
+- `chat`, for SillyTavern, Marinara Engine, Front Porch AI and other chat apps: the same card without Dramatis' own
+  extension, so what only the Prospero apps use (Companion's schedule, routine, texting habits, emotional edges, the
+  sliders) never leaves the suite. Those apps keep every extension a card carries and send it on when the card is
+  shared again.
+
+A character imported from another app's card (dramatis/imports.py) keeps that card's own parts in `card`: its
+greetings, example messages, scenario, notes, prompts, tags, lorebook and the other apps' extensions go back into both
+kinds as they came, so editing them here loses none of it.
 
 Both kinds describe the character in the card's own fields, in words any app can read, their secret included: the
 character's own model has to know it to keep it. A PNG card carries the V3 card in a `ccv3` text chunk and a V2 copy in `chara`: SillyTavern and Marinara read `ccv3` first, Front Porch reads only
 `chara`. The picture is their portrait, or a plain one when they have none.
 
-**In.** A card file is read with Companion's own card reader (vendored). A Prospero card Dramatis made comes back
-whole, from its extension; any other card becomes headed text for the paste box, to split into the fields with the
-model.
+**In.** `own_character` finds the whole Dramatis character in a Prospero card it made. Every other character file is
+dramatis/imports.py's, read with Companion's own importer.
 """
 import base64
-import binascii
 import json
 import struct
 import zlib
@@ -28,13 +31,14 @@ from typing import Literal
 from pydantic import ValidationError
 
 from dramatis import NAME, VERSION
-from dramatis.character import Character, secret_text, shapes
-from dramatis.formats.companion import cards as reader
+from dramatis.character import CardParts, Character, secret_text, shapes
 from dramatis.formats.companion.errors import DomainError
+from dramatis.formats.companion.imports import cards as reader
 
 FORMAT = 'prospero-character'
 FORMAT_VERSION = 1
 CARD_KEYS = (b'chara', b'ccv3')
+MADE_WITH = f'Made with {NAME}.'
 Target = Literal['prospero', 'chat']
 # The plain portrait: a soft ink colour, the Dramatis look, at a card's usual 2:3.
 PLAIN_SIZE, PLAIN_COLOUR = (400, 600), (58, 52, 66)
@@ -78,21 +82,27 @@ def description(character: Character) -> str:
 
 
 def card(character: Character, created: str, updated: str, target: Target = 'prospero') -> dict:
-    """The V3 card. Tags stay empty: chat apps file every tag a card brings into the user's own tag list."""
-    extensions = {}
+    """The V3 card. Tags are only the ones a card they were imported from had: chat apps file every tag a card brings
+    into the user's own tag list. How they know the user is the scenario, or the imported card's own one."""
+    parts = character.card or CardParts()
+    extensions = dict(parts.extensions)
     if target == 'prospero':
         extensions['prospero'] = {'format': FORMAT, 'format_version': FORMAT_VERSION, 'app': NAME,
                                   'app_version': VERSION, 'character': character.model_dump(),
                                   'apps': shapes(character)}
     data = {
         'name': character.name or 'Unnamed', 'description': description(character),
-        'personality': character.personality, 'scenario': character.companion.history_together,
-        'first_mes': '', 'mes_example': '', 'creator_notes': f"Made with {NAME}.", 'system_prompt': '',
-        'post_history_instructions': '', 'alternate_greetings': [], 'tags': [],
-        'creator': '', 'character_version': '1', 'extensions': extensions,
+        'personality': character.personality, 'scenario': character.companion.history_together or parts.scenario,
+        'first_mes': parts.first_mes, 'mes_example': parts.mes_example,
+        'creator_notes': parts.creator_notes or MADE_WITH, 'system_prompt': parts.system_prompt,
+        'post_history_instructions': parts.post_history_instructions,
+        'alternate_greetings': parts.alternate_greetings, 'tags': parts.tags, 'creator': parts.creator,
+        'character_version': parts.character_version or '1', 'extensions': extensions,
         'group_only_greetings': [], 'nickname': '',
         'creation_date': timestamp(created), 'modification_date': timestamp(updated),
     }
+    if parts.character_book:
+        data['character_book'] = parts.character_book
     return {'spec': 'chara_card_v3', 'spec_version': '3.0', 'data': data}
 
 
@@ -107,8 +117,9 @@ def v2(full: dict) -> dict:
     """The same card as chara_card_v2, for apps that only read the older chunk."""
     keep = ('name', 'description', 'personality', 'scenario', 'first_mes', 'mes_example', 'creator_notes',
             'system_prompt', 'post_history_instructions', 'alternate_greetings', 'tags', 'creator',
-            'character_version', 'extensions')
-    return {'spec': 'chara_card_v2', 'spec_version': '2.0', 'data': {key: full['data'][key] for key in keep}}
+            'character_version', 'extensions', 'character_book')
+    return {'spec': 'chara_card_v2', 'spec_version': '2.0',
+            'data': {key: full['data'][key] for key in keep if key in full['data']}}
 
 
 # PNG ------------------------------------------------------------------------------------------------------------
@@ -125,33 +136,32 @@ def plain_png(size: tuple[int, int] = PLAIN_SIZE, colour: tuple[int, int, int] =
         chunk(b'IEND', b'')
 
 
-def with_card(picture: bytes, full: dict) -> bytes:
-    """The picture with the card in it: any card it already held is taken out, and both chunks go before IEND."""
+def picture_chunks(picture: bytes) -> list[bytes]:
+    """A PNG's chunks up to IEND, without any character card in them."""
     kept = []
     for kind, payload in reader.chunks(picture):
         if kind == b'IEND':
             break
-        if kind == b'tEXt' and payload.partition(b'\0')[0] in CARD_KEYS:
+        if kind in (b'tEXt', b'iTXt', b'zTXt') and payload.partition(b'\0')[0] in CARD_KEYS:
             continue
         kept.append(chunk(kind, payload))
+    return kept
+
+
+def without_card(picture: bytes) -> bytes:
+    """A card's picture as a plain PNG, for their portrait."""
+    return reader.SIGNATURE + b''.join(picture_chunks(picture)) + chunk(b'IEND', b'')
+
+
+def with_card(picture: bytes, full: dict) -> bytes:
+    """The picture with the card in it: any card it already held is taken out, and both chunks go before IEND."""
+    kept = picture_chunks(picture)
     texts = [chunk(b'tEXt', key + b'\0' + base64.b64encode(json.dumps(value, ensure_ascii=False).encode('utf-8')))
              for key, value in ((b'chara', v2(full)), (b'ccv3', full))]
     return reader.SIGNATURE + b''.join(kept) + b''.join(texts) + chunk(b'IEND', b'')
 
 
 # Reading a card ---------------------------------------------------------------------------------------------------
-
-def opened(filename: str, encoded: str) -> dict:
-    """A card file: the whole character when Dramatis made it, otherwise its text for the paste box."""
-    try:
-        source = base64.b64decode(encoded, validate=True)
-    except (ValueError, binascii.Error) as error:
-        raise reader.problem('Choose the card file again; it did not arrive whole.') from error
-    ours = own_character(filename, source)
-    if ours is not None:
-        return {'kind': 'character', 'character': ours}
-    return {'kind': 'text', **reader.read_card(filename, encoded)}
-
 
 def own_character(filename: str, source: bytes) -> dict | None:
     """The Dramatis character inside a card, when there is one that still checks out."""

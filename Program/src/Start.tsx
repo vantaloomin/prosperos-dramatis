@@ -1,9 +1,10 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { ClipboardPaste, FileUp, Sparkles } from 'lucide-react'
-import { APPS, APP_NAMES, emptyCharacter, fileData, sendJson, type App, type Character, type Drafted, type Gender, type Opened, type OpenedText, type Relationship } from './api'
+import { APPS, APP_NAMES, emptyCharacter, fileData, sendJson, type App, type Character, type Drafted, type Gender, type Opened, type OpenedFile, type Relationship } from './api'
 import { Field, TextArea, TextInput, useModelReady } from './Fields'
 
-export interface Begun { character: Character; seed?: string; filledIn?: string[]; note?: string }
+/** How the form opens: the character, and a portrait (base64 PNG) to save with them, such as an imported file's picture. */
+export interface Begun { character: Character; seed?: string; filledIn?: string[]; note?: string; portrait?: string }
 /** Picks the quick start opens with, such as the idea the Cast board writes for a corner. */
 export interface Picks { idea?: string; setting?: string }
 
@@ -108,28 +109,41 @@ function QuickStart({ initial, onBegin }: { initial?: Picks; onBegin: (begun: Be
   )
 }
 
-/** A character the user already has: pasted, or read from a card file into the box first, then split by the model.
- * A card Dramatis made opens whole, with nothing sent to a model. */
+/** "a, b and c" */
+export const listed = (items: string[]) => items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`
+
+const instructionsNote = (lines?: string[]) => lines?.length
+  ? ` Their text had lines that talk to the app or the model rather than describe them (“${lines.join('”, “')}”). The model was told to ignore them; check the fields before you save.`
+  : ''
+
+/** A character the user already has: pasted, or a character file from another app (Companion's importer reads it). A
+ * file opens in the form as it has them, with no model, or goes into the box to split into the fields with the model;
+ * either way, its greetings, lorebook and picture stay with them. A card Dramatis made opens whole. */
 function PasteCharacter({ onBegin }: { onBegin: (begun: Begun) => void }) {
   const ready = useModelReady()
   const input = useRef<HTMLInputElement>(null)
   const [text, setText] = useState('')
+  const [file, setFile] = useState<OpenedFile | null>(null)
   const [apps, setApps] = useState<App[]>(APPS)
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
-  const [note, setNote] = useState('')
-  const open = async (file: File | undefined) => {
-    if (!file) return
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? ''
+  const write = (value: string) => {
+    setText(value)
+    if (!value.trim()) setFile(null)
+  }
+  const open = async (picked: File | undefined) => {
+    if (!picked) return
     setBusy('Reading…')
     setError('')
     try {
-      const found = await sendJson<Opened | OpenedText>('/api/cards/open', 'POST', { filename: file.name, data: await fileData(file) })
+      const found = await sendJson<Opened | OpenedFile>('/api/cards/open', 'POST', { filename: picked.name, data: await fileData(picked) })
       if (found.kind === 'character') {
         onBegin({ character: found.character, note: `${found.character.name || 'They'} came back whole from a card Dramatis made. Save to keep them here.` })
         return
       }
       setText(found.text)
-      setNote(found.truncated ? 'The card was long, so only its first 40,000 characters are in the box.' : `Read ${found.name || 'the card'}. Check the text, then split it into fields.`)
+      setFile(found)
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'That file could not be read.')
     } finally {
@@ -137,36 +151,56 @@ function PasteCharacter({ onBegin }: { onBegin: (begun: Begun) => void }) {
       if (input.current) input.current.value = ''
     }
   }
+  // What came with the file stays with them whichever way the form is filled.
+  const withFile = (character: Character): Character => ({ ...character, card: file?.card ?? character.card ?? null })
+  const asRead = file?.character && text === file.text ? file.character : null
+  const openAsRead = () => asRead && onBegin({
+    character: withFile({ ...asRead, apps, companion: { ...asRead.companion, timezone: asRead.companion.timezone || timezone } }),
+    portrait: file?.portrait ?? undefined,
+    note: `${asRead.name || 'They'} opened as the file has them. Read the fields through, fill in the rest, then save.${instructionsNote(file?.instructions)}`,
+  })
   const split = async () => {
     setBusy('Splitting…')
     setError('')
     try {
-      const found = await sendJson<Drafted>('/api/draft/split', 'POST', { text, apps, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? '' })
-      const told = found.instructions?.length
-        ? ` Your text had lines that talk to the app or the model rather than describe them (“${found.instructions.join('”, “')}”). The model was told to ignore them; check the fields before you save.`
-        : ''
-      onBegin({ character: found.character, seed: found.seed, filledIn: found.filled_in, note: `Your character, split into the fields.${told}` })
+      const found = await sendJson<Drafted>('/api/draft/split', 'POST', { text, apps, timezone })
+      onBegin({ character: withFile(found.character), seed: found.seed, filledIn: found.filled_in, portrait: file?.portrait ?? undefined,
+        note: `Your character, split into the fields.${instructionsNote(found.instructions)}` })
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'The character could not be split.')
     } finally { setBusy('') }
   }
+  const kept = file?.kept.length ? ` Their ${listed(file.kept)} stay with them for the cards you export.` : ''
   return (
     <section className="card" aria-labelledby="paste-title">
       <h2 id="paste-title"><ClipboardPaste size={16} aria-hidden /> Or bring a character you already have</h2>
-      <p className="muted">Notes, a bio, a scene, or a character card from SillyTavern, Chub or another app. You see exactly what will be sent before anything is. Nothing in a card runs, and no picture is fetched.</p>
-      <input ref={input} type="file" accept=".png,.json,.txt,.md" hidden onChange={(event) => {
-        const file = event.target.files?.[0]
-        if (file && /\.(txt|md)$/i.test(file.name)) { void file.text().then((value) => setText(value.slice(0, 40000))); return }
-        void open(file)
+      <p className="muted">Notes, a bio, a scene, or a character file from SillyTavern, Chub, Backyard, Marinara or another app: a card (PNG or JSON), CHARX, BYAF or plain JSON. Nothing in a file runs, no picture is fetched, and you see exactly what goes to your model before anything does.</p>
+      <input ref={input} type="file" accept=".png,.json,.charx,.byaf,.txt,.md" hidden onChange={(event) => {
+        const picked = event.target.files?.[0]
+        if (picked && /\.(txt|md)$/i.test(picked.name)) {
+          setFile(null)
+          void picked.text().then((value) => setText(value.slice(0, 40000)))
+          return
+        }
+        void open(picked)
       }} />
       <div className="stack">
-        <TextArea label="Their character" value={text} onChange={setText} maxLength={40000} rows={8} />
+        <TextArea label="Their character" value={text} onChange={write} maxLength={40000} rows={8} />
         <AppPicks apps={apps} onChange={setApps} />
-        {note && <p className="note">{note}</p>}
+        {file && (
+          <p className="note">
+            Read {file.name || 'them'} from {file.format === 'JSON' ? 'a JSON file' : `a ${file.format} file`}.{kept}
+            {file.truncated && ' The text was long, so only its first 40,000 characters are in the box.'}
+            {file.notes.map((note) => ` ${note}`).join('')}
+            {file.instructions.length > 0 && ` Lines in it talk to the app or the model rather than describe them (“${file.instructions.join('”, “')}”).`}
+          </p>
+        )}
+        {file?.refused && <p className="error" role="alert">{file.refused}</p>}
         {error && <p className="error" role="alert">{error}</p>}
         <div className="row">
-          <button type="button" disabled={!!busy} onClick={() => input.current?.click()}><FileUp size={14} aria-hidden /> Open a card or text file</button>
-          <button type="button" className="primary" disabled={!ready || !text.trim() || !!busy} onClick={() => void split()}>{busy === 'Splitting…' ? busy : 'Split into fields'}</button>
+          <button type="button" disabled={!!busy} onClick={() => input.current?.click()}><FileUp size={14} aria-hidden /> Open a character file</button>
+          {asRead && <button type="button" className="primary" disabled={!!busy} onClick={openAsRead}>Open in the form</button>}
+          <button type="button" className={asRead ? undefined : 'primary'} disabled={!ready || !text.trim() || !!busy} onClick={() => void split()}>{busy === 'Splitting…' ? busy : 'Split into fields'}</button>
         </div>
       </div>
     </section>

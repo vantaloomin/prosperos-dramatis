@@ -21,6 +21,10 @@ character creator.
   shapes fold it into fields they read. The secret goes everywhere the character does, so they can keep it. The interview's routes live in
   `dramatis/interview.py`, its own router; Help me write reaches nested fields by dotted keys (`arc.lie`,
   `psyche.was`), listed in `slop.DEPTH`.
+- Another app's character file is `dramatis/imports.py`: Companion's own importer (vendored `formats/companion/imports/`)
+  reads it, then it opens in the form with no model (headed lines to their fields) or goes to the paste box for the
+  split, both behind the Paste path's checks. What the card has that Dramatis doesn't make is `Character.card`
+  (`CardParts`), put back in every export and kept out of prompts by `drafting.for_model`.
 - The Cast board is `src/cast/` with its calls and pure cast edits in `src/castApi.ts`. App keeps each open board
   (unsaved edits survive leaving it) and the corner a drafted character goes to.
 - The Cast board's AI help is `dramatis/cast_ai.py` (routes under `/api/cast-ai`, prompts `prompts/cast-*.md`) and
@@ -35,6 +39,8 @@ character creator.
   `formats/companion/providers`). Profiles and which one does each job (`writing`, `assistant`, `cast`) are
   `dramatis/profiles.py` (in settings.json, keys in the keyring), routes in `model_routes.py`; a caller names its job
   with `ai.doing(job)`. The Models screen is Companion's, ported to `src/models/`.
+- Browser autofill and password managers are off on every field: `src/noAutofill.ts` (started in `main.tsx`) marks each
+  `input`, `textarea` and `select` as it appears, so a new field needs nothing.
 - The model never saves anything: drafts go to the form for review, and only Save writes to the library.
 - Before pushing, from `Program/`: `python -m ruff check .`, `python -m pytest -q`, `npm run build`.
 - `main` takes changes through pull requests.

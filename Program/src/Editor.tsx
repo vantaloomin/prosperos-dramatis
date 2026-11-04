@@ -5,6 +5,7 @@ import { APPS, APP_NAMES, type AuditHit, sendJson, type App, type Character, typ
 import { assistant, useAssistantShown } from './assistant/store'
 import { trackFocus, useAssistantForm } from './assistant/useForm'
 import { Field, HelpMeWrite, ListArea, TextArea, TextInput, cleanList, useModelReady } from './Fields'
+import { FromTheirCard } from './FromTheirCard'
 import { InnerLife, SecretSection } from './InnerLife'
 import { Interview, sampleLine } from './Interview'
 import { Psyche } from './Psyche'
@@ -55,16 +56,19 @@ export function cleaned(character: Character): Character {
   return {
     ...character, skills: cleanList(character.skills), flaws: cleanList(character.flaws), interests: cleanList(character.interests),
     companion: { ...character.companion, life_themes: cleanList(character.companion.life_themes) },
+    card: character.card && { ...character.card, tags: cleanList(character.card.tags), alternate_greetings: character.card.alternate_greetings.filter((text) => text.trim()) },
   }
 }
 
 interface Props {
   saved: Saved | null; start: Character; seed: string; filledIn?: string[]; note?: string
+  /** A picture to save with them, as base64 PNG: an imported file's own. */
+  portrait?: string
   onSaved: (saved: Saved) => void; onDeleted: () => void
 }
 
 /** One character, every field, for whichever apps they are made for. Nothing is saved until Save. */
-export function Editor({ saved, start, seed, filledIn, note, onSaved, onDeleted }: Props) {
+export function Editor({ saved, start, seed, filledIn, note, portrait, onSaved, onDeleted }: Props) {
   const client = useQueryClient()
   const ready = useModelReady()
   const [character, setCharacter] = useState<Character>(start)
@@ -73,7 +77,7 @@ export function Editor({ saved, start, seed, filledIn, note, onSaved, onDeleted 
   const [audit, setAudit] = useState<AuditHit[]>([])
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<{ tone: 'note' | 'error'; text: string } | null>(note ? { tone: 'note', text: note } : null)
-  const [pendingPortrait, setPendingPortrait] = useState<string | null>(null)
+  const [pendingPortrait, setPendingPortrait] = useState<string | null>(portrait ?? null)
   const [sample, setSample] = useState('')
   const set = (change: Partial<Character>) => setCharacter((current) => ({ ...current, ...change }))
   const setLife = (change: Partial<Character['companion']>) => setCharacter((current) => ({ ...current, companion: { ...current.companion, ...change } }))
@@ -234,6 +238,8 @@ export function Editor({ saved, start, seed, filledIn, note, onSaved, onDeleted 
           </div>
         </details>
       </section>
+
+      <FromTheirCard card={character.card} onChange={(card) => set({ card })} />
 
       <details className="section">
         <summary>More about them</summary>

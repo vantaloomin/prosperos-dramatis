@@ -51,13 +51,19 @@ export interface Secret { truth: string; cover_story: string; known_by: string }
 export interface Impulse { text: string; pressed_by: string[] }
 export type ImpulseKey = 'was' | 'expected' | 'wants_to_be' | 'fears_becoming'
 export type Psyche = Record<ImpulseKey, Impulse>
+/** What the card they were imported from had that Dramatis doesn't make, kept as it came for the cards they export. */
+export interface CardParts {
+  source: string; first_mes: string; alternate_greetings: string[]; mes_example: string; scenario: string; creator_notes: string
+  system_prompt: string; post_history_instructions: string; creator: string; character_version: string; tags: string[]
+  character_book: { entries?: unknown[] } | null; extensions: Record<string, unknown>
+}
 export interface Character {
   name: string; gender: Gender; age: number | null; kind: string; lifespan: number | null; birthday: string; setting: string
   about: string; personality: string; voice: string; sound: string; appearance: string; background: string; wants: string; fears: string
   skills: string[]; flaws: string[]; interests: string[]; looks: Looks
   personality_sliders: Partial<Record<Trait, Slider>> | null; seen_as: string; sees_self: string
   apps: App[]; companion: CompanionLife
-  interview: string; arc: Arc; secret: Secret; psyche: Psyche | null
+  interview: string; arc: Arc; secret: Secret; psyche: Psyche | null; card: CardParts | null
 }
 /** What the interview suggests for one field, from POST /api/draft/from-interview. */
 export type ProposedField = 'voice' | 'appearance' | 'seen_as' | 'sees_self' | 'flaws' | 'interests'
@@ -69,7 +75,12 @@ export interface Saved { id: string; created: string; updated: string; seed: str
 export interface Summary { id: string; name: string; about: string; apps: App[]; updated: string; portrait: boolean }
 export interface Drafted { character: Character; seed: string; filled_in?: string[]; instructions?: string[] }
 export interface Opened { kind: 'character'; character: Character }
-export interface OpenedText { kind: 'text'; name: string; text: string; truncated: boolean }
+/** Another app's character file, read: its text for the paste box, the form filled from it (or why not), and what it
+ * keeps for their cards. */
+export interface OpenedFile {
+  kind: 'file'; format: string; name: string; text: string; truncated: boolean; character: Character | null; refused: string
+  card: CardParts | null; kept: string[]; portrait: string | null; notes: string[]; instructions: string[]
+}
 export interface Health { ok: boolean; name: string; version: string; formats: Record<App, { repo: string; commit: string }> }
 export interface ImageConfig {
   kind: 'off' | 'comfyui' | 'codex' | 'hosted'; provider: string; family: string; base_url: string; model: string; has_key: boolean; ready: boolean
@@ -102,5 +113,6 @@ export function emptyCharacter(apps: App[] = APPS): Character {
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? '',
     },
     interview: '', arc: { lie: '', truth: '', catalyst: '' }, secret: { truth: '', cover_story: '', known_by: '' }, psyche: null,
+    card: null,
   }
 }
