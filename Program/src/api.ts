@@ -1,0 +1,81 @@
+/** Calls to the local Dramatis server. Errors carry the server's own message. */
+async function call<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(path, init)
+  const body = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    const detail = Array.isArray(body.detail) ? 'The request was not understood.' : body.detail
+    throw new Error(body.error ?? detail ?? `The server answered ${response.status}.`)
+  }
+  return body as T
+}
+
+export const getJson = <T,>(path: string) => call<T>(path)
+export const sendJson = <T,>(path: string, method: 'POST' | 'PUT' | 'DELETE', data?: unknown) =>
+  call<T>(path, { method, headers: { 'Content-Type': 'application/json' }, body: data === undefined ? undefined : JSON.stringify(data) })
+
+/** A file as base64, for the server to read (cards, portraits). */
+export function fileData(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result).split(',', 2)[1] ?? '')
+    reader.onerror = () => reject(new Error('That file could not be read.'))
+    reader.readAsDataURL(file)
+  })
+}
+
+export type App = 'companion' | 'adventure' | 'dungeon'
+export const APPS: App[] = ['companion', 'adventure', 'dungeon']
+export const APP_NAMES: Record<App, string> = { companion: 'Companion', adventure: 'Adventure', dungeon: 'Dungeon' }
+export type Gender = 'woman' | 'man' | 'nonbinary' | ''
+export type Relationship = 'friendship' | 'romance' | 'mentor' | 'family' | 'other'
+export type BlockKind = 'work' | 'study' | 'errand' | 'leisure' | 'social' | 'rest' | 'sleep'
+
+export interface Slider { level: number; source: 'rolled' | 'idea' | 'you' }
+export type Trait = 'social' | 'warmth' | 'order' | 'curiosity' | 'stress'
+export interface Looks {
+  height_cm: number | null; weight_kg: number | null; build: string; skin: string; face: string; jaw: string; nose: string
+  eyes: string; eye_shape: string; hair: string; facial_hair: string; feature: string
+}
+export interface Block { key?: string; label: string; kind: BlockKind; days: number[]; start: string; end: string; themes: string[] }
+export interface EmotionalTrait { name: string; intensity: 'mild' | 'moderate' | 'strong'; note: string }
+export interface CompanionLife {
+  relationship: Relationship; starting_closeness: number; history_together: string; routine: string; schedule: Block[]
+  life_themes: string[]; texting: { bursts: boolean; lowercase: boolean; typos: boolean; quick: boolean }
+  emotional_traits: EmotionalTrait[]; absence_reaction: string; timezone: string
+}
+export interface Character {
+  name: string; gender: Gender; age: number | null; kind: string; lifespan: number | null; birthday: string; setting: string
+  about: string; personality: string; voice: string; sound: string; appearance: string; background: string; wants: string; fears: string
+  skills: string[]; flaws: string[]; interests: string[]; looks: Looks
+  personality_sliders: Partial<Record<Trait, Slider>> | null; seen_as: string; sees_self: string
+  apps: App[]; companion: CompanionLife
+}
+export interface AuditHit { field: string; label: string; severity: 'hard' | 'flag'; rule: string; match: string; context: string }
+export type Problems = Partial<Record<App, string[]>>
+export interface Saved { id: string; created: string; updated: string; seed: string; character: Character; portrait: boolean; problems: Problems }
+export interface Summary { id: string; name: string; about: string; apps: App[]; updated: string; portrait: boolean }
+export interface Drafted { character: Character; seed: string; filled_in?: string[] }
+export interface Opened { kind: 'character'; character: Character }
+export interface OpenedText { kind: 'text'; name: string; text: string; truncated: boolean }
+export interface Health { ok: boolean; name: string; version: string; formats: Record<App, { repo: string; commit: string }> }
+export interface ModelConfig { provider: 'anthropic' | 'openai' | 'claude-cli'; model: string; base_url: string; has_key: boolean }
+export interface TraitInfo { key: Trait; name: string; low: string; high: string; shows: string[] }
+export interface SliderView { sliders: Record<Trait, Slider>; chips: string[]; type: string | null; traits: TraitInfo[] }
+
+export const emptyLooks = (): Looks => ({
+  height_cm: null, weight_kg: null, build: '', skin: '', face: '', jaw: '', nose: '', eyes: '', eye_shape: '', hair: '',
+  facial_hair: '', feature: '',
+})
+
+export function emptyCharacter(apps: App[] = APPS): Character {
+  return {
+    name: '', gender: '', age: null, kind: '', lifespan: null, birthday: '', setting: '', about: '', personality: '',
+    voice: '', sound: '', appearance: '', background: '', wants: '', fears: '', skills: [], flaws: [], interests: [],
+    looks: emptyLooks(), personality_sliders: null, seen_as: '', sees_self: '', apps,
+    companion: {
+      relationship: 'friendship', starting_closeness: 1, history_together: '', routine: '', schedule: [], life_themes: [],
+      texting: { bursts: false, lowercase: false, typos: false, quick: false }, emotional_traits: [], absence_reaction: '',
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? '',
+    },
+  }
+}

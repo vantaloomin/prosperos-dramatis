@@ -1,0 +1,18 @@
+# Prospero's Dramatis
+
+The suite's character creator: one character, made once with AI help, that Prospero's Companion, Adventure and Dungeon
+(vantaloomin/prosperos-companion, -adventure, -dungeon) each load in their own shape. It started as Companion's
+character creator.
+
+- Layout mirrors Worldsmith: the app lives in `Program/` (Python package `dramatis/`, FastAPI on port 8815; React +
+  Vite screen in `src/`, dev server 5207); `Windows/` holds only the double-click scripts.
+- `dramatis/formats/` is the apps' own code, vendored (their request models, Companion's card reader and slider
+  rules). Never edit it here: change it in that app, then run
+  `python scripts/sync_format.py --companion <checkout> --adventure <checkout> --dungeon <checkout>`. CI's `formats`
+  job fails when an app's main has moved on. `dramatis/stand_ins/` replaces the few modules those files import that
+  would pull in a whole app.
+- `dramatis/character.py` is the shared character and each app's shape of it, checked with that app's own models.
+  A new field goes there first, with the tightest limit of the apps that read it.
+- The model never saves anything: drafts go to the form for review, and only Save writes to the library.
+- Before pushing, from `Program/`: `python -m ruff check .`, `python -m pytest -q`, `npm run build`.
+- `main` takes changes through pull requests.

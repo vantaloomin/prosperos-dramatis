@@ -1,0 +1,18 @@
+{
+  "about": {"guide": "2 to 4 sentences: their age, what they do, who they live with or travel with, and what they care about right now.", "shape": "a string", "limit": 2000},
+  "personality": {"guide": "a paragraph about their temperament, how they treat people, one real contradiction and what annoys them.", "shape": "a string", "limit": 8000},
+  "voice": {"guide": "how they talk, not how their voice sounds: 2 to 4 sentences of instructions for their words and writing: sentence length, capitalisation, humour, words they overuse, what they avoid saying.", "shape": "a string", "limit": 600},
+  "sound": {"guide": "one short objective line describing the physical sound of their voice for text to speech: apparent age, pitch, pace, texture, accent if any. Never personality, mood or their name, and nothing about what they say.", "shape": "a string", "limit": 300},
+  "appearance": {"guide": "2 or 3 plain sentences: height and build, hair, face, what they wear on a normal day, one ordinary or unflattering detail.", "shape": "a string", "limit": 600},
+  "seen_as": {"guide": "their outward appearance: how other people see them, reputation included (\"people think he's a jerk\"), in one line: <how they come across>; <a habit people notice>; <what sets them off>. Other characters hear it, so write it as the people around them would put it.", "shape": "a string", "limit": 400},
+  "sees_self": {"guide": "how they see themselves: 3 to 5 short first-person lines, one per line, private. It may disagree with how others see them: a blind spot, a kinder or harsher view.", "shape": "a string", "limit": 1200},
+  "background": {"guide": "1 or 2 paragraphs of ordinary history: where they grew up in general terms, training, family with some friction, one or two turning points.", "shape": "a string", "limit": 12000},
+  "wants": {"guide": "one sentence: something concrete they are after and can act on.", "shape": "a string", "limit": 300},
+  "fears": {"guide": "one sentence: something they are afraid of that could really happen to them.", "shape": "a string", "limit": 300},
+  "skills": {"guide": "4 to 7 concrete skills at a believable level, one short phrase each, including a dull or practical one.", "shape": "a list of strings", "count": 20, "limit": 300},
+  "flaws": {"guide": "3 to 5 real flaws that cost them something and show up when they talk or act, one short sentence each. No disguised virtues.", "shape": "a list of strings", "count": 20, "limit": 300},
+  "interests": {"guide": "4 to 8 specific interests, a few words each.", "shape": "a list of strings", "count": 50, "limit": 120},
+  "routine": {"guide": "3 to 5 sentences in their own words describing a normal weekday and weekend. Keep it consistent with their weekly schedule.", "shape": "a string", "limit": 8000, "app": "companion"},
+  "life_themes": {"guide": "5 to 10 short themes their everyday life tends to involve, such as people, kinds of places, hobbies and chores.", "shape": "a list of strings", "count": 20, "limit": 120, "app": "companion"},
+  "schedule": {"guide": "4 to 8 weekly blocks in 24-hour local time. Days are numbers, 0 is Monday and 6 is Sunday. Always include a sleep block every day; a block that ends earlier than it starts runs past midnight. Work matches their real hours, blocks on the same day do not overlap, and at least one recurring thing is theirs, such as a class, a standing call or a sport.", "shape": "a list of objects {\"label\": short name, \"kind\": \"work\" | \"study\" | \"errand\" | \"leisure\" | \"social\" | \"rest\" | \"sleep\", \"days\": [numbers], \"start\": \"HH:MM\", \"end\": \"HH:MM\", \"themes\": [up to 5 short strings]}", "app": "companion"}
+}

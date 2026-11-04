@@ -1,0 +1,27 @@
+{
+  "adventure": {
+    "repo": "vantaloomin/prosperos-adventure",
+    "commit": "4e35586b9fdb60003eeed99a59633c1cfca443e8",
+    "files": {
+      "Program/adventure/models.py": "models.py"
+    }
+  },
+  "companion": {
+    "repo": "vantaloomin/prosperos-companion",
+    "commit": "ae9b0abc1f97d9b51110e5967327d29deee03a9b",
+    "files": {
+      "Program/companion/errors.py": "errors.py",
+      "Program/companion/models.py": "models.py",
+      "Program/companion/imports/cards.py": "cards.py",
+      "Program/companion/world/personality.py": "personality.py",
+      "Program/companion/world/data/personality.json": "data/personality.json"
+    }
+  },
+  "dungeon": {
+    "repo": "vantaloomin/prosperos-dungeon",
+    "commit": "6ac621f9e4519b7410afd92310c567eb7de4f6bd",
+    "files": {
+      "Program/dungeon/models.py": "models.py"
+    }
+  }
+}
