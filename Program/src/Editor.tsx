@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, Download, ImagePlus, Trash2, TriangleAlert } from 'lucide-react'
-import { APPS, APP_NAMES, fileData, type AuditHit, sendJson, type App, type Character, type Gender, type Looks, type Problems, type Relationship, type Saved } from './api'
+import { CheckCircle2, Download, Trash2, TriangleAlert } from 'lucide-react'
+import { APPS, APP_NAMES, type AuditHit, sendJson, type App, type Character, type Gender, type Looks, type Problems, type Relationship, type Saved } from './api'
 import { Field, HelpMeWrite, ListArea, TextArea, TextInput, cleanList, useModelReady } from './Fields'
 import { InnerLife, SecretSection } from './InnerLife'
 import { Interview, sampleLine } from './Interview'
 import { Psyche } from './Psyche'
+import { Portrait } from './Portrait'
 import { AppPicks } from './Start'
 import { Schedule, scheduleProblems } from './Schedule'
 import { Sliders } from './Sliders'
@@ -73,9 +74,8 @@ export function Editor({ saved, start, seed, filledIn, note, onSaved, onDeleted 
   const [audit, setAudit] = useState<AuditHit[]>([])
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<{ tone: 'note' | 'error'; text: string } | null>(note ? { tone: 'note', text: note } : null)
-  const [portraitAt, setPortraitAt] = useState(Date.now())
+  const [pendingPortrait, setPendingPortrait] = useState<string | null>(null)
   const [sample, setSample] = useState('')
-  const picture = useRef<HTMLInputElement>(null)
   const set = (change: Partial<Character>) => setCharacter((current) => ({ ...current, ...change }))
   const setLife = (change: Partial<Character['companion']>) => setCharacter((current) => ({ ...current, companion: { ...current.companion, ...change } }))
   const current = () => cleaned(character)
@@ -100,7 +100,12 @@ export function Editor({ saved, start, seed, filledIn, note, onSaved, onDeleted 
     setResult(null)
     try {
       const body = { character: cleaned(character), seed }
-      const next = saved ? await sendJson<Saved>(`/api/characters/${saved.id}`, 'PUT', body) : await sendJson<Saved>('/api/characters', 'POST', body)
+      let next = saved ? await sendJson<Saved>(`/api/characters/${saved.id}`, 'PUT', body) : await sendJson<Saved>('/api/characters', 'POST', body)
+      if (pendingPortrait) {
+        const pictured = await sendJson<Saved>(`/api/characters/${next.id}/portrait`, 'PUT', { filename: 'portrait.png', data: pendingPortrait })
+        next = { ...pictured, problems: next.problems }
+        setPendingPortrait(null)
+      }
       await client.invalidateQueries({ queryKey: ['characters'] })
       setResult({ tone: 'note', text: `Saved ${next.character.name || 'them'}.` })
       onSaved(next)
@@ -113,17 +118,6 @@ export function Editor({ saved, start, seed, filledIn, note, onSaved, onDeleted 
     await sendJson(`/api/characters/${saved.id}`, 'DELETE')
     await client.invalidateQueries({ queryKey: ['characters'] })
     onDeleted()
-  }
-  const setPortrait = async (file: File | undefined) => {
-    if (!saved || !file) return
-    try {
-      const next = await sendJson<Saved>(`/api/characters/${saved.id}/portrait`, 'PUT', { filename: file.name, data: await fileData(file) })
-      onSaved({ ...next, problems })
-      setPortraitAt(Date.now())
-      await client.invalidateQueries({ queryKey: ['characters'] })
-    } catch (failure) {
-      setResult({ tone: 'error', text: failure instanceof Error ? failure.message : 'That picture could not be used.' })
-    } finally { if (picture.current) picture.current.value = '' }
   }
 
   const said = sampleLine(character.interview, sample)
@@ -151,13 +145,8 @@ export function Editor({ saved, start, seed, filledIn, note, onSaved, onDeleted 
       <section>
         <h3>Who they are</h3>
         <div className="portrait-row">
-          {saved && (
-            <div className="portrait">
-              {saved.portrait ? <img src={`/api/characters/${saved.id}/portrait.png?at=${portraitAt}`} alt={`${character.name}'s portrait`} /> : <div className="no-portrait" aria-hidden />}
-              <input ref={picture} type="file" accept=".png,image/png" hidden onChange={(event) => void setPortrait(event.target.files?.[0])} />
-              <button type="button" className="link" onClick={() => picture.current?.click()}><ImagePlus size={13} aria-hidden /> {saved.portrait ? 'Change portrait' : 'Add a portrait'}</button>
-            </div>
-          )}
+          <Portrait saved={saved} name={character.name} character={current} pending={pendingPortrait} onPending={setPendingPortrait}
+            onSaved={(next) => onSaved({ ...next, problems })} />
           <div className="stack grow">
             <div className="grid three">
               <TextInput label="Name" value={character.name} onChange={(name) => set({ name })} maxLength={80} />

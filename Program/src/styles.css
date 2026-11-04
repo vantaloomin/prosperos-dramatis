@@ -36,6 +36,7 @@ button.wide { width: 100%; justify-content: center; margin-bottom: 0.75rem; }
 button.icon { padding: 0.25rem; border: none; background: none; }
 button.danger { color: var(--error); }
 button.link { border: none; background: none; color: var(--accent); padding: 0 0.2rem; text-decoration: underline; }
+button.link.danger { color: var(--error); }
 button.chip { font-size: 0.8rem; padding: 0.15rem 0.5rem; border-radius: 999px; }
 button[aria-pressed='true'], button[aria-checked='true'] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
 .row { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; }
@@ -79,8 +80,14 @@ details.section > :not(summary) + :not(summary) { margin-top: 0.75rem; }
 .audit details ul { margin: 0.2rem 0; padding-left: 1.2rem; display: grid; gap: 0.15rem; }
 .audit p { margin: 0.2rem 0; }
 .works-in details ul { margin: 0.2rem 0; padding-left: 1.2rem; }
-.portrait-row { display: flex; gap: 1rem; align-items: flex-start; }
-.portrait { display: grid; gap: 0.3rem; justify-items: center; flex: none; }
+.portrait-row { display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap; }
+.portrait { display: grid; gap: 0.4rem; justify-items: center; flex: none; max-width: 100%; }
+.portrait .row { justify-content: center; }
+.portrait select { width: auto; }
+.portrait details { max-width: 16.5rem; margin: 0; }
+.portrait details p { margin: 0.2rem 0 0; }
+.portrait-pair { display: flex; gap: 0.5rem; }
+.portrait img.made { border-color: var(--accent); }
 .portrait img, .no-portrait { width: 8rem; height: 12rem; border-radius: 8px; object-fit: cover; border: 1px solid var(--line); background: color-mix(in srgb, var(--accent) 20%, var(--bg)); }
 .help { display: flex; gap: 0.6rem; flex-wrap: wrap; font-size: 0.85rem; }
 .help-ask { display: flex; gap: 0.4rem; width: 100%; }
@@ -102,6 +109,7 @@ input.narrow { width: 13rem; }
 .app-section { border-top: 1px solid var(--line); margin-top: 1rem; }
 .model-line { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; font-size: 0.85rem; }
 .model-form input, .model-form select { width: auto; }
+.model-form input.size { width: 7rem; }
 code { font-size: 0.85em; }
 /* Interview, inner life, inner square and secret */
 .proposal { display: grid; gap: 0.4rem; }

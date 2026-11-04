@@ -73,6 +73,13 @@ those words.
 **Works in.** While you edit, each app checks the character with its own rules, and the form shows **Works in
 Companion**, or what that app would refuse.
 
+**Portraits.** Add a PNG of your own, or set up an image maker with **Portraits** at the top right and press **Make
+a portrait**: an OpenAI-compatible images API (OpenAI, OpenRouter and most hosted services, with your key) or ComfyUI
+on your computer, with any checkpoint you name. Your model writes the picture's prompt from how they look (Appearance,
+Looks, age and setting; never how they see themselves or how others see them), you pick a style, and the new portrait
+shows beside the old one until you choose **Use this**. It is cropped to a card's 2:3, and the prompt always
+asks for a dressed adult.
+
 **Cards.** **Export card** saves a character card (Character Card V3, PNG or JSON) in one of two kinds. The PNG
 puts the card into their portrait, or a plain picture if they have none.
 
@@ -160,8 +167,9 @@ CI checks the copies against each app's latest `main` on every pull request and 
 ## Privacy
 
 Dramatis only listens on your own computer (127.0.0.1). Characters and portraits stay in your data folder. The only
-thing that leaves your PC is what you ask your model to write, sent to the model you picked. API keys are kept in your
-system's credential store (Windows Credential Manager), never in a file.
+thing that leaves your PC is what you ask your model to write, sent to the model you picked, and a portrait's prompt,
+sent to the image maker you picked. API keys are kept in your system's credential store (Windows Credential Manager),
+never in a file.
 
 ## Development
 

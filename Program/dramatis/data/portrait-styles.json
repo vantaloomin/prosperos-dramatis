@@ -1,0 +1,7 @@
+[
+  {"key": "photo", "name": "Photo", "line": "A natural photograph, 85mm lens, soft daylight, true skin texture."},
+  {"key": "painted", "name": "Painted", "line": "An oil painting with visible brushwork and muted colours."},
+  {"key": "ink", "name": "Ink", "line": "An ink drawing with a light watercolour wash on cream paper."},
+  {"key": "anime", "name": "Anime", "line": "Anime illustration, clean line art and soft cel shading."},
+  {"key": "", "name": "No style", "line": ""}
+]
