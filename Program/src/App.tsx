@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Drama, Link2, Plus, Swords, Users } from 'lucide-react'
-import { APP_NAMES, getJson, type Health, type Saved, type Summary } from './api'
+import { Drama, Link2, Plus, Swords, Users, X } from 'lucide-react'
+import { APPS, APP_NAMES, getJson, type Health, type Saved, type Summary } from './api'
 import { CastBoard, linkSaved, type Board } from './cast/CastBoard'
 import { CastStart } from './cast/CastStart'
 import { castCalls, draftIdea, editCorner, findCorner, type Cast, type SavedCast } from './castApi'
 import { Assistant } from './assistant/Assistant'
 import { useAssistantShown } from './assistant/store'
+import { draftStore, NEW, useChangedDrafts } from './drafts'
 import { Editor } from './Editor'
 import { ImageSettings, ModelSettings } from './ModelSettings'
 import { Start, type Begun, type Picks } from './Start'
@@ -17,28 +18,51 @@ interface Pending { castKey: string; cornerId: string }
 
 type View =
   | { kind: 'start'; initial?: Picks; pending?: Pending }
-  | { kind: 'edit'; key: string; saved: Saved | null; begun: Begun; pending?: Pending }
+  | { kind: 'edit'; key: string; draft: string; saved: Saved | null; begun: Begun; pending?: Pending }
   | { kind: 'new-cast' }
   | { kind: 'cast'; key: string }
 
-const NEW = 'new'
 
-function Library({ chosen, onOpen, onNew }: { chosen: string | null; onOpen: (id: string) => void; onNew: () => void }) {
+const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((word) => word[0].toUpperCase()).join('')
+
+/** Saved characters, with new ones not saved yet first. A row says which apps only when not all three, the start of
+ * About them when two share a name, and when it has changes not saved. */
+function Library({ chosen, onOpen, onOpenDraft, onNew }: {
+  chosen: string | null; onOpen: (id: string) => void; onOpenDraft: (key: string) => void; onNew: () => void
+}) {
   const listing = useQuery({ queryKey: ['characters'], queryFn: () => getJson<Summary[]>('/api/characters') })
+  const drafts = useChangedDrafts()
+  const changed = new Set(drafts.map((draft) => draft.key))
+  const unsaved = drafts.filter((draft) => draft.key.startsWith(NEW))
+  const names = new Map<string, number>()
+  for (const item of listing.data ?? []) names.set(item.name, (names.get(item.name) ?? 0) + 1)
+  const line = (item: Summary) => [
+    item.apps.length < APPS.length ? item.apps.map((app) => APP_NAMES[app]).join(', ') : '',
+    (names.get(item.name) ?? 0) > 1 ? (item.about.length > 60 ? `${item.about.slice(0, 60).trimEnd()}…` : item.about) : '',
+    changed.has(item.id) ? 'Unsaved changes' : '',
+  ].filter(Boolean).join(' · ')
   return (
     <>
       <h2><Users size={16} aria-hidden /> Characters</h2>
-      <button type="button" className="primary wide" onClick={onNew}><Plus size={14} aria-hidden /> New character</button>
+      <button type="button" className="wide" onClick={onNew}><Plus size={14} aria-hidden /> New character</button>
       {listing.isError && <p className="error small">{listing.error.message}</p>}
-      {listing.data && !listing.data.length && <p className="muted small">Nobody yet. Characters you save live here, and each one exports as a card for the Prospero apps or any chat app.</p>}
+      {listing.data && !listing.data.length && !unsaved.length && <p className="muted small">Nobody yet.</p>}
       <ul className="choices">
+        {unsaved.map((draft) => (
+          <li key={draft.key}>
+            <button type="button" aria-pressed={chosen === draft.key} onClick={() => onOpenDraft(draft.key)}>
+              <span className="thumb" aria-hidden>{initials(draft.name)}</span>
+              <span><strong>{draft.name || 'New character'}</strong><span className="muted small">Not saved yet</span></span>
+            </button>
+          </li>
+        ))}
         {listing.data?.map((item) => (
           <li key={item.id}>
             <button type="button" aria-pressed={chosen === item.id} onClick={() => onOpen(item.id)}>
-              {item.portrait ? <img className="thumb" src={`/api/characters/${item.id}/portrait.png?at=${item.updated}`} alt="" /> : <span className="thumb" aria-hidden />}
+              {item.portrait ? <img className="thumb" src={`/api/characters/${item.id}/portrait.png?at=${item.updated}`} alt="" /> : <span className="thumb" aria-hidden>{initials(item.name)}</span>}
               <span>
-                <strong>{item.name}</strong>
-                <span className="muted small">{item.apps.map((app) => APP_NAMES[app]).join(', ')}</span>
+                <strong>{drafts.find((draft) => draft.key === item.id)?.name || item.name}</strong>
+                {line(item) && <span className="muted small">{line(item)}</span>}
               </span>
             </button>
           </li>
@@ -92,12 +116,17 @@ export function App() {
   const [linked, setLinked] = useState<{ castKey: string; text: string } | null>(null)
   const [error, setError] = useState('')
   const assisting = useAssistantShown()
-  const go = (next: View) => { setError(''); setLinked(null); setView(next) }
+  // On a phone the library is a drawer over the page, opened from the top bar.
+  const [drawer, setDrawer] = useState(false)
+  const go = (next: View) => { setError(''); setLinked(null); setDrawer(false); setView(next) }
 
+  /** A saved character, as their unsaved changes left them if they have any. */
   const open = async (id: string) => {
     try {
       const saved = await getJson<Saved>(`/api/characters/${id}`)
-      go({ kind: 'edit', key: `${id}-${saved.updated}`, saved, begun: { character: saved.character, seed: saved.seed } })
+      const draft = draftStore.get(id)
+      const begun = draft?.changed ? draft.begun : { character: saved.character, seed: saved.seed }
+      go({ kind: 'edit', key: `${id}-${Date.now()}`, draft: id, saved, begun })
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'They could not be opened.')
     }
@@ -148,26 +177,38 @@ export function App() {
     }
   }
 
-  const begin = (begun: Begun) => setView((current) => ({
-    kind: 'edit', key: `new-${Date.now()}`, saved: null, begun, pending: current.kind === 'start' ? current.pending : undefined,
-  }))
+  const openDraft = (key: string) => {
+    const draft = draftStore.get(key)
+    if (draft) go({ kind: 'edit', key: `${key}-${Date.now()}`, draft: key, saved: null, begun: draft.begun })
+  }
+  const begin = (begun: Begun) => setView((current) => {
+    const key = `${NEW}-${Date.now()}`
+    return { kind: 'edit', key, draft: key, saved: null, begun, pending: current.kind === 'start' ? current.pending : undefined }
+  })
   const pending = view.kind === 'start' || view.kind === 'edit' ? view.pending : undefined
   const pendingBoard = pending && boards[pending.castKey]
-  const chosen = view.kind === 'edit' ? view.saved?.id ?? null : null
+  const chosen = view.kind === 'edit' ? view.saved?.id ?? view.draft : null
   return (
     <div className={assisting ? 'shell assisting' : 'shell'}>
+      <a className="skip" href="#work">Skip to the {view.kind === 'edit' ? 'form' : view.kind === 'cast' ? 'board' : 'page'}</a>
       <header className="top">
+        <button type="button" className="drawer-toggle" aria-expanded={drawer} aria-controls="library" onClick={() => setDrawer(!drawer)}>
+          <Users size={15} aria-hidden /> Characters
+        </button>
         <Drama size={18} aria-hidden />
         <h1>Prospero's Dramatis</h1>
         <span className="muted small">{health.data ? `v${health.data.version}` : health.isError ? 'server not reachable' : '…'}</span>
         <div className="top-model"><ModelSettings /><ImageSettings /></div>
       </header>
-      <aside className="pane library" aria-label="Library">
-        <Library chosen={chosen} onOpen={(id) => void open(id)} onNew={() => go({ kind: 'start' })} />
+      {drawer && <div className="drawer-scrim" onClick={() => setDrawer(false)} aria-hidden />}
+      <aside id="library" className={drawer ? 'pane library open' : 'pane library'} aria-label="Library"
+        onKeyDown={(event) => { if (event.key === 'Escape') setDrawer(false) }}>
+        <button type="button" className="icon drawer-close" aria-label="Close the library" onClick={() => setDrawer(false)}><X size={16} /></button>
+        <Library chosen={chosen} onOpen={(id) => void open(id)} onOpenDraft={openDraft} onNew={() => go({ kind: 'start' })} />
         <Casts chosen={view.kind === 'cast' ? view.key : null} boards={boards} onOpen={(key) => void openCast(key)} onNew={() => go({ kind: 'new-cast' })} />
         {error && <p className="error small">{error}</p>}
       </aside>
-      <main className="pane work">
+      <main id="work" className="pane work" tabIndex={-1}>
         {(pendingBoard || linked) && (
           <p className="note link-bar" role="status">
             <Link2 size={14} aria-hidden />
@@ -180,11 +221,13 @@ export function App() {
             <Editor key={view.key} saved={view.saved} start={view.begun.character} seed={view.saved?.seed ?? view.begun.seed ?? 'dramatis'}
               filledIn={view.begun.filledIn} note={view.begun.note} portrait={view.begun.portrait}
               brought={view.begun.brought ?? !!view.saved?.character.card?.source} allowed={view.begun.allowed}
+              draftKey={view.draft} begun={view.begun}
               onSaved={(saved) => {
-                setView((current) => current.kind === 'edit' ? { ...current, saved, pending: undefined } : current)
+                setView((current) => current.kind === 'edit' ? { ...current, saved, draft: saved.id, pending: undefined } : current)
                 if (view.pending) void link(view.pending, saved)
               }}
-              onDeleted={() => go({ kind: 'start' })} />
+              onDeleted={() => go({ kind: 'start' })}
+              onDiscard={() => view.saved ? void open(view.saved.id) : go({ kind: 'start' })} />
           ) : view.kind === 'new-cast' ? (
             <CastStart onBegin={(cast) => {
               setBoards((current) => ({ ...current, [NEW]: { saved: null, cast } }))
