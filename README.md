@@ -52,6 +52,14 @@ themselves**. There are also the five personality sliders (roll again, or start 
 field by field, kind and lifespan, and Companion's own part: relationship, closeness, routine, weekly schedule and
 texting habits.
 
+**The Sidebar Assistant.** **Assistant** beside Save opens a chat next to the form, like Adventure's Sidebar
+Assistant. It reads the form as you type, unsaved changes included, knows which field you're in and what you changed
+since its last answer, and proposes edits to the fields when you ask: "make this shorter", "give her a sister she
+doesn't talk to". Each one has **Compare**, **Apply** and **Dismiss** (and **Apply all** when there are several), and a
+field you applied one to is marked with **Undo the assistant's change**. What it writes goes through the slop audit
+like any draft, and nothing is kept until you save. It can't touch the sliders, the apps,
+Companion's relationship, emotional edges or who presses on their inner square.
+
 **Hear them talk.** The model interviews the character in their own voice: about fourteen questions on their day,
 their looks, where they come from and what makes their guard drop, answered with small stage directions between the
 lines. A line of it shows under How they talk. **Use what they said** reads the interview back and suggests changes to
