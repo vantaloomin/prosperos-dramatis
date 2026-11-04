@@ -56,17 +56,20 @@ function Library({ chosen, onOpen, onOpenDraft, onNew }: {
             </button>
           </li>
         ))}
-        {listing.data?.map((item) => (
+        {listing.data?.map((item) => {
+          const name = drafts.find((draft) => draft.key === item.id)?.name || item.name
+          return (
           <li key={item.id}>
             <button type="button" aria-pressed={chosen === item.id} onClick={() => onOpen(item.id)}>
-              {item.portrait ? <img className="thumb" src={`/api/characters/${item.id}/portrait.png?at=${item.updated}`} alt="" /> : <span className="thumb" aria-hidden>{initials(item.name)}</span>}
+              {item.portrait ? <img className="thumb" src={`/api/characters/${item.id}/portrait.png?at=${item.updated}`} alt="" /> : <span className="thumb" aria-hidden>{initials(name)}</span>}
               <span>
-                <strong>{drafts.find((draft) => draft.key === item.id)?.name || item.name}</strong>
+                <strong>{name}</strong>
                 {line(item) && <span className="muted small">{line(item)}</span>}
               </span>
             </button>
           </li>
-        ))}
+          )
+        })}
       </ul>
     </>
   )
