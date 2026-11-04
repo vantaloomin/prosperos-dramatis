@@ -20,7 +20,7 @@ import re
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict, Field
 
-from dramatis import casts, drafting, library, slop
+from dramatis import ai, casts, drafting, library, slop
 from dramatis.casts import Cast, Corner, Square, name_of
 from dramatis.drafting import Unusable, ask, fill, template, text_value
 from dramatis.formats.companion.errors import require
@@ -465,19 +465,23 @@ router = APIRouter(prefix='/api/cast-ai')
 
 @router.post('/suggest')
 def suggest_route(body: SuggestBody):
-    return suggest(casts.checked(body.cast), body.target)
+    with ai.doing('cast'):
+        return suggest(casts.checked(body.cast), body.target)
 
 
 @router.post('/check')
 def check_route(body: CastBody):
-    return check(casts.checked(body.cast))
+    with ai.doing('cast'):
+        return check(casts.checked(body.cast))
 
 
 @router.post('/turn')
 def turn_route(body: TurnBody):
-    return turn(casts.checked(body.cast), body.a, body.b)
+    with ai.doing('cast'):
+        return turn(casts.checked(body.cast), body.a, body.b)
 
 
 @router.post('/relationship')
 def relationship_route(body: RelationshipBody):
-    return relationship(casts.checked(body.cast), body.from_id, body.to_id)
+    with ai.doing('cast'):
+        return relationship(casts.checked(body.cast), body.from_id, body.to_id)

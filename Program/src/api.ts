@@ -82,7 +82,6 @@ export interface OpenedFile {
   card: CardParts | null; kept: string[]; portrait: string | null; notes: string[]; instructions: string[]
 }
 export interface Health { ok: boolean; name: string; version: string; formats: Record<App, { repo: string; commit: string }> }
-export interface ModelConfig { provider: 'anthropic' | 'openai' | 'claude-cli'; model: string; base_url: string; has_key: boolean }
 export interface ImageConfig {
   kind: 'off' | 'comfyui' | 'codex' | 'hosted'; provider: string; family: string; base_url: string; model: string; has_key: boolean; ready: boolean
   families: Record<string, string>; providers: Record<string, { label: string; base_url: string }>

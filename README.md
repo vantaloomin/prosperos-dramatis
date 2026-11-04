@@ -15,9 +15,10 @@ be around. You read every word before anything is saved. Then the same character
 [Prospero's Adventure](https://github.com/vantaloomin/prosperos-adventure) or
 [Prospero's Dungeon](https://github.com/vantaloomin/prosperos-dungeon), each app taking them in its own shape.
 
-It runs on your computer and talks to whichever model you choose: Claude through Anthropic's API, any
-OpenAI-compatible server (LM Studio, Ollama, OpenRouter), or the `claude` command line on your PC. Without a model you
-can still fill in the form yourself.
+It runs on your computer and talks to whichever model you choose, set up the way Prospero's Companion sets them up
+and run with Companion's own code: a hosted API with your key (OpenAI, Anthropic, OpenRouter, Google, NanoGPT, or any
+OpenAI-compatible one), a model on your PC (LM Studio, Ollama, Kobold), Codex under your ChatGPT sign-in, or Claude
+Code under your Claude plan. Without a model you can still fill in the form yourself.
 
 It started as Companion's character creator, and checks every character with Companion's, Adventure's and Dungeon's
 own code.
@@ -103,6 +104,13 @@ from how they look (Appearance, Looks, age and setting; never how they see thems
 pick a style, and the new portrait shows beside the old one until you choose **Use this**. It is cropped to a card's
 2:3, and the prompt always asks for a dressed adult.
 
+**Models.** **Set up** (or **Change**) at the top right opens Models, Companion's own: add a profile for each provider
+and model you use, **Test connection** to list the models it offers without writing anything, and pick one. Generation
+settings (context size, longest reply, reasoning effort, thinking and sampling) are per profile, and a Claude Code or
+Codex profile can use any of the accounts found on your PC. The first finished profile does the **Writing** (drafts,
+Help me write, the interview and portrait prompts); the Sidebar Assistant and the Cast board use it too unless you give
+them a profile of their own.
+
 **Cards.** **Export card** saves a character card (Character Card V3, PNG or JSON) in one of two kinds. The PNG
 puts the card into their portrait, or a plain picture if they have none.
 
@@ -140,7 +148,7 @@ dismiss, and nothing is saved until you save the cast.
    installs the locked dependencies and builds the interface.
 3. Double-click **`launch.bat`**. Dramatis opens in your browser at http://127.0.0.1:8815. Keep its window open while
    you use it.
-4. Pick a model with **Change** at the top right, then make your first character.
+4. Add a model with **Set up** at the top right, then make your first character.
 
 ### Mac and Linux
 
@@ -181,7 +189,7 @@ Each app keeps its own port and data folder, so they all run at once without cla
 ## Staying in step with the apps
 
 Dramatis checks characters with each app's own code rather than a copy of their rules: Companion's, Adventure's and
-Dungeon's request models, Companion's card reader and image makers, and the personality slider rules and words that
+Dungeon's request models, Companion's card reader, image makers and text model providers, and the personality slider rules and words that
 Companion and Adventure share. They're copied into `Program/dramatis/formats/`, with the commit each came from recorded in
 `SOURCE.json`. To update them:
 

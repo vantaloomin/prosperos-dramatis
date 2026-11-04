@@ -35,6 +35,10 @@ character creator.
   screen. It gets the live form, the form as its last answer left it and the focused field (`data-field` on each
   `Field`, the same keys as Help me write), and answers `{"reply", "edits"}`; each edit is a proposal the user applies (then marked, with Undo) or dismisses.
   A field it may edit is in `assistant.guides()`.
+- Every model call goes through `dramatis/ai.py` `complete`, run with Companion's own providers (vendored in
+  `formats/companion/providers`). Profiles and which one does each job (`writing`, `assistant`, `cast`) are
+  `dramatis/profiles.py` (in settings.json, keys in the keyring), routes in `model_routes.py`; a caller names its job
+  with `ai.doing(job)`. The Models screen is Companion's, ported to `src/models/`.
 - Browser autofill and password managers are off on every field: `src/noAutofill.ts` (started in `main.tsx`) marks each
   `input`, `textarea` and `select` as it appears, so a new field needs nothing.
 - The model never saves anything: drafts go to the form for review, and only Save writes to the library.

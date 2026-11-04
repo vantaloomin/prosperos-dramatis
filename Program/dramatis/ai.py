@@ -1,129 +1,83 @@
-"""Calling the user's chosen model: Claude through Anthropic's API, any OpenAI-compatible server (LM Studio,
-Ollama, OpenRouter and the like, local or not), or the `claude` command line on this computer.
+"""Calling the model the user chose for the job, through Prospero's Companion's own text model providers (vendored in
+dramatis/formats/companion/providers by scripts/sync_format.py): OpenAI, Anthropic, OpenRouter, Google, NanoGPT, any
+OpenAI-compatible API, LM Studio or Ollama on this computer, Kobold, Codex under the user's ChatGPT login, and Claude
+Code under their Claude plan. Which profile does which job is dramatis/profiles.py.
 
-The model only ever drafts: dramatis/drafting.py checks what comes back and the form shows it for review. Nothing is
-saved until the user saves.
-API keys are kept in the system keyring when there is one, never in the settings file.
+Every model call in Dramatis comes through `complete`: drafts, Help me write, the interview, the AI-slop retry,
+portrait prompts, the Sidebar Assistant and the Cast board's help. The job is `writing` unless the caller says
+otherwise with `doing`. The model only ever drafts: dramatis/drafting.py checks what comes back and the form shows it
+for review. Nothing is saved until the user saves.
 """
-import json
-import os
-import shutil
-import subprocess
+import asyncio
+import threading
+from contextlib import contextmanager
+from contextvars import ContextVar
 
-import anthropic
-import httpx
-import keyring
-from keyring.errors import KeyringError
-
-from dramatis import settings
+from dramatis import profiles
 from dramatis.formats.companion.errors import DomainError, require
+from dramatis.formats.companion.providers.chat import INCOMPLETE, ChatProvider
 
-PROVIDERS = ('anthropic', 'openai', 'claude-cli')
-DEFAULTS = {'anthropic': 'claude-opus-5-5', 'openai': '', 'claude-cli': ''}
-KEYRING = 'prosperos-dramatis'
-MAX_TOKENS = 16000
-TIMEOUT = 600
+JOB: ContextVar[str] = ContextVar('job', default=profiles.WRITING)
+PROVIDER = ChatProvider()
+# A model that turns down the profile's reasoning effort is asked with one it takes, and the profile remembers it.
+PROVIDER.learned_effort = profiles.learn_effort
 
-
-def config() -> dict:
-    """The model settings as the screen shows them: which provider, model and server, and whether a key is set."""
-    saved = settings.load().get('model') or {}
-    provider = saved.get('provider') if saved.get('provider') in PROVIDERS else 'anthropic'
-    return {'provider': provider, 'model': saved.get('model') or DEFAULTS[provider],
-            'base_url': saved.get('base_url') or '', 'has_key': bool(api_key(provider))}
+_loop: asyncio.AbstractEventLoop | None = None
+_starting = threading.Lock()
 
 
-def configure(provider: str, model: str = '', base_url: str = '', key: str | None = None) -> dict:
-    require(provider in PROVIDERS, 'Pick Anthropic, an OpenAI-compatible server, or the claude command line.', 422)
-    if provider == 'openai':
-        require(base_url.startswith(('http://', 'https://')), 'An OpenAI-compatible server needs its address, like '
-                'http://127.0.0.1:1234/v1 for LM Studio.', 422)
-    if key is not None:
-        store_key(provider, key)
-    settings.save({'model': {'provider': provider, 'model': model.strip(), 'base_url': base_url.strip().rstrip('/')}})
-    return config()
+def run(work):
+    """Run one of the providers' coroutines to its end from a route (FastAPI runs Dramatis' routes in threads). They
+    share one event loop of their own, so the provider's per-run memory (prompt cache, learned efforts) holds."""
+    global _loop
+    with _starting:
+        if _loop is None:
+            _loop = asyncio.new_event_loop()
+            threading.Thread(target=_loop.run_forever, name='dramatis-models', daemon=True).start()
+    return asyncio.run_coroutine_threadsafe(work, _loop).result()
 
 
-def api_key(provider: str) -> str:
+@contextmanager
+def doing(job: str):
+    """Model calls inside go to the profile that does `job` (the writing profile when it has none of its own)."""
+    token = JOB.set(job)
     try:
-        return keyring.get_password(KEYRING, provider) or ''
-    except KeyringError:
-        return ''
-
-
-def store_key(provider: str, key: str):
-    try:
-        if key:
-            keyring.set_password(KEYRING, provider, key)
-        else:
-            keyring.delete_password(KEYRING, provider)
-    except KeyringError as error:
-        if key:
-            raise DomainError(f'This computer has no keyring to keep the key in safely ({error}).', 500) from error
+        yield
+    finally:
+        JOB.reset(token)
 
 
 def complete(system: str, prompt: str) -> str:
-    """One answer from the configured model, as text."""
-    chosen = config()
-    if chosen['provider'] == 'anthropic':
-        return complete_anthropic(chosen, system, prompt)
-    if chosen['provider'] == 'openai':
-        return complete_openai(chosen, system, prompt)
-    return complete_cli(chosen, system, prompt)
+    """One answer from the model doing the current job, as text."""
+    config = profiles.for_job(JOB.get())
+    return run(reply(config, config.pop('key'), system, prompt))
 
 
-def complete_anthropic(chosen: dict, system: str, prompt: str) -> str:
-    key = api_key('anthropic')
-    require(bool(key or os.environ.get('ANTHROPIC_API_KEY')), 'No model is set up yet. Add an Anthropic key in Models, '
-            'or pick a local server or the claude command line.', 409)
-    client = anthropic.Anthropic(api_key=key) if key else anthropic.Anthropic()
+async def reply(config: dict, key: str | None, system: str, prompt: str) -> str:
+    parts, finish = [], None
+    async for chunk in PROVIDER.stream(config, key, system, [{'role': 'user', 'content': prompt}]):
+        parts.append(chunk.text)
+        finish = chunk.finish_reason or finish
+    require(finish != 'length', f"{INCOMPLETE['length']} Raise the longest reply for {config['profile_name']} in "
+            'Models, then try again.', 502)
+    require(finish != 'content_filter', 'The model declined this draft. Try rewording the ask, or another model.', 422)
+    return ''.join(parts)
+
+
+# The image maker's key (dramatis/images.py) is kept in the same keyring as the profiles' keys.
+
+def api_key(name: str) -> str:
     try:
-        # Server-side fallback: a request one model declines is retried on another rather than failing outright.
-        response = client.beta.messages.create(
-            model=chosen['model'], max_tokens=MAX_TOKENS, system=system,
-            messages=[{'role': 'user', 'content': prompt}], output_config={'effort': 'medium'},
-            betas=['server-side-fallback-2026-07-01'], fallbacks='default')
-    except anthropic.AuthenticationError as error:
-        raise DomainError('Anthropic did not accept the API key. Set it again in Models.', 401) from error
-    except anthropic.RateLimitError as error:
-        raise DomainError('Anthropic is rate limiting this key; try again in a minute.', 429) from error
-    except anthropic.APIStatusError as error:
-        raise DomainError(f'Anthropic answered {error.status_code}: {error.message}', 502) from error
-    except anthropic.APIConnectionError as error:
-        raise DomainError('Could not reach Anthropic. Check the connection.', 502) from error
-    if response.stop_reason == 'refusal':
-        raise DomainError('The model declined this draft. Try rewording the ask, or another model.', 422)
-    return ''.join(block.text for block in response.content if block.type == 'text')
+        return profiles.VAULT.get(name) or ''
+    except DomainError:
+        return ''
 
 
-def complete_openai(chosen: dict, system: str, prompt: str) -> str:
-    key = api_key('openai')
-    headers = {'Authorization': f'Bearer {key}'} if key else {}
-    body = {'model': chosen['model'] or 'local-model', 'max_tokens': MAX_TOKENS,
-            'messages': [{'role': 'system', 'content': system}, {'role': 'user', 'content': prompt}]}
-    try:
-        response = httpx.post(f"{chosen['base_url']}/chat/completions", json=body, headers=headers, timeout=TIMEOUT)
-    except httpx.HTTPError as error:
-        raise DomainError(f"Could not reach the model server at {chosen['base_url']} ({error}).", 502) from error
-    require(response.status_code < 400, f'The model server answered {response.status_code}: {response.text[:300]}', 502)
-    try:
-        return response.json()['choices'][0]['message']['content'] or ''
-    except (ValueError, KeyError, IndexError, TypeError) as error:
-        raise DomainError('The model server sent something that is not a chat answer.', 502) from error
-
-
-def complete_cli(chosen: dict, system: str, prompt: str) -> str:
-    command = shutil.which('claude')
-    require(bool(command), 'The claude command line is not installed on this computer.', 409)
-    args = [command, '-p', '--output-format', 'json', '--append-system-prompt', system]
-    if chosen['model']:
-        args += ['--model', chosen['model']]
-    try:
-        done = subprocess.run(args, input=prompt, capture_output=True, text=True, encoding='utf-8', timeout=TIMEOUT)
-    except subprocess.TimeoutExpired as error:
-        raise DomainError('The claude command line took too long.', 504) from error
-    require(done.returncode == 0, f'The claude command line failed: {(done.stderr or done.stdout)[:300]}', 502)
-    try:
-        return json.loads(done.stdout).get('result', '')
-    except ValueError:
-        return done.stdout
+def store_key(name: str, key: str):
+    if key:
+        profiles.VAULT.put(name, key)
+    else:
+        try:
+            profiles.VAULT.delete(name)
+        except DomainError:
+            pass

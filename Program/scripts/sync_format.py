@@ -2,11 +2,12 @@
 --adventure PATH --dungeon PATH` (each a checkout of that app; leave one out to keep its copy as it is).
 
 Dramatis makes characters that Prospero's Companion, Adventure and Dungeon load unchanged, so it checks them with each
-app's own request models rather than a rewrite, reads character files with Companion's own importer, and rolls
-personality sliders with the apps' own slider code and words, and draws portraits with Companion's own image
-adapters (ComfyUI, the Codex CLI and hosted image APIs). This script copies those files from each checkout,
-points their imports at the vendored copies (or at Dramatis' stand-ins for the few modules that would pull in a whole
-app), and stamps formats/SOURCE.json with the commit each came from.
+app's own request models rather than a rewrite, reads character files with Companion's own importer, rolls
+personality sliders with the apps' own slider code and words, draws portraits with Companion's own image adapters
+(ComfyUI, the Codex CLI and hosted image APIs), and drafts through Companion's own text model providers (hosted APIs,
+local servers, Claude Code and Codex). This script copies those files from each checkout, points their imports at the
+vendored copies (or at Dramatis' stand-ins for the few modules that would pull in a whole app), and stamps
+formats/SOURCE.json with the commit each came from.
 
 `--check` changes nothing and exits 1 when the vendored files differ from the checkouts' (CI runs it against each
 app's latest main to catch drift).
@@ -25,6 +26,10 @@ SOURCE_FILE = 'SOURCE.json'
 # Companion's image adapters (their own import closure) and the ComfyUI workflows its families use.
 IMAGE_MODULES = ('tags', 'node_packs', 'adapters/base', 'adapters/hosted', 'adapters/novelai', 'adapters/comfyui',
                  'adapters/codex')
+# Companion's text model providers (its whole Settings > Models connection layer, without its profile database):
+# hosted APIs, local and OpenAI-compatible servers, Kobold, and the Claude Code and Codex command lines.
+PROVIDER_MODULES = ('urls', 'config', 'capabilities', 'requests', 'events', 'chat', 'claude_code', 'codex',
+                    'cli_accounts', 'discovery', 'discovery_errors', 'efforts', 'balance', 'prompt_cache', 'vault')
 WORKFLOWS = tuple(f'{family}{kind}' for family in ('krea2-turbo', 'qwen-image-2.1', 'z-image-turbo', 'anima',
                                                    'booru-sdxl') for kind in ('', '-reference'))
 # Per app: its repository, its Python package, the files to vendor (checkout path -> vendored name), the data files
@@ -42,9 +47,10 @@ APPS = {
             'Program/companion/imports/formats.py': 'imports/formats.py',
             'Program/companion/imports/lorebooks.py': 'imports/lorebooks.py',
             'Program/companion/world/personality.py': 'personality.py',
+            # Companion's text model providers, for every draft (dramatis/ai.py).
+            **{f'Program/companion/providers/{name}.py': f'providers/{name}.py' for name in PROVIDER_MODULES},
             # Companion's image makers, for portraits (dramatis/images.py): kept at the same paths under images/,
             # so the ComfyUI adapter finds the workflows beside it as it does in Companion.
-            'Program/companion/providers/urls.py': 'providers/urls.py',
             **{f'Program/companion/images/{name}.py': f'images/{name}.py' for name in IMAGE_MODULES},
         },
         'data': {'Program/companion/world/data/personality.json': 'data/personality.json',
@@ -59,7 +65,12 @@ APPS = {
             'companion.world.catalog': 'dramatis.stand_ins.catalog',
             'companion.world.generators': 'dramatis.stand_ins.generators',
             'companion.world.intimacy': 'dramatis.stand_ins.intimacy',
-            'companion.providers.urls': 'dramatis.formats.companion.providers.urls',
+            'companion.models': 'dramatis.formats.companion.models',
+            **{f'companion.providers.{name}': f'dramatis.formats.companion.providers.{name}' for name in PROVIDER_MODULES},
+            # chat.py asks the built-in model's server where it runs (Companion downloads and runs one), and the
+            # key vault is named after the app: Dramatis has neither of Companion's, so these stand in.
+            'companion.providers.builtin_chat': 'dramatis.stand_ins.builtin_chat',
+            'companion.identity': 'dramatis.stand_ins.identity',
             **{f"companion.images.{name.replace('/', '.')}": f"dramatis.formats.companion.images.{name.replace('/', '.')}"
                for name in IMAGE_MODULES},
         },

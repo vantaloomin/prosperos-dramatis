@@ -10,26 +10,26 @@ export interface SlotProps { cast: Cast; update: (change: (cast: Cast) => Cast) 
 
 /** The board header: Suggest corners for the outer square. */
 export function HeaderActions({ cast, update, tags }: SlotProps & { tags: TagInfo[] }) {
-  return useModelReady() ? <SuggestCorners cast={cast} update={update} target="outer" tags={tags} /> : <SetUpModel />
+  return useModelReady('cast') ? <SuggestCorners cast={cast} update={update} target="outer" tags={tags} /> : <SetUpModel />
 }
 
 /** An outer card's actions: Suggest corners for the inner square under it, once it is split. */
 export function SideActions({ cast, update, side, tags }: SlotProps & { side: Corner; tags: TagInfo[] }) {
-  const ready = useModelReady()
+  const ready = useModelReady('cast')
   return ready && side.inner ? <SuggestCorners cast={cast} update={update} target={side.id} tags={tags} compact /> : null
 }
 
 /** The checks strip: Check my square. */
 export function ChecksActions({ cast, lit, onLight }: SlotProps & { lit: CastCheck | null; onLight: (check: CastCheck | null) => void }) {
-  return useModelReady() ? <CheckSquare cast={cast} lit={lit} onLight={onLight} /> : null
+  return useModelReady('cast') ? <CheckSquare cast={cast} lit={lit} onLight={onLight} /> : null
 }
 
 /** The panel of a confirmed resonance link: Find the turn. */
 export function ResonanceActions({ cast, update, link }: SlotProps & { link: Resonance }) {
-  return useModelReady() ? <FindTurn key={`${link.a}~${link.b}~${link.on}`} cast={cast} update={update} link={link} /> : null
+  return useModelReady('cast') ? <FindTurn key={`${link.a}~${link.b}~${link.on}`} cast={cast} update={update} link={link} /> : null
 }
 
 /** A relationship row: Suggest, while its texts are empty. */
 export function RelationshipActions({ cast, update, index }: SlotProps & { index: number }) {
-  return useModelReady() ? <SuggestRelationship cast={cast} update={update} index={index} /> : null
+  return useModelReady('cast') ? <SuggestRelationship cast={cast} update={update} index={index} /> : null
 }

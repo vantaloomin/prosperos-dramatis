@@ -22,7 +22,7 @@ from typing import Literal
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-from dramatis import drafting, slop
+from dramatis import ai, drafting, slop
 from dramatis.character import APPS
 from dramatis.drafting import Unusable, fill, template, text_value
 
@@ -196,7 +196,8 @@ def answer(body: 'AssistantBody') -> dict:
     # What the user typed or pasted, here or on the form, is theirs: the audit never holds it against the model.
     allowed = ' '.join([json.dumps(character, ensure_ascii=False), body.message,
                         *(turn['content'] for turn in history if turn['role'] == 'user')])
-    return drafting.ask(system, Edits(character, allowed), conversation(history, body.message))
+    with ai.doing('assistant'):
+        return drafting.ask(system, Edits(character, allowed), conversation(history, body.message))
 
 
 # Routes -----------------------------------------------------------------------------------------------------------
