@@ -36,12 +36,6 @@ export interface Group { id: string; name: string; shares: string; axis: AxisKin
 export interface TagInfo { id: string; label: string }
 export interface Templates { axes: AxisInfo[]; genres: Genre[]; groups: Group[]; tags: TagInfo[] }
 
-/** The four impulses package B adds to a character (`character.psyche`). The board only reads them. */
-export interface Impulse { text: string; pressed_by: string[] }
-export interface Psyche { was: Impulse; expected: Impulse; wants_to_be: Impulse; fears_becoming: Impulse }
-export const IMPULSES: [keyof Psyche, string][] = [['was', 'Who they were'], ['expected', "Who they're expected to be"],
-  ['wants_to_be', 'Who they want to be'], ['fears_becoming', 'Who they fear becoming']]
-
 export const AXIS_KINDS: AxisKind[] = ['value', 'means', 'cost', 'purity', 'leadership', 'secret', 'goal-definition', 'dilemma']
 export const RESONANCE_ROLES: [ResonanceRole, string][] = [['', 'No role yet'], ['defector', 'Defector'], ['double-agent', 'Double agent'],
   ['bridge', 'Bridge'], ['mirror', 'Mirror']]

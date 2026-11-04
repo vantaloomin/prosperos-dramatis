@@ -1,12 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
 import { ExternalLink, X } from 'lucide-react'
-import { getJson, type Saved } from '../api'
-import { IMPULSES, corners, type Cast, type Psyche } from '../castApi'
+import { getJson, type Psyche, type Saved } from '../api'
+import { corners, type Cast } from '../castApi'
+import { IMPULSES } from '../Psyche'
 
 /** The focused character, read from the library: their name and their psyche, when they have one. */
 export function useFocus(id: string | null) {
   const found = useQuery({ queryKey: ['character', id], enabled: !!id, queryFn: () => getJson<Saved>(`/api/characters/${id}`) })
-  const psyche = (found.data?.character as { psyche?: Psyche | null } | undefined)?.psyche ?? null
+  const psyche = found.data?.character.psyche ?? null
   return { name: found.data?.character.name || 'They', psyche, loading: found.isLoading, error: found.error?.message ?? '' }
 }
 
@@ -14,7 +15,7 @@ export function useFocus(id: string | null) {
 export function pressLines(cast: Cast, psyche: Psyche | null) {
   if (!psyche) return []
   return IMPULSES.flatMap(([key]) => corners(cast)
-    .filter(({ corner }) => corner.character_id && psyche[key]?.pressed_by.includes(corner.character_id))
+    .filter(({ corner }) => corner.character_id && psyche[key].pressed_by.includes(corner.character_id))
     .map(({ corner }) => ({ key: `psyche:${key}~${corner.id}`, from: `psyche:${key}`, to: corner.id, kind: 'psyche' as const })))
 }
 
