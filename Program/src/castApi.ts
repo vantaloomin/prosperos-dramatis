@@ -185,11 +185,14 @@ export interface RelationshipProposal { dynamic: string; hidden_tension: string;
 export type SuggestTarget = 'outer' | string
 
 export const aiCalls = {
-  suggest: (cast: Cast, target: SuggestTarget) => sendJson<{ proposals: CornerProposal[]; audit: AuditHit[] }>('/api/cast-ai/suggest', 'POST', { cast, target }),
-  check: (cast: Cast) => sendJson<{ flags: SquareFlag[]; judgements: Judgement[]; audit: AuditHit[] }>('/api/cast-ai/check', 'POST', { cast }),
-  turn: (cast: Cast, a: string, b: string) => sendJson<{ turn: string; audit: AuditHit[] }>('/api/cast-ai/turn', 'POST', { cast, a, b }),
-  relationship: (cast: Cast, from: string, to: string) =>
-    sendJson<{ proposal: RelationshipProposal; audit: AuditHit[] }>('/api/cast-ai/relationship', 'POST', { cast, from, to }),
+  suggest: (cast: Cast, target: SuggestTarget, signal?: AbortSignal) =>
+    sendJson<{ proposals: CornerProposal[]; audit: AuditHit[] }>('/api/cast-ai/suggest', 'POST', { cast, target }, signal),
+  check: (cast: Cast, signal?: AbortSignal) =>
+    sendJson<{ flags: SquareFlag[]; judgements: Judgement[]; audit: AuditHit[] }>('/api/cast-ai/check', 'POST', { cast }, signal),
+  turn: (cast: Cast, a: string, b: string, signal?: AbortSignal) =>
+    sendJson<{ turn: string; audit: AuditHit[] }>('/api/cast-ai/turn', 'POST', { cast, a, b }, signal),
+  relationship: (cast: Cast, from: string, to: string, signal?: AbortSignal) =>
+    sendJson<{ proposal: RelationshipProposal; audit: AuditHit[] }>('/api/cast-ai/relationship', 'POST', { cast, from, to }, signal),
 }
 
 /** The square a target names, if it is still on the board. */

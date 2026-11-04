@@ -3,6 +3,7 @@ import { Check, Users, X } from 'lucide-react'
 import {
   LIMITS, RESONANCE_ROLES, findCorner, samePair, type Cast, type Computed, type Resonance, type ResonanceRole, type TagInfo,
 } from '../castApi'
+import { turnKey, useBoardProposals } from './boardProposals'
 import { ResonanceActions } from './slots'
 
 /** A link the board can show: a computed candidate, or a resonance the author confirmed. */
@@ -125,6 +126,7 @@ export function ResonancePanel({ cast, link, tags, update, onClose }: {
   cast: Cast; link: Link; tags: TagInfo[]; update: (change: (cast: Cast) => Cast) => void; onClose: () => void
 }) {
   const stored = cast.resonance.find((item) => item.on === link.on && samePair(item, link))
+  const proposals = useBoardProposals()
   const [role, setRole] = useState<ResonanceRole>(stored?.role ?? '')
   const [note, setNote] = useState(stored?.note ?? '')
   const a = findCorner(cast, link.a)?.corner
@@ -141,7 +143,7 @@ export function ResonancePanel({ cast, link, tags, update, onClose }: {
   const missing = first && second && first !== second
     ? [[first, second], [second, first]].filter(([from, to]) => !cast.relationships.some((item) => item.from === from && item.to === to)) : []
   return (
-    <div className="resonance-panel card" role="group" aria-label="Resonance link">
+    <div className={proposals.open[turnKey(link)] ? 'resonance-panel card proposed' : 'resonance-panel card'} role="group" aria-label="Resonance link">
       <div className="row">
         <strong className="grow">{a?.label || 'Unnamed'} and {b?.label || 'Unnamed'} both work by {label}</strong>
         <button type="button" className="icon" aria-label="Close" onClick={onClose}><X size={15} /></button>

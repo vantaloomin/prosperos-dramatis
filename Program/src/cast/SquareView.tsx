@@ -33,6 +33,10 @@ const axisName = (axes: AxisInfo[], kind: AxisKind) => axes.find((item) => item.
 const innerKinds = (axes: AxisInfo[], outer: AxisKind, keep?: AxisKind) => AXIS_KINDS.filter((kind) =>
   kind === keep || (kind !== outer && kind !== 'dilemma' && !axes.find((item) => item.kind === kind)?.outer_only))
 
+const COUNT: Record<number, string> = { 2: 'two', 3: 'three', 4: 'four' }
+/** How many corners a full split makes: the group type's roles, three or four. */
+const fullCount = (group?: Group) => Math.min(4, Math.max(3, group?.roles.length || 4))
+
 /** The outer square: its axis, and a card for each side, with the inner square of any side that is split. */
 export function SquareView({ cast, axes, genre, group, context, update }: Props) {
   const narrow = useNarrow()
@@ -68,13 +72,12 @@ function AxisRow({ kind, label, help, axes, kinds, taken, onChange }: {
     <div className="axis">
       <div className="axis-row">
         <label className="sr-only" htmlFor={`${id}-kind`}>They disagree about</label>
-        <select id={`${id}-kind`} value={kind} onChange={(event) => onChange({ kind: event.target.value as AxisKind })}>
+        <select id={`${id}-kind`} value={kind} title={help} onChange={(event) => onChange({ kind: event.target.value as AxisKind })}>
           {kinds.map((item) => <option key={item} value={item} disabled={taken?.has(item) && item !== kind}>{axisName(axes, item)}</option>)}
         </select>
         <input aria-label={kind === 'dilemma' ? 'The dilemma' : 'The axis in your words'} value={label} maxLength={LIMITS.axis}
           placeholder={kind === 'dilemma' ? 'The dilemma, as a question' : 'In your words: how to keep order'} onChange={(event) => onChange({ label: event.target.value })} />
       </div>
-      {help && <span className="hint">{help}</span>}
     </div>
   )
 }
@@ -96,8 +99,9 @@ function Side({ side, index, cast, axes, genre, group, context, narrow, update }
         : splitting ? <SplitPrompt cast={cast} side={side} mode={splitting} axes={axes} genre={genre} group={group} update={update} onDone={() => setSplitting(null)} />
           : (
             <div className="row split-buttons">
-              <button type="button" className={suggested ? 'primary' : undefined} onClick={() => setSplitting('full')}><Split size={14} aria-hidden /> Split this side</button>
+              <button type="button" onClick={() => setSplitting('full')}><Split size={14} aria-hidden /> Split in {COUNT[fullCount(group)]}</button>
               <button type="button" onClick={() => setSplitting('partial')}>Split in two</button>
+              {suggested && <span className="pill">Suggested</span>}
             </div>
           )}
     </CornerCard>
@@ -126,18 +130,17 @@ function SplitPrompt({ cast, side, mode, axes, genre, group, update, onDone }: {
   const id = useId()
   const help = axes.find((item) => item.kind === kind)?.help
   const roles = group?.roles ?? []
-  const count = mode === 'partial' ? 2 : Math.min(4, Math.max(3, roles.length || 4))
+  const count = mode === 'partial' ? 2 : fullCount(group)
   const picked = Array.from({ length: count }, (_, n) => roles[n] ?? '')
   return (
     <div className="split-prompt">
       <label htmlFor={id}>Within {side.label || 'this side'}, they disagree about</label>
-      <select id={id} value={kind} onChange={(event) => setKind(event.target.value as AxisKind)}>
+      <select id={id} value={kind} title={help} onChange={(event) => setKind(event.target.value as AxisKind)}>
         {kinds.map((item) => <option key={item} value={item}>{axisName(axes, item)}</option>)}
       </select>
-      {help && <span className="hint">{help}</span>}
       <div className="row">
         <button type="button" className="primary" onClick={() => { update((current) => splitSide(current, side.id, kind, '', picked)); onDone() }}>
-          Split into {count}
+          Split in {COUNT[count]}
         </button>
         <button type="button" onClick={onDone}>Cancel</button>
       </div>

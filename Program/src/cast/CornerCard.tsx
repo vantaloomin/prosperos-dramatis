@@ -1,7 +1,9 @@
 import { useId, useState, type ReactNode } from 'react'
-import { Crosshair, ExternalLink, Sparkles, Trash2, Unlink, X } from 'lucide-react'
+import { Crosshair, MoreHorizontal, Trash2, Unlink, X } from 'lucide-react'
 import type { Summary } from '../api'
 import { LIMITS, tagOf, words, type Corner, type TagInfo } from '../castApi'
+import { Bolt } from '../Fields'
+import { BoardProposalBar, cornerKey, useBoardProposals } from './boardProposals'
 
 export interface CornerContext {
   tags: TagInfo[]
@@ -34,17 +36,19 @@ interface Props {
 export function CornerCard({ corner, outer, context, stanceHint, fieldKeys = [], onChange, onRemove, actions, children }: Props) {
   const id = useId()
   const lit = context.highlighted.has(corner.id)
+  const proposed = !!useBoardProposals().open[cornerKey(corner.id)]
   return (
-    <article className={`corner${outer ? ' side' : ''}${lit ? ' lit' : ''}`} ref={(element) => context.register(corner.id, element)} aria-label={corner.label || (outer ? 'Unnamed side' : 'Unnamed corner')}>
+    <article className={`corner${outer ? ' side' : ''}${lit ? ' lit' : ''}${proposed ? ' proposed' : ''}`} ref={(element) => context.register(corner.id, element)} aria-label={corner.label || (outer ? 'Unnamed side' : 'Unnamed corner')}>
       <div className="corner-head">
         <input className="corner-name" aria-label={outer ? 'Name of this side' : 'Name of this corner'} value={corner.label} maxLength={LIMITS.label}
           placeholder={outer ? 'Name this side' : 'Name this corner'} onChange={(event) => onChange({ label: event.target.value })} />
         {actions}
         {onRemove && <button type="button" className="icon danger" aria-label={`Remove ${corner.label || 'this corner'}`} onClick={onRemove}><Trash2 size={14} /></button>}
       </div>
-      <label className="sr-only" htmlFor={`${id}-stance`}>{outer ? 'Why' : 'How'}</label>
+      <BoardProposalBar at={cornerKey(corner.id)} />
+      <label className="corner-label" htmlFor={`${id}-stance`}>{outer ? 'Why' : 'How'}</label>
       <textarea id={`${id}-stance`} className="stance" rows={2} value={corner.stance} maxLength={LIMITS.stance}
-        placeholder={stanceHint || (outer ? 'Why: what this side wants' : 'How: the way this corner goes after it')} onChange={(event) => onChange({ stance: event.target.value })} />
+        placeholder={stanceHint} onChange={(event) => onChange({ stance: event.target.value })} />
       {fieldKeys.map((key) => (
         <div className="field" key={key}>
           <label htmlFor={`${id}-${key}`}>{words(key)}</label>
@@ -52,7 +56,8 @@ export function CornerCard({ corner, outer, context, stanceHint, fieldKeys = [],
             onChange={(event) => onChange({ fields: { ...corner.fields, [key]: event.target.value } })} />
         </div>
       ))}
-      <TagPicker tags={corner.tags} bank={context.tags} onChange={(tags) => onChange({ tags })} />
+      <span className="corner-label" id={`${id}-tags`}>How-tags</span>
+      <TagPicker tags={corner.tags} bank={context.tags} labelledBy={`${id}-tags`} onChange={(tags) => onChange({ tags })} />
       <details className="corner-note" open={!!corner.note || undefined}>
         <summary>Note</summary>
         <textarea aria-label="Note" rows={2} value={corner.note} maxLength={LIMITS.note} onChange={(event) => onChange({ note: event.target.value })} />
@@ -64,7 +69,7 @@ export function CornerCard({ corner, outer, context, stanceHint, fieldKeys = [],
 }
 
 /** How a corner fights, as tags: picked from the bank or typed new. Shared tags across sides are what resonance finds. */
-function TagPicker({ tags, bank, onChange }: { tags: string[]; bank: TagInfo[]; onChange: (tags: string[]) => void }) {
+function TagPicker({ tags, bank, labelledBy, onChange }: { tags: string[]; bank: TagInfo[]; labelledBy: string; onChange: (tags: string[]) => void }) {
   const list = useId()
   const [text, setText] = useState('')
   const label = (tag: string) => bank.find((item) => item.id === tag)?.label ?? tag
@@ -75,12 +80,12 @@ function TagPicker({ tags, bank, onChange }: { tags: string[]; bank: TagInfo[]; 
     setText('')
   }
   return (
-    <div className="tags">
+    <div className="tags" role="group" aria-labelledby={labelledBy}>
       {tags.map((tag) => (
         <span key={tag} className="tag">{label(tag)}<button type="button" className="icon" aria-label={`Remove the tag ${label(tag)}`} onClick={() => onChange(tags.filter((item) => item !== tag))}><X size={12} /></button></span>
       ))}
       {tags.length < LIMITS.tags && (
-        <input className="tag-input" list={list} value={text} aria-label="Add a how-tag" placeholder={tags.length ? 'Another tag' : 'How-tags: force, charm…'}
+        <input className="tag-input" list={list} value={text} aria-label="Add a how-tag" placeholder={tags.length ? 'Another' : 'Force, charm…'}
           onChange={(event) => {
             const value = event.target.value
             if (bank.some((item) => item.id === value)) add(value)
@@ -111,10 +116,15 @@ function CharacterSlot({ corner, context, onChange }: { corner: Corner; context:
       <div className="slot linked">
         {found?.portrait ? <img className="thumb small-thumb" src={`/api/characters/${linked}/portrait.png?at=${found.updated}`} alt="" /> : <span className="thumb small-thumb" aria-hidden />}
         <strong className={`grow${missing ? ' error' : ''}`}>{missing ? 'No longer in the library' : name || 'Loading…'}</strong>
-        {!missing && <button type="button" className="icon" aria-label={`Open ${name}`} title="Open their form" onClick={() => context.onOpenCharacter(linked)}><ExternalLink size={14} /></button>}
-        {!missing && <button type="button" className="icon" aria-pressed={focused} aria-label={focused ? `Stop showing ${name}'s inner square` : `Show ${name}'s inner square`} title="Focus"
-          onClick={() => context.onFocus(focused ? null : linked)}><Crosshair size={14} /></button>}
-        <button type="button" className="icon" aria-label="Unlink them" title="Unlink" onClick={() => onChange({ character_id: null })}><Unlink size={14} /></button>
+        {!missing && <button type="button" className="link" aria-label={`Open ${name}`} onClick={() => context.onOpenCharacter(linked)}>Open</button>}
+        <details className="menu">
+          <summary className="button icon" aria-label={`More for ${name || 'them'}`}><MoreHorizontal size={15} aria-hidden /></summary>
+          <div className="menu-items">
+            {!missing && <button type="button" aria-pressed={focused} onClick={() => context.onFocus(focused ? null : linked)}>
+              <Crosshair size={14} aria-hidden /> {focused ? 'Hide their inner square' : 'Show their inner square'}</button>}
+            <button type="button" onClick={() => onChange({ character_id: null })}><Unlink size={14} aria-hidden /> Unlink them</button>
+          </div>
+        </details>
       </div>
     )
   }
@@ -125,7 +135,7 @@ function CharacterSlot({ corner, context, onChange }: { corner: Corner; context:
         <option value="">Link a character…</option>
         {context.characters.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
       </select>
-      <button type="button" onClick={() => context.onDraft(corner.id)}><Sparkles size={14} aria-hidden /> Draft this character</button>
+      <button type="button" onClick={() => context.onDraft(corner.id)}><Bolt /> Draft this character</button>
     </div>
   )
 }
