@@ -331,7 +331,23 @@ class Form:
         background, self.cut = fitted(self.background)
         made = {key: value for key, value in self.made.items() if key not in ('arc', 'looks')}
         made |= {'background': background, 'arc': self.made['arc'], 'looks': self.made['looks']}
+        made['gender'] = made.get('gender') or by_pronouns(' '.join(value for value in made.values() if isinstance(value, str)))
         return Character.model_validate(made).model_dump()
+
+
+SHE = re.compile(r"\b(?:she|her|hers|herself)\b", re.IGNORECASE)
+HE = re.compile(r"\b(?:he|him|his|himself)\b", re.IGNORECASE)
+
+
+def by_pronouns(text: str) -> str:
+    """Woman or man when the card's own words about them clearly say she or he; '' when they don't, or mix them
+    (another person in their story). They is left alone: it is as often other people as them."""
+    she, he = len(SHE.findall(text)), len(HE.findall(text))
+    if she >= 2 and she >= 4 * he:
+        return 'woman'
+    if he >= 2 and he >= 4 * she:
+        return 'man'
+    return ''
 
 
 def fitted(chunks: list[str]) -> tuple[str, bool]:

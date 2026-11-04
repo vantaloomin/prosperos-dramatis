@@ -108,6 +108,25 @@ def test_sliders_follow_companions_rules():
     assert typed['type'] == 'ENFJ'
     assert api.post('/api/sliders', json={'character': {}, 'type': 'QQQQ'}).status_code == 422
 
+    still = api.post('/api/sliders', json={'character': {'about': 'A shy nurse.'}, 'seed': 'abc', 'still': True}).json()
+    assert still['sliders']['social'] == {'level': 0, 'source': 'idea'}
+    assert {key: value['level'] for key, value in still['sliders'].items() if key != 'social'} == dict.fromkeys(
+        ['warmth', 'order', 'curiosity', 'stress'], 1)
+    kept = {'social': {'level': 2, 'source': 'rolled'}}
+    stored = api.post('/api/sliders', json={'character': {'personality_sliders': kept}, 'still': True}).json()
+    assert stored['sliders']['social'] == {'level': 2, 'source': 'rolled'}
+
+
+def test_the_audit_reads_only_what_a_model_wrote():
+    api = client()
+    mara = CHARACTER | {'name': 'Mara Quill', 'about': 'Mara Quill keeps the lighthouse.'}
+    every = api.post('/api/check', json={'character': mara}).json()['audit']
+    assert {hit['field'] for hit in every} >= {'name'}
+    brought = api.post('/api/check', json={'character': mara, 'fields': []}).json()['audit']
+    assert brought == []
+    theirs = api.post('/api/check', json={'character': mara, 'allowed': 'Her name is Mara Quill.'}).json()['audit']
+    assert not [hit for hit in theirs if hit['match'].strip() == 'Quill']
+
 
 def test_drafting_through_the_api(model):
     model.replies = [reply()]

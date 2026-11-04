@@ -8,7 +8,7 @@ import { Field, Fold, ListField, TextArea, TextInput, useModelReady } from './Fi
 import { FromTheirCard } from './FromTheirCard'
 import { InnerLife, SecretSection } from './InnerLife'
 import { Interview, sampleLine } from './Interview'
-import { proposals, useOpenCount } from './proposals'
+import { isEmpty, pathOf, proposals, useOpenCount, useWritten, valueAt, withValue } from './proposals'
 import { Psyche } from './Psyche'
 import { Portrait } from './Portrait'
 import { AppPicks } from './Start'
@@ -54,6 +54,9 @@ function ExportCard({ id }: { id: string }) {
 
 interface Props {
   saved: Saved | null; start: Character; seed: string; filledIn?: string[]; note?: string
+  /** No model wrote them (brought from another app as written): the audit reads only what a model writes from here,
+   * and their sliders stay In between where their words don't say. `allowed` is the user's own text they came from. */
+  brought?: boolean; allowed?: string
   /** A picture to save with them, as base64 PNG: an imported file's own. */
   portrait?: string
   onSaved: (saved: Saved) => void; onDeleted: () => void
@@ -63,7 +66,7 @@ const ZONES: string[] = (() => { try { return Intl.supportedValuesOf('timeZone')
 
 /** One character, every field, for whichever apps they are made for. What a model writes goes into its field as a
  * proposal to keep or put back (src/proposals.ts); nothing is saved until Save. */
-export function Editor({ saved, start, seed, filledIn, note, portrait, onSaved, onDeleted }: Props) {
+export function Editor({ saved, start, seed, filledIn, note, portrait, brought, allowed, onSaved, onDeleted }: Props) {
   const client = useQueryClient()
   const ready = useModelReady()
   const [character, setCharacter] = useState<Character>(start)
@@ -81,16 +84,30 @@ export function Editor({ saved, start, seed, filledIn, note, portrait, onSaved, 
   const assisting = useAssistantShown()
   const waiting = useOpenCount()
   useProposalForm(character, setCharacter)
+  const written = useWritten()
+  // A split's fields that the user's text said nothing about go onto the form as proposals, from empty.
+  useEffect(() => {
+    const form = proposals.form()
+    if (!form || !filledIn?.length) return
+    for (const field of filledIn) {
+      const path = pathOf(field)
+      const value = valueAt(form.get(), path)
+      if (isEmpty(value)) continue
+      form.set(withValue(form.get(), path, Array.isArray(value) ? [] : typeof value === 'string' ? '' : null))
+      const label = document.querySelector(`.editor [data-field="${CSS.escape(field)}"] .field-top > :is(label, .label)`)?.textContent ?? field
+      proposals.propose({ field, label, value, source: 'split', hits: [] })
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // What each app's own models make of the form, a moment after the last change.
   useEffect(() => {
     const timer = setTimeout(() => {
-      sendJson<{ problems: Problems; audit: AuditHit[] }>('/api/check', 'POST', { character: cleaned(character) })
+      sendJson<{ problems: Problems; audit: AuditHit[] }>('/api/check', 'POST', { character: cleaned(character), fields: brought ? written : null, allowed: allowed ?? '' })
         .then((found) => { setProblems(found.problems); setAudit(found.audit); setCheckError('') })
         .catch((failure: Error) => setCheckError(failure.message))
     }, 500)
     return () => clearTimeout(timer)
-  }, [character])
+  }, [character, written]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -122,8 +139,6 @@ export function Editor({ saved, start, seed, filledIn, note, portrait, onSaved, 
   }
 
   const said = sampleLine(character.interview, sample)
-  const filled = new Set(filledIn ?? [])
-  const mark = (field: string, label: string) => filled.has(field) ? `${label} (filled in)` : label
   const blocked = has('companion') && scheduleProblems(character.companion.schedule).length > 0
   const zones = ZONES.includes(character.companion.timezone) || !character.companion.timezone ? ZONES : [character.companion.timezone, ...ZONES]
   return (
@@ -141,7 +156,6 @@ export function Editor({ saved, start, seed, filledIn, note, portrait, onSaved, 
         </div>
       </div>
       {result && <p className={result.tone} role="status">{result.text}</p>}
-      {filled.size > 0 && <p className="note">Their text said nothing about {[...filled].join(', ')}, so the model filled those in. Check them.</p>}
       <WorksIn apps={character.apps} problems={problems} error={checkError} saved={!!saved} />
       <Audit hits={audit} />
 
@@ -177,41 +191,41 @@ export function Editor({ saved, start, seed, filledIn, note, portrait, onSaved, 
             <AppPicks apps={character.apps} onChange={(apps) => set({ apps })} />
           </div>
         </div>
-        <TextArea name="about" label={mark('about', 'About them')} write="about them" value={character.about} onChange={(about) => set({ about })} maxLength={2000} rows={3} />
-        <TextArea name="personality" label={mark('personality', 'Personality')} write="their personality" value={character.personality} onChange={(personality) => set({ personality })} maxLength={8000} rows={4} />
+        <TextArea name="about" label="About them" write="about them" value={character.about} onChange={(about) => set({ about })} maxLength={2000} rows={3} />
+        <TextArea name="personality" label="Personality" write="their personality" value={character.personality} onChange={(personality) => set({ personality })} maxLength={8000} rows={4} />
         <div className="grid two">
           <div className="stack tight">
-            <TextArea name="voice" label={mark('voice', 'How they talk')} write="how they talk" value={character.voice} onChange={(voice) => set({ voice })} maxLength={600} rows={3} />
+            <TextArea name="voice" label="How they talk" write="how they talk" value={character.voice} onChange={(voice) => set({ voice })} maxLength={600} rows={3} />
             {said && <q className="sample">{said}</q>}
           </div>
-          <TextArea name="sound" label={mark('sound', 'How they sound aloud')} write="how they sound aloud" value={character.sound} onChange={(sound) => set({ sound })} maxLength={300} rows={3} />
+          <TextArea name="sound" label="How they sound aloud" write="how they sound aloud" value={character.sound} onChange={(sound) => set({ sound })} maxLength={300} rows={3} />
         </div>
       </section>
 
       <section>
         <h3>How they come across</h3>
         <div className="grid two">
-          <TextArea name="seen_as" label={mark('seen_as', 'How others see them')} write="how others see them" value={character.seen_as} onChange={(seen_as) => set({ seen_as })} maxLength={400} rows={3} />
-          <TextArea name="sees_self" label={mark('sees_self', 'How they see themselves')} write="how they see themselves" value={character.sees_self} onChange={(sees_self) => set({ sees_self })} maxLength={1200} rows={3} />
+          <TextArea name="seen_as" label="How others see them" write="how others see them" value={character.seen_as} onChange={(seen_as) => set({ seen_as })} maxLength={400} rows={3} />
+          <TextArea name="sees_self" label="How they see themselves" write="how they see themselves" value={character.sees_self} onChange={(sees_self) => set({ sees_self })} maxLength={1200} rows={3} />
         </div>
       </section>
 
       <section>
         <h3>Personality</h3>
-        <Sliders character={current} seed={seed} onChange={(personality_sliders) => set({ personality_sliders })} />
+        <Sliders character={current} seed={seed} still={brought} onChange={(personality_sliders) => set({ personality_sliders })} />
       </section>
 
       <section>
         <h3>Their story</h3>
-        <TextArea name="background" label={mark('background', 'Background')} write="their background" value={character.background} onChange={(background) => set({ background })} maxLength={12000} rows={5} />
+        <TextArea name="background" label="Background" write="their background" value={character.background} onChange={(background) => set({ background })} maxLength={12000} rows={5} />
         <div className="grid two">
-          <TextArea name="wants" label={mark('wants', 'What they want')} write="what they want" value={character.wants} onChange={(wants) => set({ wants })} maxLength={300} rows={2} />
-          <TextArea name="fears" label={mark('fears', 'What they fear')} write="what they fear" value={character.fears} onChange={(fears) => set({ fears })} maxLength={300} rows={2} />
+          <TextArea name="wants" label="What they want" write="what they want" value={character.wants} onChange={(wants) => set({ wants })} maxLength={300} rows={2} />
+          <TextArea name="fears" label="What they fear" write="what they fear" value={character.fears} onChange={(fears) => set({ fears })} maxLength={300} rows={2} />
         </div>
         <div className="grid three">
-          <ListField name="skills" label={mark('skills', 'Skills')} write="skills" add="Add a skill" value={character.skills} onChange={(skills) => set({ skills })} />
-          <ListField name="flaws" label={mark('flaws', 'Flaws')} write="flaws" add="Add a flaw" value={character.flaws} onChange={(flaws) => set({ flaws })} />
-          <ListField name="interests" label={mark('interests', 'Interests')} write="interests" add="Add an interest" value={character.interests} onChange={(interests) => set({ interests })} />
+          <ListField name="skills" label="Skills" write="skills" add="Add a skill" value={character.skills} onChange={(skills) => set({ skills })} />
+          <ListField name="flaws" label="Flaws" write="flaws" add="Add a flaw" value={character.flaws} onChange={(flaws) => set({ flaws })} />
+          <ListField name="interests" label="Interests" write="interests" add="Add an interest" value={character.interests} onChange={(interests) => set({ interests })} />
         </div>
       </section>
 
@@ -227,7 +241,7 @@ export function Editor({ saved, start, seed, filledIn, note, portrait, onSaved, 
 
       <section>
         <h3>How they look</h3>
-        <TextArea name="appearance" label={mark('appearance', 'Appearance')} write="their appearance" value={character.appearance} onChange={(appearance) => set({ appearance })} maxLength={600} rows={2} />
+        <TextArea name="appearance" label="Appearance" write="their appearance" value={character.appearance} onChange={(appearance) => set({ appearance })} maxLength={600} rows={2} />
         <div className="folds">
           <Fold title="Details" filled={Object.values(character.looks).some((value) => value !== null && value !== '')}>
             <div className="grid three">
@@ -259,11 +273,11 @@ export function Editor({ saved, start, seed, filledIn, note, portrait, onSaved, 
             )}</Field>
           </div>
           <TextArea name="history_together" label="How you know each other" value={character.companion.history_together} onChange={(history_together) => setLife({ history_together })} maxLength={2000} rows={2} />
-          <TextArea name="routine" label={mark('routine', 'Their routine, in their words')} write="their routine" value={character.companion.routine} onChange={(routine) => setLife({ routine })} maxLength={8000} rows={3} />
+          <TextArea name="routine" label="Their routine, in their words" write="their routine" value={character.companion.routine} onChange={(routine) => setLife({ routine })} maxLength={8000} rows={3} />
           <Field name="schedule" label="Their week" write="their week" filled={character.companion.schedule.length > 0} group>{() => (
             <Schedule blocks={character.companion.schedule} onChange={(schedule) => setLife({ schedule })} />
           )}</Field>
-          <ListField name="life_themes" label={mark('life_themes', 'Life themes')} write="life themes" add="Add a life theme" value={character.companion.life_themes} onChange={(life_themes) => setLife({ life_themes })} />
+          <ListField name="life_themes" label="Life themes" write="life themes" add="Add a life theme" value={character.companion.life_themes} onChange={(life_themes) => setLife({ life_themes })} />
           <div className="grid two">
             <Field label="Time zone">{(id) => (
               <select id={id} value={character.companion.timezone} onChange={(event) => setLife({ timezone: event.target.value })}>

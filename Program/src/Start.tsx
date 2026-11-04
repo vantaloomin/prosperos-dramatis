@@ -6,7 +6,11 @@ import { useModelCall } from './modelCall'
 import { profileFor, useModels } from './models/ModelSettings'
 
 /** How the form opens: the character, and a portrait (base64 PNG) to save with them, such as an imported file's picture. */
-export interface Begun { character: Character; seed?: string; filledIn?: string[]; note?: string; portrait?: string }
+/** `filledIn` are the fields a split wrote that the user's text said nothing about; `brought` says no model wrote any
+ * of it (a file used as written), and `allowed` is the user's own text it came from, for the AI-slop audit. */
+export interface Begun {
+  character: Character; seed?: string; filledIn?: string[]; note?: string; portrait?: string; brought?: boolean; allowed?: string
+}
 /** Picks the quick start opens with, such as the idea the Cast board writes for a corner. */
 export interface Picks { idea?: string; setting?: string }
 
@@ -143,7 +147,7 @@ function PasteCharacter({ onBegin }: { onBegin: (begun: Begun) => void }) {
     try {
       const found = await sendJson<Opened | OpenedFile>('/api/cards/open', 'POST', { filename: picked.name, data: await fileData(picked) })
       if (found.kind === 'character') {
-        onBegin({ character: found.character, note: `${found.character.name || 'They'} came back whole from a card Dramatis made. Save to keep them here.` })
+        onBegin({ character: found.character, brought: !!found.character.card?.source, note: `${found.character.name || 'They'} came back whole from a card Dramatis made. Save to keep them here.` })
         return
       }
       setText(found.text)
@@ -165,12 +169,12 @@ function PasteCharacter({ onBegin }: { onBegin: (begun: Begun) => void }) {
   const asRead = file?.character && text === file.text ? file.character : null
   const openAsRead = () => asRead && onBegin({
     character: withFile({ ...asRead, apps: APPS, companion: { ...asRead.companion, timezone: asRead.companion.timezone || timezone } }),
-    portrait: file?.portrait ?? undefined,
+    portrait: file?.portrait ?? undefined, brought: true,
     note: `${asRead.name || 'They'} opened as the file has them. Read the fields through, fill in the rest, then save.${instructionsNote(file?.instructions)}`,
   })
   const split = () => void call.run((signal) => sendJson<Drafted>('/api/draft/split', 'POST', { text, apps: APPS, timezone }, signal), (found) => onBegin({
-    character: withFile(found.character), seed: found.seed, filledIn: found.filled_in, portrait: file?.portrait ?? undefined,
-    note: `Your character, sorted into the fields.${instructionsNote(found.instructions)}`,
+    character: withFile(found.character), seed: found.seed, filledIn: found.filled_in, portrait: file?.portrait ?? undefined, allowed: text,
+    note: `Your character, sorted into the fields.${found.filled_in?.length ? ' What your text didn’t say is marked for you to keep or put back.' : ''}${instructionsNote(found.instructions)}`,
   }), 'The character could not be sorted into the fields.')
   return (
     <section className="card" aria-labelledby="paste-title">

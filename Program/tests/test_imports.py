@@ -201,3 +201,11 @@ def test_a_lorebook_alone_is_not_a_character():
     book = {'entries': {'0': {'key': ['Gull'], 'content': 'Her ferry.'}}}
     found = client().post('/api/cards/open', json={'filename': 'lore.json', 'data': encoded(json.dumps(book).encode())})
     assert found.status_code == 422 and 'not a character' in found.json()['error']
+
+
+def test_gender_comes_from_the_cards_own_pronouns():
+    from dramatis.imports import by_pronouns
+    assert by_pronouns('She keeps the light. Her brother left; she stayed.') == 'woman'
+    assert by_pronouns('He rows out at dawn and his hands are cold.') == 'man'
+    assert by_pronouns('She met him once; he never wrote to her.') == ''
+    assert by_pronouns('They keep the light.') == ''
