@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from dramatis import NAME, VERSION, ai, cards, drafting, library
+from dramatis import NAME, VERSION, ai, cards, drafting, library, slop
 from dramatis.character import APPS, App, Character, Gender, problems, shapes
 from dramatis.formats.companion import personality
 from dramatis.formats.companion.errors import DomainError, require
@@ -197,9 +197,9 @@ def api() -> APIRouter:  # noqa: C901 - one route each, kept together
 
     @router.post('/check')
     def check(body: CheckBody):
-        """What each app's own models make of the form as it stands."""
+        """What each app's own models make of the form as it stands, and what the AI-slop audit finds in it."""
         found = checked(body.character)
-        return {'problems': problems(found), 'apps': sorted(shapes(found))}
+        return {'problems': problems(found), 'apps': sorted(shapes(found)), 'audit': slop.audit(found.model_dump())}
 
     @router.post('/sliders')
     def slider_view(body: SlidersBody):

@@ -9,6 +9,9 @@ companion/character_helper.py at ae9b0ab) and Adventure (adventure/making.py at 
   checked one by one with Companion's own RoutineBlock. A reply that cannot be used is asked for once more with the
   problem named, and refused after that so the user can fill in the form themselves.
 - Characters are adults: an age pick or a reply under 18 is refused.
+- The AI-slop audit (dramatis/slop.py) reads every drafted field: a hard hit the user didn't write themselves (a stock
+  name such as Elara Voss, an em dash, the assistant's voice) sends the reply back once, and what is left comes back
+  with the draft for the form to show. The list itself never goes into a prompt.
 - The user's picks win over the model: name, gender, age, where and when, the relationship, and emotional edges,
   which stay off unless the user turns them on or their words ask for them.
 
@@ -21,7 +24,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from dramatis import ai
+from dramatis import ai, slop
 from dramatis.character import APPS, Character
 from dramatis.formats.companion import personality
 from dramatis.formats.companion.errors import DomainError
@@ -247,11 +250,18 @@ class Shape:
             character = Character.model_validate(made).model_dump()
         except ValidationError as error:
             raise Unusable(f"it did not fit the character format ({error.errors()[0]['msg']}).") from error
-        result = {'character': character}
+        hits = slop.audit(character, self.allowed())
+        if slop.hard(hits) and not final:
+            raise Unusable(slop.problem(slop.hard(hits)))
+        result = {'character': character, 'audit': hits}
         if self.split:
             filled = raw.get('filled_in') if isinstance(raw.get('filled_in'), list) else []
             result['filled_in'] = [key for key in dict.fromkeys(filled) if key in made and key not in ('name',)]
         return result
+
+    def allowed(self) -> str:
+        """What the user typed or pasted: names and words from it are theirs, whatever the audit list says."""
+        return ' '.join(str(self.picks.get(key) or '') for key in ('name', 'idea', 'vibe', 'setting', 'text'))
 
     def life(self, raw: dict, made: dict, final: bool) -> dict:
         """Companion's part: how they know the user (the user's picks) and, when they are made for Companion, the
@@ -333,7 +343,16 @@ def rewrite(character: dict, field: str, request: str = '') -> dict:
                   field_shape=guide['shape'], emotional=FIELD_EDGES,
                   request=f'What the user wants changed: {request.strip()}' if request.strip() else '',
                   character=json.dumps(current, ensure_ascii=False, indent=1))
-    return ask(system, lambda raw, final: {'field': field, 'value': field_value(field, guide, raw, final)})
+    allowed = f"{json.dumps(character, ensure_ascii=False)} {request}"
+    return ask(system, lambda raw, final: audited(field, field_value(field, guide, raw, final), allowed, final))
+
+
+def audited(field: str, value, allowed: str, final: bool) -> dict:
+    """A rewritten field through the audit: hard hits the character didn't already have go back once."""
+    hits = slop.audit({field: value} if field in slop.FIELDS else {'companion': {field: value}}, allowed)
+    if slop.hard(hits) and not final:
+        raise Unusable(slop.problem(slop.hard(hits)))
+    return {'field': field, 'value': value, 'audit': hits}
 
 
 def field_value(field: str, guide: dict, raw: dict, final: bool):

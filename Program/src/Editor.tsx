@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { CheckCircle2, Download, ImagePlus, Trash2, TriangleAlert } from 'lucide-react'
-import { APPS, APP_NAMES, fileData, sendJson, type App, type Character, type Gender, type Looks, type Problems, type Relationship, type Saved } from './api'
+import { APPS, APP_NAMES, fileData, type AuditHit, sendJson, type App, type Character, type Gender, type Looks, type Problems, type Relationship, type Saved } from './api'
 import { Field, HelpMeWrite, ListArea, TextArea, TextInput, cleanList, useModelReady } from './Fields'
 import { AppPicks } from './Start'
 import { Schedule, scheduleProblems } from './Schedule'
@@ -33,6 +33,7 @@ export function Editor({ saved, start, seed, filledIn, note, onSaved, onDeleted 
   const [character, setCharacter] = useState<Character>(start)
   const [problems, setProblems] = useState<Problems>(saved?.problems ?? {})
   const [checkError, setCheckError] = useState('')
+  const [audit, setAudit] = useState<AuditHit[]>([])
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<{ tone: 'note' | 'error'; text: string } | null>(note ? { tone: 'note', text: note } : null)
   const [portraitAt, setPortraitAt] = useState(Date.now())
@@ -45,8 +46,8 @@ export function Editor({ saved, start, seed, filledIn, note, onSaved, onDeleted 
   // What each app's own models make of the form, a moment after the last change.
   useEffect(() => {
     const timer = setTimeout(() => {
-      sendJson<{ problems: Problems }>('/api/check', 'POST', { character: cleaned(character) })
-        .then((found) => { setProblems(found.problems); setCheckError('') })
+      sendJson<{ problems: Problems; audit: AuditHit[] }>('/api/check', 'POST', { character: cleaned(character) })
+        .then((found) => { setProblems(found.problems); setAudit(found.audit); setCheckError('') })
         .catch((failure: Error) => setCheckError(failure.message))
     }, 500)
     return () => clearTimeout(timer)
@@ -106,6 +107,7 @@ export function Editor({ saved, start, seed, filledIn, note, onSaved, onDeleted 
       {result && <p className={result.tone} role="status">{result.text}</p>}
       {filled.size > 0 && <p className="note">Their text said nothing about {[...filled].join(', ')}, so the model filled those in. Check them.</p>}
       <WorksIn apps={character.apps} problems={problems} error={checkError} saved={!!saved} />
+      <Audit hits={audit} />
 
       <section>
         <h3>Who they are</h3>
@@ -249,6 +251,23 @@ export function Editor({ saved, start, seed, filledIn, note, onSaved, onDeleted 
         </section>
       )}
     </form>
+  )
+}
+
+/** The AI-slop audit of the form as it stands: hard hits (stock names, dashes, the assistant's voice) to fix, and flags
+ * worth a look. Nothing here stops a save: a name the user chose is theirs. */
+function Audit({ hits }: { hits: AuditHit[] }) {
+  if (!hits.length) return null
+  const hard = hits.filter((hit) => hit.severity === 'hard')
+  const flags = hits.filter((hit) => hit.severity === 'flag')
+  const line = (hit: AuditHit, index: number) => <li key={index}><strong>{hit.label}:</strong> “{hit.match.trim() || hit.match}” <span className="muted">({hit.rule}) …{hit.context}…</span></li>
+  return (
+    <div className="audit">
+      {hard.length > 0 && <details open className="error small"><summary><TriangleAlert size={14} aria-hidden /> {hard.length} {hard.length === 1 ? 'thing reads' : 'things read'} as model-written</summary>
+        <p className="muted">Stock names, dashes and the assistant's voice. Change them unless you chose them.</p><ul>{hard.map(line)}</ul></details>}
+      {flags.length > 0 && <details className="small"><summary>Worth a look ({flags.length})</summary>
+        <p className="muted">Words and phrases models lean on. One means little; keep them where they fit.</p><ul>{flags.map(line)}</ul></details>}
+    </div>
   )
 }
 

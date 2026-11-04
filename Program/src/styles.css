@@ -69,6 +69,8 @@ details.section > :not(summary) + :not(summary) { margin-top: 0.75rem; }
 .editor-head h2 { margin: 0; }
 .editor-head .row { margin-left: auto; }
 .works-in { display: flex; gap: 0.4rem 1rem; flex-wrap: wrap; align-items: center; }
+.audit details ul { margin: 0.2rem 0; padding-left: 1.2rem; display: grid; gap: 0.15rem; }
+.audit p { margin: 0.2rem 0; }
 .works-in details ul { margin: 0.2rem 0; padding-left: 1.2rem; }
 .portrait-row { display: flex; gap: 1rem; align-items: flex-start; }
 .portrait { display: grid; gap: 0.3rem; justify-items: center; flex: none; }

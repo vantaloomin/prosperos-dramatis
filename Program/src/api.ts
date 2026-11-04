@@ -50,6 +50,7 @@ export interface Character {
   personality_sliders: Partial<Record<Trait, Slider>> | null; seen_as: string; sees_self: string
   apps: App[]; companion: CompanionLife
 }
+export interface AuditHit { field: string; label: string; severity: 'hard' | 'flag'; rule: string; match: string; context: string }
 export type Problems = Partial<Record<App, string[]>>
 export interface Saved { id: string; created: string; updated: string; seed: string; character: Character; portrait: boolean; problems: Problems }
 export interface Summary { id: string; name: string; about: string; apps: App[]; updated: string; portrait: boolean }

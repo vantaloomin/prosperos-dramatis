@@ -25,6 +25,11 @@ Work in progress: v0.1.0 is the first version.
   and **Put back what was there** undoes it. **How they talk** (their words, rhythm and humour) and **How they sound** (the voice itself, for text to speech) are separate fields, so neither you nor a model mixes them up. There are also the five personality sliders (Roll again, or start from a
   four-letter type), Looks field by field, how others see them and how they see themselves, kind and lifespan, and
   Companion's own part: relationship, closeness, routine, weekly schedule, texting habits.
+- **The AI-slop audit.** Everything the model writes is checked against a list of stock names (Elara Voss), words
+  and patterns that mark text as model-written (Wren Halloway's list, in `Program/dramatis/data/ai-slop.json`). A
+  hard hit, such as a stock name, an em dash or the assistant's voice, sends the draft back to the model once. Anything
+  left shows on the form, with flagged words under "Worth a look". Names and words you typed or pasted yourself are
+  never held against the draft. The list stays out of the drafting prompts, so the model doesn't see those words.
 - **Works in.** While you edit, each app checks the character with its own rules, and the form shows "Works in
   Companion", or what that app would refuse.
 - **Cards.** **Card (PNG)** puts the card into their portrait (or a plain picture if they have none). **Card (JSON)**

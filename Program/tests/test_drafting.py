@@ -78,7 +78,7 @@ def test_a_pasted_character_is_split_and_names_what_was_filled_in(model):
 def test_one_field_is_rewritten_to_fit(model):
     model.replies = ['{"value": ["Bakes bread badly", "Bakes bread badly", "Fixes bikes"]}']
     found = drafting.rewrite({'name': 'Dana', 'skills': ['x']}, 'skills', 'more practical')
-    assert found == {'field': 'skills', 'value': ['Bakes bread badly', 'Fixes bikes']}
+    assert found == {'field': 'skills', 'value': ['Bakes bread badly', 'Fixes bikes'], 'audit': []}
     assert 'What the user wants changed: more practical' in model.asked[0][0]
     with pytest.raises(DomainError):
         drafting.rewrite({}, 'apps')
