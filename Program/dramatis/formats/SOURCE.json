@@ -1,14 +1,14 @@
 {
   "adventure": {
     "repo": "vantaloomin/prosperos-adventure",
-    "commit": "4e35586b9fdb60003eeed99a59633c1cfca443e8",
+    "commit": "24b327df547817fed3642ecf1e9d51bf5cd9ebcc",
     "files": {
       "Program/adventure/models.py": "models.py"
     }
   },
   "companion": {
     "repo": "vantaloomin/prosperos-companion",
-    "commit": "ae9b0abc1f97d9b51110e5967327d29deee03a9b",
+    "commit": "c641bcab2814f0d1162823a294473a7276c588d0",
     "files": {
       "Program/companion/errors.py": "errors.py",
       "Program/companion/models.py": "models.py",

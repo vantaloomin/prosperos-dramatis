@@ -98,6 +98,11 @@ class MoneySetup(Input):
     employment: Literal['', 'staff', 'rota', 'freelance'] = ''
     # What a student studies (companion/life/job_words.py); empty reads it from who they are.
     field: str = Field(default='', max_length=60)
+    # Work of their own (career 'own', companion/life/money.py OWN): what it is, as the user wrote it.
+    job: str = Field(default='', max_length=60)
+    # What they take home a month in their city's money: None works it out from their work and city, 0 is unpaid
+    # (a volunteer, a carer).
+    pay: float | None = Field(default=None, ge=0, le=1_000_000_000)
 
 
 class Looks(Input):
