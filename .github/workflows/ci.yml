@@ -79,7 +79,7 @@ jobs:
             Program/companion/imports/lorebooks.py
             Program/companion/world/personality.py
             Program/companion/world/data/personality.json
-            Program/companion/providers/urls.py
+            Program/companion/providers/
             Program/companion/images/tags.py
             Program/companion/images/node_packs.py
             Program/companion/images/adapters/
