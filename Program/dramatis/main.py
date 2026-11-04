@@ -20,6 +20,7 @@ from dramatis import (
     cast_ai,
     cast_routes,
     drafting,
+    imports,
     interview,
     library,
     portraits,
@@ -235,7 +236,8 @@ def api() -> APIRouter:  # noqa: C901 - one route each, kept together
 
     @router.post('/cards/open')
     def open_card(body: FileBody):
-        return cards.opened(body.filename, body.data)
+        """A character file from Dramatis or another app, read for the form; nothing is saved."""
+        return imports.opened(body.filename, body.data)
 
     return router
 

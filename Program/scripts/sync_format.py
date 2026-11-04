@@ -2,7 +2,7 @@
 --adventure PATH --dungeon PATH` (each a checkout of that app; leave one out to keep its copy as it is).
 
 Dramatis makes characters that Prospero's Companion, Adventure and Dungeon load unchanged, so it checks them with each
-app's own request models rather than a rewrite, reads character cards with Companion's own card reader, and rolls
+app's own request models rather than a rewrite, reads character files with Companion's own importer, and rolls
 personality sliders with the apps' own slider code and words, and draws portraits with Companion's own image
 adapters (ComfyUI, the Codex CLI and hosted image APIs). This script copies those files from each checkout,
 points their imports at the vendored copies (or at Dramatis' stand-ins for the few modules that would pull in a whole
@@ -35,7 +35,12 @@ APPS = {
         'files': {
             'Program/companion/errors.py': 'errors.py',
             'Program/companion/models.py': 'models.py',
-            'Program/companion/imports/cards.py': 'cards.py',
+            # Companion's character importer (Character Cards V1 to V3 as JSON or PNG, CHARX, Backyard Archive,
+            # Marinara Engine, Pygmalion and Backyard / Faraday JSON, and the lorebooks they carry), kept at the same
+            # paths under imports/ as in Companion.
+            'Program/companion/imports/cards.py': 'imports/cards.py',
+            'Program/companion/imports/formats.py': 'imports/formats.py',
+            'Program/companion/imports/lorebooks.py': 'imports/lorebooks.py',
             'Program/companion/world/personality.py': 'personality.py',
             # Companion's image makers, for portraits (dramatis/images.py): kept at the same paths under images/,
             # so the ComfyUI adapter finds the workflows beside it as it does in Companion.
@@ -47,6 +52,8 @@ APPS = {
                     for name in WORKFLOWS}},
         'modules': {
             'companion.errors': 'dramatis.formats.companion.errors',
+            **{f'companion.imports.{name}': f'dramatis.formats.companion.imports.{name}'
+               for name in ('cards', 'formats', 'lorebooks')},
             # personality.py reads its words through catalog.DATA and rolls with generators.unit; models.py checks
             # the adult side's own words with intimacy.allowed. Each would pull in most of Companion.
             'companion.world.catalog': 'dramatis.stand_ins.catalog',

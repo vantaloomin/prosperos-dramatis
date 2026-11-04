@@ -12,14 +12,19 @@ want to be and fear becoming, each with the characters who press on it). The who
 extension; the app shapes fold the parts each app can use into fields it already reads (`folded`), the secret
 included, so the character knows what they are keeping.
 
+`card` holds what a card they were imported from carries that Dramatis doesn't make (its greetings, example
+messages, scenario, notes, prompts, tags, lorebook and other apps' extensions, dramatis/imports.py), as the card had
+it, so their exported cards give it back. No app shape and no model prompt reads it.
+
 Each field's limit is the tightest of the apps that read it, so nothing is cut short on the way in. `for_companion`,
 `for_adventure` and `for_dungeon` lay a character out as each app's own request models expect, and check it with
 those models (vendored in dramatis/formats by scripts/sync_format.py), so a character Dramatis accepts loads in each
 app unchanged. Each app fills in what is left empty its own way (Looks from its banks, a name that fits its world).
 """
+import json
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 from dramatis.formats.adventure import models as adventure
 from dramatis.formats.companion import models as companion
@@ -130,6 +135,40 @@ class Psyche(Input):
                                                                           self.fears_becoming))
 
 
+# A card's own text parts (Character Card V3 sets no limits; these are roomy), and its lorebook and extensions together.
+CARD_TEXT, CARD_DATA = 40000, 4_000_000
+CardText = Annotated[str, Field(max_length=CARD_TEXT)]
+
+
+class CardParts(Input):
+    """What the card they came from had that Dramatis doesn't make, kept as it was ({{char}} and {{user}} included)
+    for the cards they export: a chat app gets its greetings, lorebook and its own extensions back."""
+    source: str = Field(default='', max_length=120)  # the kind of file it came from, "Backyard Archive (BYAF)"
+    first_mes: CardText = ''
+    alternate_greetings: list[CardText] = Field(default_factory=list, max_length=64)
+    mes_example: CardText = ''
+    scenario: CardText = ''
+    creator_notes: CardText = ''
+    system_prompt: CardText = ''
+    post_history_instructions: CardText = ''
+    creator: str = Field(default='', max_length=200)
+    character_version: str = Field(default='', max_length=60)
+    tags: list[Annotated[str, Field(max_length=100)]] = Field(default_factory=list, max_length=64)
+    character_book: dict | None = None
+    # Other apps' own extensions (SillyTavern's, Front Porch's); never `prospero`, which each export writes afresh.
+    extensions: dict = Field(default_factory=dict)
+
+    @model_validator(mode='after')
+    def fits(self):
+        self.extensions.pop('prospero', None)
+        if len(json.dumps([self.character_book, self.extensions], ensure_ascii=False)) > CARD_DATA:
+            raise ValueError("The card's lorebook and extensions are too large to keep.")
+        return self
+
+    def empty(self) -> bool:
+        return not any(value for key, value in self.model_dump().items() if key != 'source')
+
+
 class Character(Input):
     name: str = Field(default='', max_length=80)
     gender: Gender = ''
@@ -166,6 +205,7 @@ class Character(Input):
     arc: Arc = Field(default_factory=Arc)
     secret: Secret = Field(default_factory=Secret)
     psyche: Psyche | None = None
+    card: CardParts | None = None
 
     @field_validator('lifespan')
     @classmethod
@@ -182,6 +222,11 @@ class Character(Input):
     @field_validator('psyche')
     @classmethod
     def no_empty_psyche(cls, value: Psyche | None) -> Psyche | None:
+        return None if value is None or value.empty() else value
+
+    @field_validator('card')
+    @classmethod
+    def no_empty_card(cls, value: CardParts | None) -> CardParts | None:
         return None if value is None or value.empty() else value
 
 

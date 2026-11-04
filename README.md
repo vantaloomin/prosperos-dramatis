@@ -40,11 +40,20 @@ see them and how they see themselves, background, wants and fears, skills, flaws
 their week, routine and life themes. Under **More options** you can add an idea, a vibe, how they know you in
 Companion, and emotional edges, which are off unless you turn them on. Characters are always adults.
 
-**Bring a character you already have.** Paste notes, a bio or a scene, or open a character card (PNG or JSON, V1 to
-V3). The model splits it into the fields and tells you which ones it had to fill in; a secret in your text goes into
-the secret, not the background. You see the card's text before anything is sent anywhere, and a card Dramatis made
-comes back whole without asking the model at all. A text that makes them younger than 18 is refused before it reaches
-the model, and lines in it written to the app or the model rather than about the character are named back to you.
+**Bring a character you already have.** Paste notes, a bio or a scene, or open a character file from another app:
+a Character Card V1 to V3 (PNG or JSON, from SillyTavern, Chub, Agnai, RisuAI and most card sites), CHARX, a Backyard
+Archive (BYAF), a Marinara Engine export, Pygmalion or Backyard / Faraday JSON, or a plain JSON blurb such as
+`{"name": "Mira", "age": 31, "likes": ["ferries"]}`. Files are read with Companion's own importer. **Open in the form**
+fills the fields straight from the file with no model: headed lines (`Age: 34`, `Appearance: ...`) go to their fields,
+a headed secret goes to the secret, and the rest of a description is their Background. **Split into fields** sends the
+text, which you see in the box first, to your model to spread over every field, and it tells you which ones it had to
+fill in; a secret in your text goes into the secret, not the background. Either way the file's first message, other
+greetings, example messages, scenario, notes, prompts, tags, lorebook, picture and other apps' settings stay with them,
+under **From their card** on the form, and go back into the cards you export, so a character edited here loses
+nothing in SillyTavern or Backyard. None of that is shown to a model. A card Dramatis made comes back whole without
+asking the model at all. A text that makes them younger than 18, or gives them a child's look, is refused before it
+reaches the form or the model, and lines in it written to the app or the model rather than about the character are
+named back to you.
 
 **The full form.** Every field is yours to edit. **Help me write** rewrites one field to fit the rest of the
 character, and **Put back what was there** undoes it. **How they talk** (their words, rhythm and humour) and **How
