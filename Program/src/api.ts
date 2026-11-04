@@ -72,6 +72,13 @@ export interface Opened { kind: 'character'; character: Character }
 export interface OpenedText { kind: 'text'; name: string; text: string; truncated: boolean }
 export interface Health { ok: boolean; name: string; version: string; formats: Record<App, { repo: string; commit: string }> }
 export interface ModelConfig { provider: 'anthropic' | 'openai' | 'claude-cli'; model: string; base_url: string; has_key: boolean }
+export interface ImageConfig {
+  kind: 'off' | 'comfyui' | 'codex' | 'hosted'; provider: string; family: string; base_url: string; model: string; has_key: boolean; ready: boolean
+  families: Record<string, string>; providers: Record<string, { label: string; base_url: string }>
+}
+export interface ImageCheck { ok: boolean; summary: string; details: string[] }
+export interface PortraitStyle { key: string; name: string }
+export interface MadePortrait { image: string; prompt: string; style: string }
 export interface TraitInfo { key: Trait; name: string; low: string; high: string; shows: string[] }
 export interface SliderView { sliders: Record<Trait, Slider>; chips: string[]; type: string | null; traits: TraitInfo[] }
 
