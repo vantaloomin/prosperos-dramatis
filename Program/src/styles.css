@@ -109,7 +109,9 @@ input.narrow { width: 13rem; }
 .app-section { border-top: 1px solid var(--line); margin-top: 1rem; }
 .model-line { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; font-size: 0.85rem; }
 .model-form input, .model-form select { width: auto; }
-.model-form input.size { width: 7rem; }
+.model-line details { flex-basis: 100%; margin: 0; }
+.model-line details summary { margin: 0.2rem 0; }
+.model-line details ul { margin: 0; padding-left: 1.2rem; color: var(--ink); }
 code { font-size: 0.85em; }
 /* Interview, inner life, inner square and secret */
 .proposal { display: grid; gap: 0.4rem; }

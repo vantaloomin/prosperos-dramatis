@@ -3,7 +3,8 @@
 
 Dramatis makes characters that Prospero's Companion, Adventure and Dungeon load unchanged, so it checks them with each
 app's own request models rather than a rewrite, reads character cards with Companion's own card reader, and rolls
-personality sliders with the apps' own slider code and words. This script copies those files from each checkout,
+personality sliders with the apps' own slider code and words, and draws portraits with Companion's own image
+adapters (ComfyUI, the Codex CLI and hosted image APIs). This script copies those files from each checkout,
 points their imports at the vendored copies (or at Dramatis' stand-ins for the few modules that would pull in a whole
 app), and stamps formats/SOURCE.json with the commit each came from.
 
@@ -21,6 +22,11 @@ HERE = Path(__file__).resolve().parent.parent
 TARGET = HERE / 'dramatis' / 'formats'
 SOURCE_FILE = 'SOURCE.json'
 
+# Companion's image adapters (their own import closure) and the ComfyUI workflows its families use.
+IMAGE_MODULES = ('tags', 'node_packs', 'adapters/base', 'adapters/hosted', 'adapters/novelai', 'adapters/comfyui',
+                 'adapters/codex')
+WORKFLOWS = tuple(f'{family}{kind}' for family in ('krea2-turbo', 'qwen-image-2.1', 'z-image-turbo', 'anima',
+                                                   'booru-sdxl') for kind in ('', '-reference'))
 # Per app: its repository, its Python package, the files to vendor (checkout path -> vendored name), the data files
 # copied as they are, and where each module it imports comes from in Dramatis.
 APPS = {
@@ -31,8 +37,14 @@ APPS = {
             'Program/companion/models.py': 'models.py',
             'Program/companion/imports/cards.py': 'cards.py',
             'Program/companion/world/personality.py': 'personality.py',
+            # Companion's image makers, for portraits (dramatis/images.py): kept at the same paths under images/,
+            # so the ComfyUI adapter finds the workflows beside it as it does in Companion.
+            'Program/companion/providers/urls.py': 'providers/urls.py',
+            **{f'Program/companion/images/{name}.py': f'images/{name}.py' for name in IMAGE_MODULES},
         },
-        'data': {'Program/companion/world/data/personality.json': 'data/personality.json'},
+        'data': {'Program/companion/world/data/personality.json': 'data/personality.json',
+                 **{f'Program/companion/images/workflows/{name}.json': f'images/workflows/{name}.json'
+                    for name in WORKFLOWS}},
         'modules': {
             'companion.errors': 'dramatis.formats.companion.errors',
             # personality.py reads its words through catalog.DATA and rolls with generators.unit; models.py checks
@@ -40,6 +52,9 @@ APPS = {
             'companion.world.catalog': 'dramatis.stand_ins.catalog',
             'companion.world.generators': 'dramatis.stand_ins.generators',
             'companion.world.intimacy': 'dramatis.stand_ins.intimacy',
+            'companion.providers.urls': 'dramatis.formats.companion.providers.urls',
+            **{f"companion.images.{name.replace('/', '.')}": f"dramatis.formats.companion.images.{name.replace('/', '.')}"
+               for name in IMAGE_MODULES},
         },
     },
     'adventure': {
@@ -136,6 +151,8 @@ def main(argv: list[str] | None = None, target: Path = TARGET) -> int:
             (folder / file).write_text(text, encoding='utf-8')
         (folder / '__init__.py').write_text(f'"""{APPS[name]["repo"]}\'s character format, vendored."""\n',
                                             encoding='utf-8')
+        for package in {(folder / file).parent for file in found if file.endswith('.py')} - {folder}:
+            (package / '__init__.py').write_text('', encoding='utf-8')
         stamp(target, name, commit_of(checkout))
         print(f'{name}: ' + (f"updated {', '.join(changed)}" if changed else 'already up to date'))
     if drifted:

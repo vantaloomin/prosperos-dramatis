@@ -14,7 +14,25 @@
       "Program/companion/models.py": "models.py",
       "Program/companion/imports/cards.py": "cards.py",
       "Program/companion/world/personality.py": "personality.py",
-      "Program/companion/world/data/personality.json": "data/personality.json"
+      "Program/companion/providers/urls.py": "providers/urls.py",
+      "Program/companion/images/tags.py": "images/tags.py",
+      "Program/companion/images/node_packs.py": "images/node_packs.py",
+      "Program/companion/images/adapters/base.py": "images/adapters/base.py",
+      "Program/companion/images/adapters/hosted.py": "images/adapters/hosted.py",
+      "Program/companion/images/adapters/novelai.py": "images/adapters/novelai.py",
+      "Program/companion/images/adapters/comfyui.py": "images/adapters/comfyui.py",
+      "Program/companion/images/adapters/codex.py": "images/adapters/codex.py",
+      "Program/companion/world/data/personality.json": "data/personality.json",
+      "Program/companion/images/workflows/krea2-turbo.json": "images/workflows/krea2-turbo.json",
+      "Program/companion/images/workflows/krea2-turbo-reference.json": "images/workflows/krea2-turbo-reference.json",
+      "Program/companion/images/workflows/qwen-image-2.1.json": "images/workflows/qwen-image-2.1.json",
+      "Program/companion/images/workflows/qwen-image-2.1-reference.json": "images/workflows/qwen-image-2.1-reference.json",
+      "Program/companion/images/workflows/z-image-turbo.json": "images/workflows/z-image-turbo.json",
+      "Program/companion/images/workflows/z-image-turbo-reference.json": "images/workflows/z-image-turbo-reference.json",
+      "Program/companion/images/workflows/anima.json": "images/workflows/anima.json",
+      "Program/companion/images/workflows/anima-reference.json": "images/workflows/anima-reference.json",
+      "Program/companion/images/workflows/booru-sdxl.json": "images/workflows/booru-sdxl.json",
+      "Program/companion/images/workflows/booru-sdxl-reference.json": "images/workflows/booru-sdxl-reference.json"
     }
   },
   "dungeon": {

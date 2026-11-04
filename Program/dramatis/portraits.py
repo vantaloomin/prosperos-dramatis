@@ -1,5 +1,6 @@
 """Make a portrait: the text model turns a character's looks into one image prompt (prompts/portrait.md), a style
-line is added (data/portrait-styles.json), and the image maker draws it (dramatis/images.py).
+line is added (data/portrait-styles.json), and the image maker draws it (dramatis/images.py, with Companion's own
+image adapters).
 
 The prompt is built only from what a portrait shows: appearance, every set Looks field, age, gender, kind, where and
 when they live, and their personality for the expression. Nothing private goes in (how others see them, how they see
@@ -108,11 +109,12 @@ class Body(BaseModel):
 
 
 class ImageBody(Body):
-    provider: str
+    kind: str
+    provider: str = Field(default='', max_length=40)
     base_url: str = Field(default='', max_length=500)
     model: str = Field(default='', max_length=300)
-    size: str = Field(default='', max_length=12)
-    key: str | None = None
+    family: str = Field(default='', max_length=40)
+    key: str | None = Field(default=None, max_length=500)
 
 
 class MakeBody(Body):
@@ -133,7 +135,11 @@ def router() -> APIRouter:
 
     @routes.put('/images')
     def put_images(body: ImageBody):
-        return images.configure(body.provider, body.base_url, body.model, body.size, body.key)
+        return images.configure(body.kind, body.provider, body.base_url, body.model, body.family, body.key)
+
+    @routes.post('/images/check')
+    def check_images():
+        return images.check()
 
     @routes.get('/portrait/styles')
     def get_styles():

@@ -77,6 +77,11 @@ jobs:
             Program/companion/imports/cards.py
             Program/companion/world/personality.py
             Program/companion/world/data/personality.json
+            Program/companion/providers/urls.py
+            Program/companion/images/tags.py
+            Program/companion/images/node_packs.py
+            Program/companion/images/adapters/
+            Program/companion/images/workflows/
           sparse-checkout-cone-mode: false
       - uses: actions/checkout@v4
         with:

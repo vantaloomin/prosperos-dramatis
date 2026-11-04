@@ -17,8 +17,7 @@ def checkout(root: Path, app: str) -> Path:
         text = (FORMATS / app / name).read_text(encoding='utf-8')
         if name.endswith('.py'):
             text = text.split('\n', 1)[1]
-            for original, swapped in (('companion.errors', 'dramatis.formats.companion.errors'),):
-                text = text.replace(swapped, original)
+            text = text.replace('dramatis.formats.companion', 'companion')
             text = text.replace('from dramatis.stand_ins import', 'from companion.world import')
         (root / source).parent.mkdir(parents=True, exist_ok=True)
         (root / source).write_text(text, encoding='utf-8')

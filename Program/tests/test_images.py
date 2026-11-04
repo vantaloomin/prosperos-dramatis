@@ -10,6 +10,8 @@ from PIL import Image
 from dramatis import ai, images, portraits
 from dramatis.cards import PLAIN_SIZE
 from dramatis.character import Character
+from dramatis.formats.companion.images.adapters.comfyui import ComfyAdapter
+from dramatis.formats.companion.images.adapters.hosted import HostedAdapter
 from dramatis.main import create_app
 
 PRIVATE = {'seen_as': 'People think she is cold', 'sees_self': 'I am the only grown-up here',
@@ -38,7 +40,8 @@ def keys(monkeypatch):
 
 @pytest.fixture
 def maker(monkeypatch, keys):
-    """A stand-in image maker: answers each request with `maker.handle(request)` and keeps what it was sent."""
+    """A stand-in image maker behind Companion's own adapters: answers each request with `maker.handle(request)` and
+    keeps what it was sent."""
     class Maker:
         def __init__(self):
             self.sent, self.handle = [], None
@@ -48,8 +51,9 @@ def maker(monkeypatch, keys):
             return self.handle(request)
 
     found = Maker()
-    monkeypatch.setattr(images, 'client', lambda: httpx.Client(transport=httpx.MockTransport(found.transport)))
-    monkeypatch.setattr(images, 'POLL_SECONDS', 0)
+    mock = httpx.MockTransport(found.transport)
+    made = {'comfyui': lambda: ComfyAdapter(transport=mock, poll_seconds=0), 'hosted': lambda: HostedAdapter(transport=mock)}
+    monkeypatch.setattr(images, 'adapter', lambda kind: made[kind]())
     return found
 
 
@@ -65,19 +69,24 @@ def test_the_prompt_holds_what_a_portrait_shows_and_nothing_private():
 
 
 def test_image_settings_are_off_until_set_and_keep_the_key_out_of_the_file(keys):
-    assert api().get('/api/images').json()['ready'] is False
-    refused = api().put('/api/images', json={'provider': 'comfyui', 'base_url': 'http://127.0.0.1:8188'})
-    assert refused.status_code == 422 and 'checkpoint' in refused.json()['error']
-    saved = api().put('/api/images', json={'provider': 'openai', 'base_url': 'https://api.openai.com/v1/images/generations',
-                                           'model': 'gpt-image-1', 'key': 'sk-test'}).json()
-    assert saved == {'provider': 'openai', 'base_url': 'https://api.openai.com/v1', 'model': 'gpt-image-1', 'size': '',
-                     'has_key': True, 'ready': True}
-    assert keys == {'image-openai': 'sk-test'}
-    assert api().put('/api/images', json={'provider': 'openai', 'base_url': 'https://x.test', 'size': 'big'}).status_code == 422
+    found = api().get('/api/images').json()
+    assert found['kind'] == 'off' and found['ready'] is False
+    assert found['families']['krea2'] == 'Krea 2' and found['providers']['openai']['base_url'] == 'https://api.openai.com/v1'
+    assert api().put('/api/images', json={'kind': 'hosted', 'provider': 'openai'}).json()['ready'] is False
+    saved = api().put('/api/images', json={'kind': 'hosted', 'provider': 'openai', 'model': 'gpt-image-1',
+                                           'base_url': 'https://api.openai.com/v1/images/generations', 'key': 'sk-test'}).json()
+    assert {key: saved[key] for key in ('kind', 'provider', 'base_url', 'model', 'has_key', 'ready')} == {
+        'kind': 'hosted', 'provider': 'openai', 'base_url': 'https://api.openai.com/v1', 'model': 'gpt-image-1',
+        'has_key': True, 'ready': True}
+    assert keys == {'image-api': 'sk-test'} and 'sk-test' not in (images.settings.path()).read_text()
+    local = api().put('/api/images', json={'kind': 'comfyui', 'family': 'booru'}).json()
+    assert local['base_url'] == 'http://127.0.0.1:8188' and local['ready'] is True
+    assert api().put('/api/images', json={'kind': 'comfyui', 'family': 'dall-e'}).status_code == 422
+    assert api().put('/api/images', json={'kind': 'hosted', 'provider': 'other', 'base_url': 'http://example.com/v1'}).status_code == 422
 
 
 def test_make_a_portrait_draws_a_card_sized_png_and_saves_nothing(model, maker):
-    images.configure('openai', 'https://api.openai.com/v1', 'gpt-image-1', key='sk-test')
+    images.configure('hosted', 'openai', model='gpt-image-1', key='sk-test')
     model.replies = [json.dumps({'prompt': DRAWN})]
     maker.handle = lambda request: httpx.Response(200, json={'data': [{'b64_json': base64.b64encode(picture(kind='JPEG')).decode()}]})
     made = api().post('/api/characters', json={'character': DANA}).json()
@@ -86,7 +95,8 @@ def test_make_a_portrait_draws_a_card_sized_png_and_saves_nothing(model, maker):
     assert found['prompt'].startswith(DRAWN) and found['prompt'].endswith('muted colours.')
     sent = json.loads(maker.sent[0].content)
     assert str(maker.sent[0].url) == 'https://api.openai.com/v1/images/generations'
-    assert sent == {'prompt': found['prompt'], 'model': 'gpt-image-1', 'n': 1, 'size': '1024x1536'}
+    assert sent == {'prompt': f"{found['prompt']}\nAvoid: {images.NEGATIVE}", 'model': 'gpt-image-1', 'n': 1,
+                    'size': '1024x1536'}
     assert maker.sent[0].headers['authorization'] == 'Bearer sk-test'
     with Image.open(io.BytesIO(base64.b64decode(found['image']))) as drawn:
         assert drawn.format == 'PNG' and drawn.size == PLAIN_SIZE
@@ -102,7 +112,7 @@ def test_make_a_portrait_draws_a_card_sized_png_and_saves_nothing(model, maker):
 
 
 def test_an_unsaved_character_gets_a_portrait_from_the_form(model, maker):
-    images.configure('openai', 'https://openrouter.ai/api/v1', 'some/image-model')
+    images.configure('hosted', 'openrouter', model='some/image-model', key='sk-or')
     model.replies = [json.dumps({'prompt': DRAWN})]
     maker.handle = lambda request: httpx.Response(200, json={'data': [{'b64_json': base64.b64encode(picture()).decode()}]})
     found = api().post('/api/portrait/make', json={'character': DANA, 'style': ''})
@@ -111,11 +121,11 @@ def test_an_unsaved_character_gets_a_portrait_from_the_form(model, maker):
     assert json.loads(maker.sent[0].content)['aspect_ratio'] == '2:3'
 
 
-def test_comfyui_runs_the_bundled_workflow(model, maker):
-    images.configure('comfyui', 'http://127.0.0.1:8188', 'sd_xl_base_1.0.safetensors')
+def test_comfyui_runs_companions_workflow_for_the_family(model, maker):
+    images.configure('comfyui', family='krea2', model='krea2-mine.safetensors')
     model.replies = [json.dumps({'prompt': DRAWN})]
     polls = iter([{}, {'job-1': {'status': {'completed': True},
-                                 'outputs': {'7': {'images': [{'filename': 'p_0001.png', 'subfolder': '', 'type': 'output'}]}}}}])
+                                 'outputs': {'9': {'images': [{'filename': 'p_0001.png', 'subfolder': ''}]}}}}])
 
     def handle(request):
         if request.url.path == '/prompt':
@@ -123,35 +133,42 @@ def test_comfyui_runs_the_bundled_workflow(model, maker):
         if request.url.path == '/history/job-1':
             return httpx.Response(200, json=next(polls))
         assert request.url.path == '/view' and request.url.params['filename'] == 'p_0001.png'
-        return httpx.Response(200, content=picture((832, 1248)))
+        return httpx.Response(200, content=picture((832, 1216)))
 
     maker.handle = handle
     found = api().post('/api/portrait/make', json={'character': DANA, 'style': 'photo'})
     assert found.status_code == 200
-    graph = json.loads(maker.sent[0].content)['prompt']
-    assert graph['1']['inputs']['ckpt_name'] == 'sd_xl_base_1.0.safetensors'
-    assert graph['2']['inputs']['text'] == found.json()['prompt'] and 'nsfw' in graph['3']['inputs']['text']
-    assert graph['4']['inputs'] == {'width': 832, 'height': 1248, 'batch_size': 1}
-    assert isinstance(graph['5']['inputs']['seed'], int)
+    assert str(maker.sent[0].url) == 'http://127.0.0.1:8188/prompt'
+    nodes = json.loads(maker.sent[0].content)['prompt'].values()
+    assert any(node['inputs'].get('unet_name') == 'krea2-mine.safetensors' for node in nodes)
+    texts = [node['inputs'].get('text') for node in nodes if isinstance(node['inputs'].get('text'), str)]
+    assert found.json()['prompt'] in texts
+    assert any(node['inputs'].get('width') == 832 and node['inputs'].get('height') == 1216 for node in nodes)
 
 
 def test_a_provider_error_comes_back_as_a_plain_message(model, maker):
-    images.configure('openai', 'https://api.openai.com/v1', 'gpt-image-1', key='sk-test')
+    images.configure('hosted', 'openai', model='gpt-image-1', key='sk-test')
     model.replies = [json.dumps({'prompt': DRAWN})]
-    maker.handle = lambda request: httpx.Response(400, json={'error': {'message': 'Your request was rejected by our safety system.'}})
+    maker.handle = lambda request: httpx.Response(400, json={'error': {'message': 'Rejected by our safety system.'}})
     found = api().post('/api/portrait/make', json={'character': DANA, 'style': ''})
-    assert found.status_code == 422
-    assert found.json()['error'] == ('The image maker refused this portrait under its content rules. It said: '
-                                     '"Your request was rejected by our safety system."')
+    assert found.status_code == 422 and found.json()['code'] == 'image_refused'
+    assert 'content rules' in found.json()['error'] and 'Rejected by our safety system.' in found.json()['error']
 
     model.replies = [json.dumps({'prompt': DRAWN})]
     maker.handle = lambda request: (_ for _ in ()).throw(httpx.ConnectError('refused'))
     found = api().post('/api/portrait/make', json={'character': DANA, 'style': ''})
-    assert found.status_code == 502 and 'Could not reach the image maker' in found.json()['error']
+    assert found.status_code == 502 and 'reach the provider' in found.json()['error']
+
+
+def test_check_asks_comfyui_what_it_has_without_drawing(maker):
+    images.configure('comfyui', family='krea2')
+    maker.handle = lambda request: httpx.Response(200, json={})
+    found = api().post('/api/images/check').json()
+    assert found['ok'] is False and found['details'] and all(request.url.path == '/object_info' for request in maker.sent)
 
 
 def test_an_unsafe_prompt_goes_back_once_then_is_refused(model, maker):
-    images.configure('openai', 'https://api.openai.com/v1', 'gpt-image-1')
+    images.configure('hosted', 'openai', model='gpt-image-1', key='sk-test')
     model.replies = [json.dumps({'prompt': 'A topless woman'}), json.dumps({'prompt': 'A seductive woman'})]
     found = api().post('/api/portrait/make', json={'character': DANA, 'style': ''})
     assert found.status_code == 502 and 'seductive' in found.json()['error'] and maker.sent == []
