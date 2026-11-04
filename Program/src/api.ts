@@ -10,8 +10,12 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const getJson = <T,>(path: string) => call<T>(path)
-export const sendJson = <T,>(path: string, method: 'POST' | 'PUT' | 'DELETE', data?: unknown) =>
-  call<T>(path, { method, headers: { 'Content-Type': 'application/json' }, body: data === undefined ? undefined : JSON.stringify(data) })
+/** `signal` lets a model call be stopped: the screen stops waiting, and what comes back later is dropped. */
+export const sendJson = <T,>(path: string, method: 'POST' | 'PUT' | 'DELETE', data?: unknown, signal?: AbortSignal) =>
+  call<T>(path, { method, signal, headers: { 'Content-Type': 'application/json' }, body: data === undefined ? undefined : JSON.stringify(data) })
+
+/** Whether a failure is the user pressing Stop, which needs no message. */
+export const stopped = (failure: unknown) => failure instanceof DOMException && failure.name === 'AbortError'
 
 /** A file as base64, for the server to read (cards, portraits). */
 export function fileData(file: File): Promise<string> {
@@ -67,7 +71,7 @@ export interface Character {
 }
 /** What the interview suggests for one field, from POST /api/draft/from-interview. */
 export type ProposedField = 'voice' | 'appearance' | 'seen_as' | 'sees_self' | 'flaws' | 'interests'
-export interface Proposal { field: ProposedField; value: string | string[]; reason: string }
+export interface Suggestion { field: ProposedField; value: string | string[]; reason: string }
 export interface Interviewed { interview: string; sample: string; audit: AuditHit[] }
 export interface AuditHit { field: string; label: string; severity: 'hard' | 'flag'; rule: string; match: string; context: string }
 export type Problems = Partial<Record<App, string[]>>
@@ -114,5 +118,16 @@ export function emptyCharacter(apps: App[] = APPS): Character {
     },
     interview: '', arc: { lie: '', truth: '', catalyst: '' }, secret: { truth: '', cover_story: '', known_by: '' }, psyche: null,
     card: null,
+  }
+}
+
+export const cleanList = (items: string[]) => [...new Set(items.map((item) => item.trim()).filter(Boolean))]
+
+/** The form as the server takes it: lists without blank lines, numbers as numbers. */
+export function cleaned(character: Character): Character {
+  return {
+    ...character, skills: cleanList(character.skills), flaws: cleanList(character.flaws), interests: cleanList(character.interests),
+    companion: { ...character.companion, life_themes: cleanList(character.companion.life_themes) },
+    card: character.card && { ...character.card, tags: cleanList(character.card.tags), alternate_greetings: character.card.alternate_greetings.filter((text) => text.trim()) },
   }
 }

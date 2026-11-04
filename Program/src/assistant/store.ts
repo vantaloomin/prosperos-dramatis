@@ -1,42 +1,45 @@
-/** The Sidebar Assistant's state, with no React in it: whether it is open, the character form it sees and edits, its
- * conversation, and the fields its edits still stand in (dramatis/assistant.py). The conversation belongs to one open
- * form: another character coming into the editor starts it over. Nothing here is saved. */
+/** The Sidebar Assistant's state, with no React in it: whether it is open, its conversation about the open form, and
+ * the field the user is in (dramatis/assistant.py). Its edits go onto the form as proposals (src/proposals.ts) the user
+ * keeps or puts back there. The conversation belongs to one form: another character coming into the editor starts it
+ * over. Nothing here is saved. */
 import { useSyncExternalStore } from 'react'
-import { sendJson, type AuditHit, type Character } from '../api'
-import { history, same, valueAt, withValue, type Edit, type Turn } from './edits'
+import { sendJson, stopped, type AuditHit, type Character } from '../api'
+import { newId, proposals, valueAt } from '../proposals'
+import { history, type Edit, type Turn } from './edits'
 
-/** The open character form: `get` is it as typed, `clean` as the server takes it. `set` takes effect for `get` at once,
- * so edits one after another each build on the last. */
-export interface Form { key: string; get: () => Character; clean: () => Character; set: (character: Character) => void }
-interface Reply { reply: string; edits: Omit<Edit, 'id' | 'before' | 'status'>[]; audit: AuditHit[] }
+interface Reply { reply: string; edits: Omit<Edit, 'id' | 'before'>[]; audit: AuditHit[] }
 /** The field the user was last in, by its key and the label the form shows. */
 export interface Focus { field: string; label: string }
 /** `seen` is the form as the last answer left it, so the next message says what the user changed since. `focus` is
- * the field the user was last in. `marks` holds, by field, the applied edit still standing in it. */
+ * the field the user was last in. `about` is the key of the form the conversation is about. */
 export interface AssistantState {
-  open: boolean; form: Form | null; about: string | null; turns: Turn[]; seen: Character | null; focus: Focus | null
-  busy: boolean; error: string; marks: Record<string, string>
+  open: boolean; about: string | null; turns: Turn[]; seen: Character | null; focus: Focus | null; busy: boolean; error: string
 }
 
 const OPEN_KEY = 'dramatis:assistant'
-let made = 0
-const newId = () => `edit-${Date.now().toString(36)}-${(made += 1)}`
+const NARROW = '(max-width: 800px)'
 
+/** Whether it was left open: remembered on wide screens only, where it sits beside the form rather than over it. */
 function readOpen(): boolean {
-  try { return localStorage.getItem(OPEN_KEY) === 'open' } catch { return false }
+  try { return !window.matchMedia(NARROW).matches && localStorage.getItem(OPEN_KEY) === 'open' } catch { return false }
 }
 
-let state: AssistantState = { open: readOpen(), form: null, about: null, turns: [], seen: null, focus: null, busy: false, error: '', marks: {} }
+let state: AssistantState = { open: readOpen(), about: null, turns: [], seen: null, focus: null, busy: false, error: '' }
+let out: AbortController | null = null
 const listeners = new Set<() => void>()
 const set = (change: Partial<AssistantState>) => {
   state = { ...state, ...change }
   listeners.forEach((listener) => listener())
 }
 
-const found = (id: string): Edit | undefined => state.turns.flatMap((turn) => turn.edits).find((edit) => edit.id === id)
-const updated = (id: string, change: Partial<Edit>): Turn[] =>
-  state.turns.map((turn) => ({ ...turn, edits: turn.edits.map((edit) => edit.id === id ? { ...edit, ...change } : edit) }))
-const without = (field: string) => Object.fromEntries(Object.entries(state.marks).filter(([key]) => key !== field))
+// A different form than the conversation is about starts it over.
+proposals.subscribe(() => {
+  const key = proposals.form()?.key ?? null
+  if (key && key !== state.about) {
+    out?.abort()
+    set({ about: key, turns: [], seen: null, focus: null, error: '', busy: false })
+  }
+})
 
 export const assistant = {
   get: () => state,
@@ -46,87 +49,52 @@ export const assistant = {
     try { localStorage.setItem(OPEN_KEY, open ? 'open' : 'closed') } catch { /* A blocked store only forgets the choice. */ }
   },
   toggle() { assistant.setOpen(!state.open) },
-
-  /** The editor registers its form; a different character than the conversation is about starts it over. */
-  register(form: Form) {
-    const fresh = form.key !== state.about
-    set({ form, about: form.key, ...(fresh ? { turns: [], seen: null, focus: null, marks: {}, error: '' } : {}) })
-  },
-  unregister(key: string) { if (state.form?.key === key) set({ form: null }) },
-  /** After every change on the form: a field the user has typed over is theirs again, so its mark goes. */
-  sync(character: Character) {
-    const kept = Object.fromEntries(Object.entries(state.marks).filter(([, id]) => {
-      const edit = found(id)
-      return edit && same(valueAt(character, edit.path), edit.value)
-    }))
-    if (Object.keys(kept).length !== Object.keys(state.marks).length) set({ marks: kept })
-  },
   setFocus(focus: Focus | null) { if (focus?.field !== state.focus?.field || focus?.label !== state.focus?.label) set({ focus }) },
   setError(error: string) { set({ error }) },
-  clear() { set({ turns: [], seen: null, marks: {}, error: '' }) },
+  clear() { set({ turns: [], seen: null, error: '' }) },
+  stop() { out?.abort(); out = null; set({ busy: false }) },
 
-  /** One message: the reply and its edits, each a proposal the user applies or dismisses. Resolves true once
-   * answered, so the composer can clear. */
-  async send(message: string): Promise<boolean> {
-    const form = state.form
+  /** One message: the reply, and its edits put onto the form as proposals. Resolves true once answered, so the
+   * composer can clear. */
+  async send(message: string, clean: (character: Character) => Character): Promise<boolean> {
+    const form = proposals.form()
     if (!form || state.busy) return false
-    const sent = form.clean()
+    const sent = clean(form.get())
+    const control = new AbortController()
+    out = control
     set({ busy: true, error: '' })
     try {
-      const reply = await sendJson<Reply>('/api/assistant', 'POST', { message, character: sent, seen: state.seen, focus: state.focus?.field ?? null, history: history(state.turns) })
-      if (state.form?.key !== form.key) return true
-      const edits: Edit[] = reply.edits.map((edit) => ({ ...edit, id: newId(), before: valueAt(sent, edit.path), status: 'pending' }))
-      set({ turns: [...state.turns, { id: newId(), message, reply: reply.reply, edits, audit: reply.audit }], seen: sent })
+      const reply = await sendJson<Reply>('/api/assistant', 'POST', {
+        message, character: sent, seen: state.seen, focus: state.focus?.field ?? null, history: history(state.turns, proposals.outcome),
+      }, control.signal)
+      if (proposals.form()?.key !== form.key) return true
+      const edits: Edit[] = reply.edits.map((edit) => ({ ...edit, id: newId('edit'), before: valueAt(form.get(), edit.path) }))
+      for (const edit of edits) {
+        proposals.propose({ id: edit.id, field: edit.field, label: edit.label, path: edit.path, value: edit.value, source: 'assistant',
+          hits: reply.audit.filter((hit) => hit.field === edit.field) })
+      }
+      // What the answer left on the form is what the next message compares the user's own changes against.
+      set({ turns: [...state.turns, { id: newId('turn'), message, reply: reply.reply, edits, audit: reply.audit }], seen: clean(form.get()) })
       return true
     } catch (failure) {
-      set({ error: failure instanceof Error ? failure.message : 'The assistant could not answer.' })
+      if (!stopped(failure)) set({ error: failure instanceof Error ? failure.message : 'The assistant could not answer.' })
       return false
-    } finally { set({ busy: false }) }
+    } finally { if (out === control) { out = null; set({ busy: false }) } }
   },
-
-  /** Puts a proposal into the form, marked. What the field held now is what Undo puts back. `seen` follows, so the
-   * next message reports only the user's own typing as their changes. */
-  apply(id: string) {
-    const edit = found(id)
-    const form = state.form
-    if (!edit || !form || edit.status === 'applied') return
-    const now = form.get()
-    form.set(withValue(now, edit.path, edit.value))
-    set({
-      turns: updated(id, { status: 'applied', before: valueAt(now, edit.path) }), marks: { ...state.marks, [edit.field]: id },
-      seen: state.seen && withValue(state.seen, edit.path, edit.value),
-    })
-  },
-  dismiss(id: string) { if (found(id)?.status === 'pending') set({ turns: updated(id, { status: 'dismissed' }) }) },
-  /** Puts back what the field held before, asking first if the user has changed it since; the proposal can be
-   * applied again. */
-  undo(id: string) {
-    const edit = found(id)
-    const form = state.form
-    if (!edit || !form || edit.status !== 'applied') return
-    const now = form.get()
-    if (!same(valueAt(now, edit.path), edit.value) &&
-      !window.confirm(`${edit.label} has changed since you applied the assistant's edit. Put back what was there before, and lose that?`)) return
-    form.set(withValue(now, edit.path, edit.before))
-    set({ turns: updated(id, { status: 'pending' }), marks: without(edit.field), seen: state.seen && withValue(state.seen, edit.path, edit.before) })
-  },
-  applyTurn(turn: Turn) { for (const edit of turn.edits) if (edit.status === 'pending') assistant.apply(edit.id) },
-  /** Undo for the mark on the form itself. */
-  undoField(field: string) { const id = state.marks[field]; if (id) assistant.undo(id) },
 }
 
 export function useAssistant(): AssistantState {
   return useSyncExternalStore(assistant.subscribe, assistant.get, assistant.get)
 }
 
-/** Whether the panel shows, for the app shell, which must not re-render as the form changes. */
-export function useAssistantShown(): boolean {
-  const shown = () => state.open && !!state.form
-  return useSyncExternalStore(assistant.subscribe, shown, shown)
+const shown = () => state.open && !!proposals.form()
+const subscribeBoth = (listener: () => void) => {
+  const one = assistant.subscribe(listener)
+  const two = proposals.subscribe(listener)
+  return () => { one(); two() }
 }
 
-/** Whether an edit of the assistant's still stands in this field, for its mark on the form. */
-export function useMarked(field?: string): boolean {
-  const marked = () => !!field && field in state.marks
-  return useSyncExternalStore(assistant.subscribe, marked, marked)
+/** Whether the panel shows, for the app shell, which must not re-render as the form changes. */
+export function useAssistantShown(): boolean {
+  return useSyncExternalStore(subscribeBoth, shown, shown)
 }

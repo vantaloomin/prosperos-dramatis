@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { emptyPsyche, getJson, type Impulse, type ImpulseKey, type Psyche as PsycheValue, type Summary } from './api'
-import { TextArea } from './Fields'
-import { Folded, type Help } from './InnerLife'
+import { Fold, TextArea } from './Fields'
 
 export const IMPULSES: [ImpulseKey, string, string][] = [
   ['was', 'Who they were', 'who they were'], ['expected', "Who they're expected to be", "who they're expected to be"],
@@ -9,23 +8,22 @@ export const IMPULSES: [ImpulseKey, string, string][] = [
 ]
 const MOST_PRESSING = 6
 
-/** Their inner square: four pulls on them, each pressed by other characters in the library. An empty one is saved as
- * null by the server. */
-export function Psyche({ psyche, selfId, onChange, help }: { psyche: PsycheValue | null; selfId?: string; onChange: (psyche: PsycheValue) => void; help: Help }) {
+/** Who they could become: four pulls on them (the Cast board calls it their inner square), each pressed by other
+ * characters in the library. An empty one is saved as null by the server. */
+export function Psyche({ psyche, selfId, onChange }: { psyche: PsycheValue | null; selfId?: string; onChange: (psyche: PsycheValue) => void }) {
   const value = psyche ?? emptyPsyche()
   const set = (key: ImpulseKey, change: Partial<Impulse>) => onChange({ ...value, [key]: { ...value[key], ...change } })
   return (
-    <Folded title="Inner square" filled={psyche !== null}>
+    <Fold title="Who they could become" filled={psyche !== null}>
       <div className="grid two">
         {IMPULSES.map(([key, label, helpLabel]) => (
           <div key={key} className="stack">
-            <TextArea name={`psyche.${key}`} label={label} value={value[key].text} onChange={(text) => set(key, { text })} maxLength={300} rows={2}
-              help={help(`psyche.${key}`, helpLabel, value[key].text, (text) => set(key, { text }))} />
+            <TextArea name={`psyche.${key}`} label={label} write={helpLabel} value={value[key].text} onChange={(text) => set(key, { text })} maxLength={300} rows={2} />
             <PressedBy chosen={value[key].pressed_by} selfId={selfId} onChange={(pressed_by) => set(key, { pressed_by })} />
           </div>
         ))}
       </div>
-    </Folded>
+    </Fold>
   )
 }
 

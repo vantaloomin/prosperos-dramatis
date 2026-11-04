@@ -11,7 +11,7 @@ body { margin: 0; background: var(--bg); color: var(--ink); }
 h1, h2 { font-family: 'Literata', Georgia, serif; font-weight: 600; margin: 0; }
 h1 { font-size: 1.1rem; }
 h2 { font-size: 1.05rem; display: flex; gap: 0.4rem; align-items: center; margin-bottom: 0.75rem; }
-h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 1.4rem 0 0.5rem; }
+h3 { font-size: 0.95rem; font-weight: 600; color: var(--ink); margin: 1.6rem 0 0.4rem; }
 .shell { display: grid; min-height: 100vh; gap: 1px; background: var(--line); grid-template: 'top top' auto 'library work' 1fr / 270px 1fr; }
 .top { grid-area: top; display: flex; gap: 0.6rem; align-items: center; padding: 0.6rem 1rem; background: var(--panel); color: var(--accent); flex-wrap: wrap; }
 .top h1 { color: var(--ink); }
@@ -47,7 +47,48 @@ button[aria-pressed='true'], button[aria-checked='true'] { border-color: var(--a
 .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 @media (max-width: 1000px) { .grid.two, .grid.three { grid-template-columns: 1fr; } }
 .field { display: grid; gap: 0.25rem; align-content: start; }
-.field > label { font-size: 0.85rem; color: var(--muted); }
+.field-top { display: flex; align-items: center; gap: 0.3rem; min-height: 1.5rem; }
+.field-top > label, .field-top > .label { font-size: 0.85rem; color: var(--muted); }
+.field-box { position: relative; display: grid; }
+.field-box.has-bolt > input, .field-box.has-bolt > textarea { padding-right: 2.2rem; }
+.field-box.has-bolt > .list > input.add { padding-right: 2.2rem; }
+button.bolt { border: none; background: none; padding: 0.2rem; color: var(--accent); border-radius: 6px; }
+button.bolt:hover, button.bolt[aria-expanded='true'] { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.field-box > button.bolt { position: absolute; top: 0.3rem; right: 0.3rem; }
+.field-box.has-bolt > .list ~ button.bolt { top: auto; bottom: 0.3rem; }
+/* A model's text standing in its field, until it is kept or put back (src/proposals.ts). */
+.field.proposed .field-top > label, .field.proposed .field-top > .label { color: var(--accent); font-weight: 600; }
+.field.proposed input, .field.proposed textarea, .field.proposed select { border: 1px dashed var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--bg)); }
+.proposal-bar { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
+.proposal-bar button { padding: 0.25rem 0.65rem; font-size: 0.88rem; }
+.proposal-bar .error { display: inline-flex; gap: 0.25rem; align-items: center; }
+button.quiet { border-color: transparent; background: none; color: var(--accent); }
+button.quiet:hover { border-color: var(--line); }
+.help-ask { flex-wrap: wrap; align-items: center; }
+.help-ask input { flex: 1; width: auto; min-width: 12rem; }
+.help-ask > p { flex-basis: 100%; margin: 0; }
+/* Add/remove lists: one row per item, and an empty row to add the next. */
+.list { display: grid; gap: 0.3rem; }
+.list .item { display: flex; gap: 0.2rem; align-items: center; }
+.list .item input { flex: 1; width: auto; }
+.list .item button.icon { color: var(--muted); }
+.list .item button.icon:hover { color: var(--error); }
+.list input.add { border-style: dashed; margin-right: 1.65rem; width: auto; }
+/* Folds: a chevron and a name, the body indented under it. */
+.folds { display: grid; border-top: 1px solid var(--line); }
+.folds > .fold { border-bottom: 1px solid var(--line); }
+details.fold > summary { list-style: none; display: flex; align-items: center; gap: 0.35rem; margin: 0; padding: 0.6rem 0; color: var(--ink); font-weight: 600; font-size: 0.95rem; }
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold > summary > svg { color: var(--muted); transition: transform 0.15s; flex: none; }
+details.fold[open] > summary > svg { transform: rotate(90deg); }
+details.fold > .fold-body { display: grid; gap: 0.75rem; padding: 0 0 0.9rem 1.4rem; }
+.fold-undo { padding: 0.4rem 0; }
+.stack.tight { gap: 0.35rem; }
+.type-label { font-size: 0.85rem; color: var(--muted); }
+input.type { width: 5rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.drop { display: grid; gap: 0.5rem; border-radius: 8px; }
+.drop.over { outline: 2px dashed var(--accent); outline-offset: 4px; }
+.receipt { margin: 0; }
 .hint { font-size: 0.78rem; color: var(--muted); }
 label.check { display: inline-flex; gap: 0.4rem; align-items: center; font-size: 0.9rem; margin-right: 0.9rem; }
 fieldset { border: 1px solid var(--line); border-radius: 6px; padding: 0.4rem 0.75rem 0.6rem; margin: 0; }
@@ -245,12 +286,6 @@ button.side-toggle { width: 100%; justify-content: flex-start; background: var(-
 .assistant-composer .row { justify-content: space-between; }
 .assistant-focus { display: flex; align-items: center; gap: 0.2rem; }
 button.send { padding: 0.35rem 0.5rem; }
-/* A field an applied assistant edit still stands in, until it is undone or typed over. */
-.field.edited { border-left: 3px solid var(--accent); padding-left: 0.5rem; margin-left: calc(-0.5rem - 3px); border-radius: 2px; animation: edited 1.8s ease-out; }
-.field.edited > label { color: var(--accent); }
-.field.edited > button.link { justify-self: start; padding: 0; }
-@keyframes edited { from { background: color-mix(in srgb, var(--accent) 22%, transparent); } }
-@media (prefers-reduced-motion: reduce) { .field.edited { animation: none; } }
 @media (max-width: 1200px) {
   .shell.assisting { grid-template: 'top top' auto 'library work' 1fr / 270px minmax(0, 1fr); }
   .assistant { position: fixed; top: 0; right: 0; bottom: 0; width: min(380px, 100vw); z-index: 5; box-shadow: -8px 0 24px rgb(0 0 0 / 0.18); }

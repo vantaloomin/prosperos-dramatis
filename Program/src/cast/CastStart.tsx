@@ -4,7 +4,7 @@ import { Swords } from 'lucide-react'
 import { Field, TextInput } from '../Fields'
 import { LIMITS, castCalls, newCast, type Cast } from '../castApi'
 
-/** A new cast: the question the story asks, and a genre and group type to start from, or a blank board. */
+/** A new cast: the question the story asks, and a genre and group type to start from; with neither, a blank board. */
 export function CastStart({ onBegin }: { onBegin: (cast: Cast) => void }) {
   const templates = useQuery({ queryKey: ['cast-templates'], queryFn: castCalls.templates, staleTime: Infinity })
   const [theme, setTheme] = useState('')
@@ -20,31 +20,30 @@ export function CastStart({ onBegin }: { onBegin: (cast: Cast) => void }) {
     <section className="card cast-start" aria-labelledby="cast-start-title">
       <h2 id="cast-start-title"><Swords size={16} aria-hidden /> A new cast</h2>
       <form className="stack" onSubmit={submit}>
-        <TextInput label="The question your story asks" value={theme} onChange={setTheme} maxLength={LIMITS.theme}
-          placeholder="Is order worth what it costs?" />
+        <TextInput label="The question your story asks" value={theme} onChange={setTheme} maxLength={LIMITS.theme} />
         {templates.isError && <p className="error small">{templates.error.message} You can still start a blank board.</p>}
         <div className="grid two">
-          <Field label="Genre" hint={genre?.help}>{(id) => (
+          <Field label="Genre">{(id) => (
             <select id={id} value={genreId} onChange={(event) => setGenreId(event.target.value)} disabled={!templates.data}>
               <option value="">None</option>
               {templates.data?.genres.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
             </select>
           )}</Field>
-          <Field label="Group type" hint={group?.shares}>{(id) => (
+          <Field label="Group type">{(id) => (
             <select id={id} value={groupId ?? genre?.group ?? ''} onChange={(event) => setGroupId(event.target.value)} disabled={!templates.data}>
               <option value="">None</option>
               {templates.data?.groups.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
             </select>
           )}</Field>
         </div>
+        {genre?.help && <p className="muted small">{genre.help}</p>}
         {genre && (
           <ul className="genre-sides">
             {genre.outer.map((side, index) => <li key={index}><strong>{side.label}</strong>{side.stance_hint && <span className="muted"> {side.stance_hint}</span>}</li>)}
           </ul>
         )}
         <div className="row">
-          <button type="submit" className="primary" disabled={!genre && !group}>Start the board</button>
-          <button type="button" onClick={() => onBegin(newCast(theme.trim(), undefined, undefined))}>Blank board</button>
+          <button type="submit" className="primary">{genre || group ? 'Start the board' : 'Start a blank board'}</button>
         </div>
       </form>
     </section>

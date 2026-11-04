@@ -8,8 +8,8 @@ object, and every change it makes is checked here first.
   which field the user is in (`focus`).
 - It edits through `edits`, each one field by its key (dotted for their depth, as Help me write uses them). Each value
   is shaped to that field's limits like any draft, and an edit to a field it may not touch, a value that cannot be
-  used or an age under 18 is sent back once with the reason, then dropped. The screen shows what is left as proposals
-  the user applies or dismisses one by one; an applied one is marked on the form with Undo, and only Save writes to
+  used or an age under 18 is sent back once with the reason, then dropped. The screen puts what is left into its
+  fields as proposals (src/proposals.ts), each marked there for the user to keep or put back, and only Save writes to
   the library.
 - Every edit goes through the AI-slop audit (dramatis/slop.py): a hard hit the user didn't write sends the reply
   back once, and what is left comes back for the form to show.

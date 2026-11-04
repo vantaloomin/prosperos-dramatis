@@ -1,7 +1,9 @@
-import { useRef, useState, type FormEvent } from 'react'
-import { ClipboardPaste, FileUp, Sparkles } from 'lucide-react'
+import { useEffect, useRef, useState, type DragEvent, type FormEvent } from 'react'
+import { ClipboardPaste, FileUp, Square, UserPlus } from 'lucide-react'
 import { APPS, APP_NAMES, emptyCharacter, fileData, sendJson, type App, type Character, type Drafted, type Gender, type Opened, type OpenedFile, type Relationship } from './api'
-import { Field, TextArea, TextInput, useModelReady } from './Fields'
+import { Bolt, Field, Fold, TextArea, TextInput, useModelReady } from './Fields'
+import { useModelCall } from './modelCall'
+import { profileFor, useModels } from './models/ModelSettings'
 
 /** How the form opens: the character, and a portrait (base64 PNG) to save with them, such as an imported file's picture. */
 export interface Begun { character: Character; seed?: string; filledIn?: string[]; note?: string; portrait?: string }
@@ -10,7 +12,7 @@ export interface Picks { idea?: string; setting?: string }
 
 const AGES = [['', 'Any age'], ['24', 'Mid-twenties'], ['32', 'Early thirties'], ['38', 'Late thirties'], ['45', 'Mid-forties'],
   ['55', 'Mid-fifties'], ['65', 'Sixties'], ['75', 'Seventies']] as const
-const RELATIONSHIPS: [Relationship, string][] = [['friendship', 'Friendship'], ['romance', 'Romance'], ['mentor', 'Mentor'],
+const RELATIONSHIPS: [Relationship, string][] = [['friendship', 'Friendship'], ['romance', 'Romance, only with your yes'], ['mentor', 'Mentor'],
   ['family', 'Family'], ['other', 'Something else']]
 const VIBES = ['Dry humour', 'Warm', 'Blunt', 'Shy', 'Chatty', 'Restless', 'Old-fashioned', 'Night owl', 'Outdoorsy', 'Bookish']
 
@@ -29,26 +31,30 @@ export function AppPicks({ apps, onChange }: { apps: App[]; onChange: (apps: App
   )
 }
 
+/** While a model works: which model, and how long it has been at it. */
+export function Waiting({ job = 'writing', doing }: { job?: 'writing' | 'cast'; doing: string }) {
+  const model = profileFor(useModels().data, job)?.config.model
+  const [seconds, setSeconds] = useState(0)
+  useEffect(() => {
+    const begun = Date.now()
+    const timer = setInterval(() => setSeconds(Math.floor((Date.now() - begun) / 1000)), 1000)
+    return () => clearInterval(timer)
+  }, [])
+  return <span className="muted small" role="status">{doing}{model ? ` with ${model}` : ''} · {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}</span>
+}
+
 /** The quick start: a few picks, and the user's model writes the rest for review. Nothing is saved before the form. */
 function QuickStart({ initial, onBegin }: { initial?: Picks; onBegin: (begun: Begun) => void }) {
   const ready = useModelReady()
+  const call = useModelCall()
   const [picks, setPicks] = useState({ name: '', gender: '' as Gender, age: '', setting: '', idea: '', vibe: '', relationship: 'friendship' as Relationship, emotional_edges: false, ...initial })
-  const [apps, setApps] = useState<App[]>(APPS)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
   const set = (change: Partial<typeof picks>) => setPicks((current) => ({ ...current, ...change }))
-  const submit = async (event: FormEvent) => {
-    event.preventDefault()
-    setBusy(true)
-    setError('')
-    try {
-      const found = await sendJson<Drafted>('/api/draft', 'POST', {
-        ...picks, age: picks.age ? Number(picks.age) : null, apps, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? '',
-      })
-      onBegin({ character: found.character, seed: found.seed, note: 'Your model drafted them. Read it through, change anything, then save.' })
-    } catch (failure) {
-      setError(failure instanceof Error ? failure.message : 'The draft could not be written.')
-    } finally { setBusy(false) }
+  const submit = (event?: FormEvent) => {
+    event?.preventDefault()
+    void call.run((signal) => sendJson<Drafted>('/api/draft', 'POST', {
+      ...picks, age: picks.age ? Number(picks.age) : null, apps: APPS, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? '',
+    }, signal), (found) => onBegin({ character: found.character, seed: found.seed, note: 'Your model drafted them. Read it through, change anything, then save.' }),
+    'The draft could not be written.')
   }
   const vibes = picks.vibe.split(',').map((item) => item.trim().toLowerCase()).filter(Boolean)
   const toggleVibe = (vibe: string) => set({
@@ -57,52 +63,44 @@ function QuickStart({ initial, onBegin }: { initial?: Picks; onBegin: (begun: Be
   })
   return (
     <section className="card" aria-labelledby="quick-title">
-      <h2 id="quick-title"><Sparkles size={16} aria-hidden /> A few things to start</h2>
-      <p className="muted">Your model writes the rest: who they are, their voice, skills, flaws, what they want and fear, and, for Companion, their week. You see the whole character before anything is saved.</p>
-      {!ready && <p className="note">Drafting uses your model, and none is set up yet. Set one up above, or fill in the form yourself.</p>}
+      <h2 id="quick-title"><UserPlus size={16} aria-hidden /> A new character</h2>
+      {!ready && <p className="note">Set up a model at the top to draft with it, or fill in the form yourself.</p>}
       <form className="stack" onSubmit={submit}>
         <div className="grid three">
-          <TextInput label="Name" value={picks.name} onChange={(name) => set({ name })} maxLength={80} hint="Optional. Left empty, they get one that fits." />
+          <TextInput label="Name" value={picks.name} onChange={(name) => set({ name })} maxLength={80} />
           <Field label="Gender">{(id) => (
             <select id={id} value={picks.gender} onChange={(event) => set({ gender: event.target.value as Gender })}>
               <option value="">Any</option><option value="woman">Woman</option><option value="man">Man</option><option value="nonbinary">Nonbinary</option>
             </select>
           )}</Field>
-          <Field label="Age" hint="Characters are always adults.">{(id) => (
+          <Field label="Age">{(id) => (
             <select id={id} value={picks.age} onChange={(event) => set({ age: event.target.value })}>
               {AGES.map(([value, name]) => <option key={value} value={value}>{name}</option>)}
             </select>
           )}</Field>
         </div>
-        <TextInput label="Where and when" value={picks.setting} onChange={(setting) => set({ setting })} maxLength={200}
-          placeholder="Baltimore, today · a frontier town in 1870 · a generation ship" hint="Optional. Each app can still move them into its own world." />
-        <AppPicks apps={apps} onChange={setApps} />
-        <details className="more" open={!!initial?.idea || undefined}>
-          <summary>More options</summary>
-          <div className="stack">
-            <TextArea label="Who are they?" value={picks.idea} onChange={(idea) => set({ idea })} maxLength={2000} rows={2}
-              placeholder="A night-shift nurse who is trying to get back into running" hint="Leave it empty to be surprised." />
-            <div className="vibes">
-              <TextInput label="Vibe" value={picks.vibe} onChange={(vibe) => set({ vibe })} maxLength={300} hint="Pick a few or write your own, separated by commas." />
-              <div className="row" role="group" aria-label="Vibe suggestions">
-                {VIBES.map((vibe) => <button key={vibe} type="button" className="chip" aria-pressed={vibes.includes(vibe.toLowerCase())} onClick={() => toggleVibe(vibe)}>{vibe}</button>)}
-              </div>
+        <TextInput label="Where and when" value={picks.setting} onChange={(setting) => set({ setting })} maxLength={200} />
+        <Fold title="More options" filled={!!initial?.idea}>
+          <TextArea label="Who are they?" value={picks.idea} onChange={(idea) => set({ idea })} maxLength={2000} rows={2} />
+          <div className="vibes">
+            <TextInput label="Vibe" value={picks.vibe} onChange={(vibe) => set({ vibe })} maxLength={300} />
+            <div className="row" role="group" aria-label="Vibe suggestions">
+              {VIBES.map((vibe) => <button key={vibe} type="button" className="chip" aria-pressed={vibes.includes(vibe.toLowerCase())} onClick={() => toggleVibe(vibe)}>{vibe}</button>)}
             </div>
-            {apps.includes('companion') && <>
-              <Field label="Relationship in Companion" hint="Someone you haven't met yet starts as a friendship. Romance starts only with your yes.">{(id) => (
-                <select id={id} value={picks.relationship} onChange={(event) => set({ relationship: event.target.value as Relationship })}>
-                  {RELATIONSHIPS.map(([value, name]) => <option key={value} value={value}>{name}</option>)}
-                </select>
-              )}</Field>
-              <label className="check"><input type="checkbox" checked={picks.emotional_edges} onChange={(event) => set({ emotional_edges: event.target.checked })} /> Give them emotional edges, such as jealousy or missing you when you are away</label>
-            </>}
           </div>
-        </details>
-        {busy && <p className="note">Writing them. A local model can take a minute or two.</p>}
-        {error && <p className="error" role="alert">{error}</p>}
+          <Field label="Relationship in Companion">{(id) => (
+            <select id={id} value={picks.relationship} onChange={(event) => set({ relationship: event.target.value as Relationship })}>
+              {RELATIONSHIPS.map(([value, name]) => <option key={value} value={value}>{name}</option>)}
+            </select>
+          )}</Field>
+          <label className="check"><input type="checkbox" checked={picks.emotional_edges} onChange={(event) => set({ emotional_edges: event.target.checked })} /> Emotional edges in Companion, such as jealousy or missing you</label>
+        </Fold>
+        {call.error && <p className="error" role="alert">{call.error}</p>}
         <div className="row">
-          <button type="submit" className="primary" disabled={!ready || busy}>{busy ? 'Writing…' : 'Write them'}</button>
-          <button type="button" className="link" onClick={() => onBegin({ character: emptyCharacter(apps) })}>Fill in the form myself</button>
+          {call.busy
+            ? <><button type="button" onClick={call.stop}><Square size={12} aria-hidden /> Stop</button><Waiting doing="Writing them" /></>
+            : <button type="submit" className="primary" disabled={!ready}><Bolt /> Write them</button>}
+          <button type="button" className="quiet" onClick={() => onBegin({ character: emptyCharacter(APPS) })}>Fill in the form myself</button>
         </div>
       </form>
     </section>
@@ -117,16 +115,17 @@ const instructionsNote = (lines?: string[]) => lines?.length
   : ''
 
 /** A character the user already has: pasted, or a character file from another app (Companion's importer reads it). A
- * file opens in the form as it has them, with no model, or goes into the box to split into the fields with the model;
- * either way, its greetings, lorebook and picture stay with them. A card Dramatis made opens whole. */
+ * file opens in the form as written, with no model, or the model sorts it into the fields; either way, its greetings,
+ * lorebook and picture stay with them. A card Dramatis made opens whole. */
 function PasteCharacter({ onBegin }: { onBegin: (begun: Begun) => void }) {
   const ready = useModelReady()
+  const call = useModelCall()
   const input = useRef<HTMLInputElement>(null)
   const [text, setText] = useState('')
   const [file, setFile] = useState<OpenedFile | null>(null)
-  const [apps, setApps] = useState<App[]>(APPS)
-  const [busy, setBusy] = useState('')
+  const [reading, setReading] = useState(false)
   const [error, setError] = useState('')
+  const [over, setOver] = useState(false)
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? ''
   const write = (value: string) => {
     setText(value)
@@ -134,8 +133,13 @@ function PasteCharacter({ onBegin }: { onBegin: (begun: Begun) => void }) {
   }
   const open = async (picked: File | undefined) => {
     if (!picked) return
-    setBusy('Reading…')
     setError('')
+    if (/\.(txt|md)$/i.test(picked.name)) {
+      setFile(null)
+      setText((await picked.text()).slice(0, 40000))
+      return
+    }
+    setReading(true)
     try {
       const found = await sendJson<Opened | OpenedFile>('/api/cards/open', 'POST', { filename: picked.name, data: await fileData(picked) })
       if (found.kind === 'character') {
@@ -147,60 +151,51 @@ function PasteCharacter({ onBegin }: { onBegin: (begun: Begun) => void }) {
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'That file could not be read.')
     } finally {
-      setBusy('')
+      setReading(false)
       if (input.current) input.current.value = ''
     }
+  }
+  const drop = (event: DragEvent) => {
+    event.preventDefault()
+    setOver(false)
+    void open(event.dataTransfer.files[0])
   }
   // What came with the file stays with them whichever way the form is filled.
   const withFile = (character: Character): Character => ({ ...character, card: file?.card ?? character.card ?? null })
   const asRead = file?.character && text === file.text ? file.character : null
   const openAsRead = () => asRead && onBegin({
-    character: withFile({ ...asRead, apps, companion: { ...asRead.companion, timezone: asRead.companion.timezone || timezone } }),
+    character: withFile({ ...asRead, apps: APPS, companion: { ...asRead.companion, timezone: asRead.companion.timezone || timezone } }),
     portrait: file?.portrait ?? undefined,
     note: `${asRead.name || 'They'} opened as the file has them. Read the fields through, fill in the rest, then save.${instructionsNote(file?.instructions)}`,
   })
-  const split = async () => {
-    setBusy('Splitting…')
-    setError('')
-    try {
-      const found = await sendJson<Drafted>('/api/draft/split', 'POST', { text, apps, timezone })
-      onBegin({ character: withFile(found.character), seed: found.seed, filledIn: found.filled_in, portrait: file?.portrait ?? undefined,
-        note: `Your character, split into the fields.${instructionsNote(found.instructions)}` })
-    } catch (failure) {
-      setError(failure instanceof Error ? failure.message : 'The character could not be split.')
-    } finally { setBusy('') }
-  }
-  const kept = file?.kept.length ? ` Their ${listed(file.kept)} stay with them for the cards you export.` : ''
+  const split = () => void call.run((signal) => sendJson<Drafted>('/api/draft/split', 'POST', { text, apps: APPS, timezone }, signal), (found) => onBegin({
+    character: withFile(found.character), seed: found.seed, filledIn: found.filled_in, portrait: file?.portrait ?? undefined,
+    note: `Your character, sorted into the fields.${instructionsNote(found.instructions)}`,
+  }), 'The character could not be sorted into the fields.')
   return (
     <section className="card" aria-labelledby="paste-title">
-      <h2 id="paste-title"><ClipboardPaste size={16} aria-hidden /> Or bring a character you already have</h2>
-      <p className="muted">Notes, a bio, a scene, or a character file from SillyTavern, Chub, Backyard, Marinara or another app: a card (PNG or JSON), CHARX, BYAF or plain JSON. Nothing in a file runs, no picture is fetched, and you see exactly what goes to your model before anything does.</p>
-      <input ref={input} type="file" accept=".png,.json,.charx,.byaf,.txt,.md" hidden onChange={(event) => {
-        const picked = event.target.files?.[0]
-        if (picked && /\.(txt|md)$/i.test(picked.name)) {
-          setFile(null)
-          void picked.text().then((value) => setText(value.slice(0, 40000)))
-          return
-        }
-        void open(picked)
-      }} />
+      <h2 id="paste-title"><ClipboardPaste size={16} aria-hidden /> Bring a character you already have</h2>
+      <input ref={input} type="file" accept=".png,.json,.charx,.byaf,.txt,.md" aria-label="Character file: a card (PNG or JSON), CHARX, BYAF, JSON or text" hidden
+        onChange={(event) => void open(event.target.files?.[0])} />
       <div className="stack">
-        <TextArea label="Their character" value={text} onChange={write} maxLength={40000} rows={8} />
-        <AppPicks apps={apps} onChange={setApps} />
+        <div className={over ? 'drop over' : 'drop'} onDragOver={(event) => { event.preventDefault(); setOver(true) }} onDragLeave={() => setOver(false)} onDrop={drop}>
+          <TextArea label="Their character" value={text} onChange={write} maxLength={40000} rows={8} placeholder="Paste notes, a bio or a scene, or drop a character file here" />
+        </div>
         {file && (
-          <p className="note">
-            Read {file.name || 'them'} from {file.format === 'JSON' ? 'a JSON file' : `a ${file.format} file`}.{kept}
-            {file.truncated && ' The text was long, so only its first 40,000 characters are in the box.'}
-            {file.notes.map((note) => ` ${note}`).join('')}
-            {file.instructions.length > 0 && ` Lines in it talk to the app or the model rather than describe them (“${file.instructions.join('”, “')}”).`}
-          </p>
+          <div className="receipt small">
+            {file.kept.length > 0 && <p>Kept from the card: {listed(file.kept)}.</p>}
+            {[...(file.truncated ? ['Only the first 40,000 characters are in the box.'] : []), ...file.notes].map((note) => <p key={note} className="muted">{note}</p>)}
+            {file.instructions.length > 0 && <p className="error">Lines in it talk to the app or the model rather than describe them (“{file.instructions.join('”, “')}”).</p>}
+          </div>
         )}
         {file?.refused && <p className="error" role="alert">{file.refused}</p>}
-        {error && <p className="error" role="alert">{error}</p>}
+        {(error || call.error) && <p className="error" role="alert">{error || call.error}</p>}
         <div className="row">
-          <button type="button" disabled={!!busy} onClick={() => input.current?.click()}><FileUp size={14} aria-hidden /> Open a character file</button>
-          {asRead && <button type="button" className="primary" disabled={!!busy} onClick={openAsRead}>Open in the form</button>}
-          <button type="button" className={asRead ? undefined : 'primary'} disabled={!ready || !text.trim() || !!busy} onClick={() => void split()}>{busy === 'Splitting…' ? busy : 'Split into fields'}</button>
+          <button type="button" disabled={reading || call.busy} onClick={() => input.current?.click()}><FileUp size={14} aria-hidden /> {reading ? 'Reading…' : 'Open a character file'}</button>
+          {asRead && <button type="button" className="primary" disabled={call.busy} onClick={openAsRead}>Use as written</button>}
+          {call.busy
+            ? <><button type="button" onClick={call.stop}><Square size={12} aria-hidden /> Stop</button><Waiting doing="Sorting them" /></>
+            : <button type="button" className={asRead ? undefined : 'primary'} disabled={!ready || !text.trim() || reading} onClick={split}><Bolt /> Sort into fields with my model</button>}
         </div>
       </div>
     </section>

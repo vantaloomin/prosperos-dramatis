@@ -1,47 +1,31 @@
-import { useState, type ReactNode } from 'react'
 import type { Arc, Secret } from './api'
-import { TextArea } from './Fields'
+import { Fold, TextArea } from './Fields'
 
-/** Editor's Help me write for one text field, or nothing when no model is set up. */
-export type Help = (field: string, label: string, value: string, apply: (value: string) => void) => ReactNode
-
-/** A folded section that starts open when it already holds something. */
-export function Folded({ title, filled, children }: { title: string; filled: boolean; children: ReactNode }) {
-  const [open] = useState(filled)
-  return <details className="section" open={open}><summary>{title}</summary>{children}</details>
-}
-
-/** Their inner arc. The Cast layer's psyche sits beside it (Psyche.tsx). */
-export function InnerLife({ arc, onChange, help }: { arc: Arc; onChange: (arc: Arc) => void; help: Help }) {
+/** Their inner arc. Who they could become (Psyche.tsx) sits beside it. */
+export function InnerLife({ arc, onChange }: { arc: Arc; onChange: (arc: Arc) => void }) {
   const set = (change: Partial<Arc>) => onChange({ ...arc, ...change })
   return (
-    <Folded title="Inner life" filled={!!(arc.lie || arc.truth || arc.catalyst)}>
+    <Fold title="Inner life" filled={!!(arc.lie || arc.truth || arc.catalyst)}>
       <div className="grid three">
-        <TextArea name="arc.lie" label="Lie they believe" value={arc.lie} onChange={(lie) => set({ lie })} maxLength={300} rows={3}
-          help={help('arc.lie', 'the lie they believe', arc.lie, (lie) => set({ lie }))} />
-        <TextArea name="arc.truth" label="Truth they need" value={arc.truth} onChange={(truth) => set({ truth })} maxLength={300} rows={3}
-          help={help('arc.truth', 'the truth they need', arc.truth, (truth) => set({ truth }))} />
-        <TextArea name="arc.catalyst" label="What could force it" value={arc.catalyst} onChange={(catalyst) => set({ catalyst })} maxLength={300} rows={3}
-          help={help('arc.catalyst', 'what could force it', arc.catalyst, (catalyst) => set({ catalyst }))} />
+        <TextArea name="arc.lie" label="Lie they believe" write="the lie they believe" value={arc.lie} onChange={(lie) => set({ lie })} maxLength={300} rows={3} />
+        <TextArea name="arc.truth" label="Truth they need" write="the truth they need" value={arc.truth} onChange={(truth) => set({ truth })} maxLength={300} rows={3} />
+        <TextArea name="arc.catalyst" label="What could force it" write="what could force it" value={arc.catalyst} onChange={(catalyst) => set({ catalyst })} maxLength={300} rows={3} />
       </div>
-    </Folded>
+    </Fold>
   )
 }
 
 /** Something they keep from most people. It goes with them into every card and app, so they know what they are
  * keeping. */
-export function SecretSection({ secret, onChange, help }: { secret: Secret; onChange: (secret: Secret) => void; help: Help }) {
+export function SecretSection({ secret, onChange }: { secret: Secret; onChange: (secret: Secret) => void }) {
   const set = (change: Partial<Secret>) => onChange({ ...secret, ...change })
   return (
-    <Folded title="Secret" filled={!!(secret.truth || secret.cover_story || secret.known_by)}>
-      <TextArea name="secret.truth" label="What's really true" value={secret.truth} onChange={(truth) => set({ truth })} maxLength={600} rows={3}
-        help={help('secret.truth', 'their secret', secret.truth, (truth) => set({ truth }))} />
+    <Fold title="Secret" filled={!!(secret.truth || secret.cover_story || secret.known_by)}>
+      <TextArea name="secret.truth" label="What's really true" write="their secret" value={secret.truth} onChange={(truth) => set({ truth })} maxLength={600} rows={3} />
       <div className="grid two">
-        <TextArea name="secret.cover_story" label="What people believe instead" value={secret.cover_story} onChange={(cover_story) => set({ cover_story })} maxLength={400} rows={2}
-          help={help('secret.cover_story', 'what people believe instead', secret.cover_story, (cover_story) => set({ cover_story }))} />
-        <TextArea name="secret.known_by" label="Who knows" value={secret.known_by} onChange={(known_by) => set({ known_by })} maxLength={200} rows={2}
-          help={help('secret.known_by', 'who knows', secret.known_by, (known_by) => set({ known_by }))} />
+        <TextArea name="secret.cover_story" label="What people believe instead" write="what people believe instead" value={secret.cover_story} onChange={(cover_story) => set({ cover_story })} maxLength={400} rows={2} />
+        <TextArea name="secret.known_by" label="Who knows" write="who knows" value={secret.known_by} onChange={(known_by) => set({ known_by })} maxLength={200} rows={2} />
       </div>
-    </Folded>
+    </Fold>
   )
 }

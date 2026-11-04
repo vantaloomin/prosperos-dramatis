@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ImagePlus, Sparkles, Trash2 } from 'lucide-react'
-import { fileData, getJson, sendJson, type Character, type ImageConfig, type MadePortrait, type PortraitStyle, type Saved } from './api'
-import { useModelReady } from './Fields'
+import { ImagePlus, Trash2 } from 'lucide-react'
+import { fileData, getJson, sendJson, stopped, type Character, type ImageConfig, type MadePortrait, type PortraitStyle, type Saved } from './api'
+import { Bolt, ModelButton, useModelReady } from './Fields'
 
 interface Props {
   saved: Saved | null; name: string; character: () => Character
@@ -11,8 +11,8 @@ interface Props {
   onSaved: (saved: Saved) => void
 }
 
-/** Their portrait: add or change one from a file, remove it, or make one from how they look. A made portrait shows
- * beside the current one and is saved only with Use this. */
+/** Their portrait: add or change one from a file, remove it, or make one from how they look. A made portrait is a
+ * proposal: it shows beside the current one, to keep, try again or put back. */
 export function Portrait({ saved, name, character, pending, onPending, onSaved }: Props) {
   const client = useQueryClient()
   const modelReady = useModelReady()
@@ -21,6 +21,7 @@ export function Portrait({ saved, name, character, pending, onPending, onSaved }
   const [style, setStyle] = useState('photo')
   const [made, setMade] = useState<MadePortrait | null>(null)
   const [making, setMaking] = useState(false)
+  const out = useRef<AbortController | null>(null)
   const [error, setError] = useState('')
   const [at, setAt] = useState(Date.now())
   const picker = useRef<HTMLInputElement>(null)
@@ -49,9 +50,14 @@ export function Portrait({ saved, name, character, pending, onPending, onSaved }
   }, 'The portrait could not be removed.')
   // The form as it stands, saved or not, so a change to how they look shows in the next portrait.
   const make = () => void attempt(async () => {
+    const control = new AbortController()
+    out.current = control
     setMaking(true)
-    try { setMade(await sendJson<MadePortrait>('/api/portrait/make', 'POST', { character: character(), style })) } finally { setMaking(false) }
+    try { setMade(await sendJson<MadePortrait>('/api/portrait/make', 'POST', { character: character(), style }, control.signal)) } catch (failure) {
+      if (!stopped(failure)) throw failure
+    } finally { if (out.current === control) { out.current = null; setMaking(false) } }
   }, 'No portrait came back.')
+  const stop = () => { out.current?.abort(); out.current = null; setMaking(false) }
   const use = () => made && void attempt(async () => { await keep(made.image, 'portrait.png'); setMade(null) }, 'That portrait could not be saved.')
 
   return (
@@ -64,9 +70,9 @@ export function Portrait({ saved, name, character, pending, onPending, onSaved }
       {made ? (
         <>
           <div className="row">
-            <button type="button" className="primary" disabled={making} onClick={use}>Use this</button>
-            <button type="button" disabled={making} onClick={make}>{making ? 'Drawing…' : 'Try again'}</button>
-            <button type="button" className="link" disabled={making} onClick={() => setMade(null)}>Discard</button>
+            <button type="button" className="primary" disabled={making} onClick={use}>Keep</button>
+            {making ? <button type="button" onClick={stop}>Stop</button> : <button type="button" onClick={make}><Bolt size={13} /> Try again</button>}
+            <button type="button" className="quiet" disabled={making} onClick={() => setMade(null)}>Put back</button>
           </div>
           <details className="small"><summary>Prompt</summary><p className="muted">{made.prompt}</p></details>
         </>
@@ -81,7 +87,7 @@ export function Portrait({ saved, name, character, pending, onPending, onSaved }
               <select aria-label="Style" value={style} onChange={(event) => setStyle(event.target.value)}>
                 {styles.data?.map((item) => <option key={item.key} value={item.key}>{item.name}</option>)}
               </select>
-              <button type="button" disabled={making} onClick={make}><Sparkles size={13} aria-hidden /> {making ? 'Drawing…' : 'Make a portrait'}</button>
+              <ModelButton busy={making} onRun={make} onStop={stop}>Make a portrait</ModelButton>
             </div>
           )}
         </>
