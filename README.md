@@ -54,10 +54,10 @@ texting habits.
 
 **The Sidebar Assistant.** **Assistant** beside Save opens a chat next to the form, like Adventure's Sidebar
 Assistant. It reads the form as you type, unsaved changes included, knows which field you're in and what you changed
-since its last answer, and writes straight into the fields when you ask: "make this shorter", "give her a sister she
-doesn't talk to". Every field it changed is marked with **Undo the assistant's change**, each change has **Compare**
-and **Undo** in the chat, and a field you were typing in while it answered waits for **Apply** instead. What it writes
-goes through the slop audit like any draft, and nothing is kept until you save. It can't touch the sliders, the apps,
+since its last answer, and proposes edits to the fields when you ask: "make this shorter", "give her a sister she
+doesn't talk to". Each one has **Compare**, **Apply** and **Dismiss** (and **Apply all** when there are several), and a
+field you applied one to is marked with **Undo the assistant's change**. What it writes goes through the slop audit
+like any draft, and nothing is kept until you save. It can't touch the sliders, the apps,
 Companion's relationship, emotional edges or who presses on their inner square.
 
 **Hear them talk.** The model interviews the character in their own voice: about fourteen questions on their day,

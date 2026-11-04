@@ -65,8 +65,8 @@ export const assistant = {
   setError(error: string) { set({ error }) },
   clear() { set({ turns: [], seen: null, marks: {}, error: '' }) },
 
-  /** One message: the reply, with its edits put straight into the form. An edit to a field the user changed while it
-   * answered waits for Apply. Resolves true once answered, so the composer can clear. */
+  /** One message: the reply and its edits, each a proposal the user applies or dismisses. Resolves true once
+   * answered, so the composer can clear. */
   async send(message: string): Promise<boolean> {
     const form = state.form
     if (!form || state.busy) return false
@@ -75,16 +75,8 @@ export const assistant = {
     try {
       const reply = await sendJson<Reply>('/api/assistant', 'POST', { message, character: sent, seen: state.seen, focus: state.focus?.field ?? null, history: history(state.turns) })
       if (state.form?.key !== form.key) return true
-      let next = form.get()
-      const edits: Edit[] = reply.edits.map((edit) => {
-        const before = valueAt(next, edit.path)
-        if (!same(valueAt(sent, edit.path), before)) return { ...edit, id: newId(), before, status: 'waiting' }
-        next = withValue(next, edit.path, edit.value)
-        return { ...edit, id: newId(), before, status: 'applied' }
-      })
-      form.set(next)
-      const marks = { ...state.marks, ...Object.fromEntries(edits.filter((edit) => edit.status === 'applied').map((edit) => [edit.field, edit.id])) }
-      set({ turns: [...state.turns, { id: newId(), message, reply: reply.reply, edits, audit: reply.audit }], seen: next, marks })
+      const edits: Edit[] = reply.edits.map((edit) => ({ ...edit, id: newId(), before: valueAt(sent, edit.path), status: 'pending' }))
+      set({ turns: [...state.turns, { id: newId(), message, reply: reply.reply, edits, audit: reply.audit }], seen: sent })
       return true
     } catch (failure) {
       set({ error: failure instanceof Error ? failure.message : 'The assistant could not answer.' })
@@ -92,30 +84,35 @@ export const assistant = {
     } finally { set({ busy: false }) }
   },
 
-  /** Puts an edit in: one that waited, or one undone. */
+  /** Puts a proposal into the form, marked. What the field held now is what Undo puts back. `seen` follows, so the
+   * next message reports only the user's own typing as their changes. */
   apply(id: string) {
     const edit = found(id)
     const form = state.form
-    if (!edit || !form) return
+    if (!edit || !form || edit.status === 'applied') return
     const now = form.get()
     form.set(withValue(now, edit.path, edit.value))
-    set({ turns: updated(id, { status: 'applied', before: valueAt(now, edit.path) }), marks: { ...state.marks, [edit.field]: id } })
+    set({
+      turns: updated(id, { status: 'applied', before: valueAt(now, edit.path) }), marks: { ...state.marks, [edit.field]: id },
+      seen: state.seen && withValue(state.seen, edit.path, edit.value),
+    })
   },
-  /** Puts back what the field held before the edit, asking first if the user has changed it since. */
+  dismiss(id: string) { if (found(id)?.status === 'pending') set({ turns: updated(id, { status: 'dismissed' }) }) },
+  /** Puts back what the field held before, asking first if the user has changed it since; the proposal can be
+   * applied again. */
   undo(id: string) {
     const edit = found(id)
     const form = state.form
     if (!edit || !form || edit.status !== 'applied') return
     const now = form.get()
     if (!same(valueAt(now, edit.path), edit.value) &&
-      !window.confirm(`${edit.label} has changed since the assistant wrote it. Put back what was there before, and lose that?`)) return
+      !window.confirm(`${edit.label} has changed since you applied the assistant's edit. Put back what was there before, and lose that?`)) return
     form.set(withValue(now, edit.path, edit.before))
-    set({ turns: updated(id, { status: 'undone' }), marks: without(edit.field) })
+    set({ turns: updated(id, { status: 'pending' }), marks: without(edit.field), seen: state.seen && withValue(state.seen, edit.path, edit.before) })
   },
+  applyTurn(turn: Turn) { for (const edit of turn.edits) if (edit.status === 'pending') assistant.apply(edit.id) },
   /** Undo for the mark on the form itself. */
   undoField(field: string) { const id = state.marks[field]; if (id) assistant.undo(id) },
-  /** Undo for every edit of one answer still in the form. */
-  undoTurn(turn: Turn) { for (const edit of turn.edits) if (edit.status === 'applied') assistant.undo(edit.id) },
 }
 
 export function useAssistant(): AssistantState {

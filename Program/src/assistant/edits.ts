@@ -2,9 +2,9 @@
  * values are the same as the form means them. Nothing here talks to the server. */
 import { emptyPsyche, type AuditHit, type Character } from '../api'
 
-/** `before` is what the field held when the edit went in; `waiting` is an edit to a field the user was changing while
- * the assistant answered, so it waits for Apply instead of landing on their typing. */
-export type EditStatus = 'applied' | 'waiting' | 'undone'
+/** An edit is a proposal: `pending` until the user applies or dismisses it, and pending again after Undo. `before` is
+ * what the field held when it was proposed, then when it was applied, which is what Undo puts back. */
+export type EditStatus = 'pending' | 'applied' | 'dismissed'
 export interface Edit { id: string; field: string; label: string; path: string[]; value: unknown; before: unknown; status: EditStatus }
 export interface Turn { id: string; message: string; reply: string; edits: Edit[]; audit: AuditHit[] }
 export interface HistoryTurn { role: 'user' | 'assistant'; content: string }
@@ -56,9 +56,9 @@ export function shown(value: unknown): string {
 
 /** What became of each edit, for the next message: the assistant knows which of its changes the user kept. */
 function outcome(edit: Edit): string {
-  if (edit.status === 'applied') return `changed ${edit.label}`
-  if (edit.status === 'undone') return `changed ${edit.label}, which they undid`
-  return `offered a change to ${edit.label}, not put in yet`
+  if (edit.status === 'applied') return `proposed a change to ${edit.label}, which they applied`
+  if (edit.status === 'dismissed') return `proposed a change to ${edit.label}, which they dismissed`
+  return `proposed a change to ${edit.label}, not applied`
 }
 
 /** What the server is sent of the conversation so far: the latest turns, each cut to a readable length. */

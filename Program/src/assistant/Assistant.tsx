@@ -14,7 +14,7 @@ export function reveal(field: string) {
 }
 
 /** The Sidebar Assistant, after Prospero's Adventure's: a chat beside the character form that sees it as you type
- * and edits it for you, each edit marked on the form with Undo (dramatis/assistant.py). */
+ * and proposes edits you apply one by one, each marked on the form with Undo once applied (dramatis/assistant.py). */
 export function Assistant() {
   const chat = useAssistant()
   const ready = useModelReady()
@@ -40,7 +40,7 @@ function Transcript({ turns, busy, name }: { turns: Turn[]; busy: boolean; name:
       {turns.length === 0 && (
         <div className="muted small">
           <p>Ask about {name}, or for a change: &ldquo;does their fear fit their background?&rdquo;, &ldquo;make this shorter&rdquo;, &ldquo;give them a sister they don&rsquo;t talk to&rdquo;.</p>
-          <p>It reads the form as you type and writes straight into it. Every change is marked with Undo, and nothing is kept until you save.</p>
+          <p>It reads the form as you type. You apply each change it proposes, and nothing is kept until you save.</p>
         </div>
       )}
       {turns.map((turn) => (
@@ -48,7 +48,7 @@ function Transcript({ turns, busy, name }: { turns: Turn[]; busy: boolean; name:
           <p className="assistant-message">{turn.message.length > 600 ? `${turn.message.slice(0, 600)}…` : turn.message}</p>
           <p className="assistant-reply">{turn.reply}</p>
           {turn.edits.map((edit) => <EditCard key={edit.id} edit={edit} hard={turn.audit.filter((hit) => hit.field === edit.field && hit.severity === 'hard').map((hit) => hit.match.trim() || hit.rule)} />)}
-          {turn.edits.filter((edit) => edit.status === 'applied').length > 1 && <button type="button" className="link" onClick={() => assistant.undoTurn(turn)}><Undo2 size={13} aria-hidden /> Undo all of these</button>}
+          {turn.edits.filter((edit) => edit.status === 'pending').length > 1 && <button type="button" onClick={() => assistant.applyTurn(turn)}>Apply all</button>}
         </article>
       ))}
       {busy && <p className="muted small" role="status">Thinking it over. A local model can take a minute or two.</p>}
@@ -61,11 +61,13 @@ function EditCard({ edit, hard }: { edit: Edit; hard: string[] }) {
     <section className={`assistant-edit ${edit.status}`} aria-label={edit.label}>
       <div className="row">
         <button type="button" className="link" onClick={() => reveal(edit.field)}>{edit.label}</button>
-        {edit.status === 'applied'
-          ? <button type="button" onClick={() => assistant.undo(edit.id)}><Undo2 size={13} aria-hidden /> Undo</button>
-          : <button type="button" onClick={() => assistant.apply(edit.id)}>{edit.status === 'waiting' ? 'Apply' : 'Apply again'}</button>}
+        {edit.status === 'applied' && <button type="button" onClick={() => assistant.undo(edit.id)}><Undo2 size={13} aria-hidden /> Undo</button>}
+        {edit.status === 'pending' && <span className="row">
+          <button type="button" className="primary" onClick={() => assistant.apply(edit.id)}>Apply</button>
+          <button type="button" className="link" onClick={() => assistant.dismiss(edit.id)}>Dismiss</button>
+        </span>}
+        {edit.status === 'dismissed' && <span className="muted small">Dismissed</span>}
       </div>
-      {edit.status === 'waiting' && <p className="small">You were changing this while it answered, so it waits for you.</p>}
       {hard.length > 0 && <p className="error small"><TriangleAlert size={13} aria-hidden /> Reads as model-written: {hard.join(', ')}</p>}
       <details>
         <summary className="small">Compare</summary>

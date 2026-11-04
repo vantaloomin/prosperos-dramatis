@@ -216,10 +216,10 @@ button.side-toggle { width: 100%; justify-content: flex-start; background: var(-
 .assistant-turn p { margin: 0; }
 .assistant-message { justify-self: end; max-width: 90%; padding: 0.45rem 0.7rem; border-radius: 10px; background: color-mix(in srgb, var(--accent) 12%, var(--bg)); white-space: pre-wrap; }
 .assistant-reply { white-space: pre-wrap; }
-.assistant-turn > button.link { justify-self: start; }
+.assistant-turn > button { justify-self: start; }
 .assistant-edit { border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 6px; padding: 0.45rem 0.6rem; display: grid; gap: 0.3rem; }
-.assistant-edit.waiting { border-left-style: dashed; }
-.assistant-edit.undone { border-left-color: var(--line); }
+.assistant-edit.pending { border-left-style: dashed; }
+.assistant-edit.dismissed { border-left-color: var(--line); opacity: 0.75; }
 .assistant-edit > .row { justify-content: space-between; }
 .assistant-edit > .row > button.link { font-weight: 600; text-decoration: none; padding: 0; }
 .assistant-edit details > summary { margin: 0; }
@@ -230,7 +230,7 @@ button.side-toggle { width: 100%; justify-content: flex-start; background: var(-
 .assistant-composer .row { justify-content: space-between; }
 .assistant-focus { display: flex; align-items: center; gap: 0.2rem; }
 button.send { padding: 0.35rem 0.5rem; }
-/* A field the assistant's edit still stands in, until it is undone or typed over. */
+/* A field an applied assistant edit still stands in, until it is undone or typed over. */
 .field.edited { border-left: 3px solid var(--accent); padding-left: 0.5rem; margin-left: calc(-0.5rem - 3px); border-radius: 2px; animation: edited 1.8s ease-out; }
 .field.edited > label { color: var(--accent); }
 .field.edited > button.link { justify-self: start; padding: 0; }

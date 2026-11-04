@@ -26,7 +26,7 @@ character creator.
 - The Sidebar Assistant (after Adventure's, which came from Companion's sidecar; both are built on their apps' stories,
   so it is ported, not vendored) is `dramatis/assistant.py` with `prompts/assistant.md`, and `src/assistant/` on the
   screen. It gets the live form, the form as its last answer left it and the focused field (`data-field` on each
-  `Field`, the same keys as Help me write), and answers `{"reply", "edits"}`; edits land in the form, marked, with Undo.
+  `Field`, the same keys as Help me write), and answers `{"reply", "edits"}`; each edit is a proposal the user applies (then marked, with Undo) or dismisses.
   A field it may edit is in `assistant.guides()`.
 - The model never saves anything: drafts go to the form for review, and only Save writes to the library.
 - Before pushing, from `Program/`: `python -m ruff check .`, `python -m pytest -q`, `npm run build`.
