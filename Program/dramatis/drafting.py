@@ -28,7 +28,7 @@ from dramatis.formats.companion.errors import DomainError
 from dramatis.formats.companion.models import RoutineBlock
 
 PROMPTS = Path(__file__).parent / 'prompts'
-TEXT_LIMITS = {'name': 80, 'about': 2000, 'personality': 8000, 'voice': 600, 'appearance': 600,
+TEXT_LIMITS = {'name': 80, 'about': 2000, 'personality': 8000, 'voice': 600, 'sound': 300, 'appearance': 600,
                'background': 12000, 'wants': 300, 'fears': 300}
 LIST_LIMITS = {'skills': (20, 300), 'flaws': (20, 300), 'interests': (50, 120)}
 LIFE_TEXT = {'routine': 8000, 'absence_reaction': 2000}
@@ -61,7 +61,8 @@ CORE_SHAPE = '''  "name": "first and last name, or the one name they go by",
   "kind": "\\"\\" for an ordinary human, else one lowercase word for what they are, such as \\"elf\\"",
   "about": "2 to 4 sentences: their age, what they do, who they live or travel with, what they care about right now",
   "personality": "a paragraph: temperament, how they treat people, the contradiction, what annoys them",
-  "voice": "2 to 4 sentences of instructions for how they talk and write",
+  "voice": "how they talk: 2 to 4 sentences of instructions for their words, rhythm, humour and what they avoid saying",
+  "sound": "how their voice sounds, for text to speech: one short objective line on age, pitch, pace and texture, never personality or their name",
   "appearance": "2 or 3 plain sentences: what people see",
   "background": "1 or 2 paragraphs of ordinary history",
   "wants": "one sentence: what they are after",

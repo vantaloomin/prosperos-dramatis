@@ -12,6 +12,7 @@ def reply(**changes) -> str:
         'about': 'Dana is 38 and works night shifts as an ER nurse in Baltimore. She lives with her brother.',
         'personality': 'Steady at work, scattered at home. Holds grudges over small things.',
         'voice': 'Short sentences, dry jokes, rarely uses capital letters.',
+        'sound': 'A low, slightly hoarse alto, unhurried.',
         'appearance': 'Tall and broad-shouldered, cropped grey-streaked hair, scrubs under a parka.',
         'background': 'Grew up in Dundalk. Trained late, after years waiting tables.',
         'wants': 'To get onto day shifts before her knees give out.', 'fears': 'Making a mistake that kills someone.',

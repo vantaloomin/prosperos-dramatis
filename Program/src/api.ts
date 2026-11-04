@@ -45,7 +45,7 @@ export interface CompanionLife {
 }
 export interface Character {
   name: string; gender: Gender; age: number | null; kind: string; lifespan: number | null; birthday: string; setting: string
-  about: string; personality: string; voice: string; appearance: string; background: string; wants: string; fears: string
+  about: string; personality: string; voice: string; sound: string; appearance: string; background: string; wants: string; fears: string
   skills: string[]; flaws: string[]; interests: string[]; looks: Looks
   personality_sliders: Partial<Record<Trait, Slider>> | null; seen_as: string; sees_self: string
   apps: App[]; companion: CompanionLife
@@ -69,7 +69,7 @@ export const emptyLooks = (): Looks => ({
 export function emptyCharacter(apps: App[] = APPS): Character {
   return {
     name: '', gender: '', age: null, kind: '', lifespan: null, birthday: '', setting: '', about: '', personality: '',
-    voice: '', appearance: '', background: '', wants: '', fears: '', skills: [], flaws: [], interests: [],
+    voice: '', sound: '', appearance: '', background: '', wants: '', fears: '', skills: [], flaws: [], interests: [],
     looks: emptyLooks(), personality_sliders: null, seen_as: '', sees_self: '', apps,
     companion: {
       relationship: 'friendship', starting_closeness: 1, history_together: '', routine: '', schedule: [], life_themes: [],

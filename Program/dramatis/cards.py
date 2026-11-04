@@ -33,7 +33,7 @@ PLAIN_SIZE, PLAIN_COLOUR = (400, 600), (58, 52, 66)
 
 def description(character: Character) -> str:
     """The card's description: who they are, how they look and talk, and their story, in headed paragraphs."""
-    sections = [('', character.about), ('Appearance', character.appearance), ('Voice', character.voice),
+    sections = [('', character.about), ('Appearance', character.appearance), ('How they talk', character.voice), ('How they sound', character.sound),
                 ('Background', character.background), ('Wants', character.wants), ('Fears', character.fears),
                 ('Skills', '; '.join(character.skills)), ('Flaws', '; '.join(character.flaws)),
                 ('How others see them', character.seen_as)]

@@ -138,8 +138,12 @@ export function Editor({ saved, start, seed, filledIn, note, onSaved, onDeleted 
           help={help('about', 'About them', character.about, (about) => set({ about }))} />
         <TextArea label={mark('personality', 'Personality')} value={character.personality} onChange={(personality) => set({ personality })} maxLength={8000} rows={4}
           help={help('personality', 'their personality', character.personality, (personality) => set({ personality }))} />
-        <TextArea label={mark('voice', 'Voice')} value={character.voice} onChange={(voice) => set({ voice })} maxLength={600} rows={2}
-          hint="Instructions for how they talk and write." help={help('voice', 'their voice', character.voice, (voice) => set({ voice }))} />
+        <div className="grid two">
+          <TextArea label={mark('voice', 'How they talk')} value={character.voice} onChange={(voice) => set({ voice })} maxLength={600} rows={3}
+            hint="Their words, rhythm, humour and what they avoid saying: instructions for writing them." help={help('voice', 'how they talk', character.voice, (voice) => set({ voice }))} />
+          <TextArea label={mark('sound', 'How they sound')} value={character.sound} onChange={(sound) => set({ sound })} maxLength={300} rows={3}
+            hint="The voice itself, for text to speech: age, pitch, pace, texture. Not personality or their name." help={help('sound', 'how they sound', character.sound, (sound) => set({ sound }))} />
+        </div>
       </section>
 
       <section>

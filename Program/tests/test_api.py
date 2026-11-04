@@ -9,6 +9,7 @@ from dramatis.main import create_app
 from tests.helpers import SLEEP, reply
 
 CHARACTER = {'name': 'Dana Okafor', 'gender': 'woman', 'age': 38, 'about': 'An ER nurse.', 'personality': 'Steady.',
+             'voice': 'Short sentences.', 'sound': 'A low alto.',
              'interests': ['duckpin bowling'], 'companion': {'schedule': [SLEEP]}}
 
 
@@ -47,7 +48,8 @@ def test_cards_carry_every_apps_shape_and_come_back_whole():
     made = api.post('/api/characters', json={'character': CHARACTER}).json()
     full = api.get(f"/api/characters/{made['id']}/card.json").json()
     assert full['spec'] == 'chara_card_v3' and full['data']['name'] == 'Dana Okafor'
-    assert full['data']['description'] == 'An ER nurse.' and full['data']['tags'] == ['duckpin bowling']
+    assert full['data']['description'] == ('An ER nurse.\n\nHow they talk: Short sentences.\n\nHow they sound: A low alto.')
+    assert full['data']['tags'] == ['duckpin bowling']
     extension = full['data']['extensions']['prospero']
     assert extension['format'] == 'prospero-character' and set(extension['apps']) == {'companion', 'adventure', 'dungeon'}
     assert extension['apps']['companion']['identity'] == 'An ER nurse.'

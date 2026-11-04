@@ -11,6 +11,10 @@ PICKS = {'idea': 'a shy night nurse', 'name': '', 'gender': '', 'age': None, 'se
          'emotional_edges': False}
 
 
+def system_of(model) -> str:
+    return model.asked[0][0]
+
+
 def test_a_draft_comes_back_shaped_with_the_users_picks_winning(model):
     model.replies = [reply()]
     found = drafting.draft(PICKS | {'name': 'Dana Price', 'relationship': 'romance'})
@@ -19,6 +23,8 @@ def test_a_draft_comes_back_shaped_with_the_users_picks_winning(model):
     assert character['age'] == 38 and character['gender'] == 'woman' and character['setting'] == 'Baltimore, today'
     assert character['companion']['relationship'] == 'romance'
     assert character['companion']['texting']['lowercase'] is True
+    # How they talk and how they sound stay two fields.
+    assert character['sound'] == 'A low, slightly hoarse alto, unhurried.' and 'never personality or their name' in system_of(model)
     # Emotional edges stay off unless asked for.
     assert character['companion']['emotional_traits'] == [] and character['companion']['absence_reaction'] == ''
     # "shy" settles a slider from the user's own idea; the rest are rolled.

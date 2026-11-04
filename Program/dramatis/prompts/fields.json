@@ -1,7 +1,8 @@
 {
   "about": {"guide": "2 to 4 sentences: their age, what they do, who they live with or travel with, and what they care about right now.", "shape": "a string", "limit": 2000},
   "personality": {"guide": "a paragraph about their temperament, how they treat people, one real contradiction and what annoys them.", "shape": "a string", "limit": 8000},
-  "voice": {"guide": "2 to 4 sentences of instructions for how they talk and write: sentence length, capitalisation, humour, words they overuse, what they avoid saying.", "shape": "a string", "limit": 600},
+  "voice": {"guide": "how they talk, not how their voice sounds: 2 to 4 sentences of instructions for their words and writing: sentence length, capitalisation, humour, words they overuse, what they avoid saying.", "shape": "a string", "limit": 600},
+  "sound": {"guide": "one short objective line describing the physical sound of their voice for text to speech: apparent age, pitch, pace, texture, accent if any. Never personality, mood or their name, and nothing about what they say.", "shape": "a string", "limit": 300},
   "appearance": {"guide": "2 or 3 plain sentences: height and build, hair, face, what they wear on a normal day, one ordinary or unflattering detail.", "shape": "a string", "limit": 600},
   "background": {"guide": "1 or 2 paragraphs of ordinary history: where they grew up in general terms, training, family with some friction, one or two turning points.", "shape": "a string", "limit": 12000},
   "wants": {"guide": "one sentence: something concrete they are after and can act on.", "shape": "a string", "limit": 300},

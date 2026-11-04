@@ -22,7 +22,7 @@ Work in progress: v0.1.0 is the first version.
   to V3). The model splits it into the fields and tells you which ones it had to fill in. You see the card's text
   before anything is sent anywhere. A card Dramatis made comes back whole, without asking the model at all.
 - **The full form.** You can edit every field. **Help me write** rewrites any field to fit the rest of the character,
-  and **Put back what was there** undoes it. There are also the five personality sliders (Roll again, or start from a
+  and **Put back what was there** undoes it. **How they talk** (their words, rhythm and humour) and **How they sound** (the voice itself, for text to speech) are separate fields, so neither you nor a model mixes them up. There are also the five personality sliders (Roll again, or start from a
   four-letter type), Looks field by field, how others see them and how they see themselves, kind and lifespan, and
   Companion's own part: relationship, closeness, routine, weekly schedule, texting habits.
 - **Works in.** While you edit, each app checks the character with its own rules, and the form shows "Works in

@@ -2,7 +2,7 @@
 
 The shared part is who they are, which every app reads: name, gender, age and kind, About them, personality, voice,
 look, background, wants and fears, skills, flaws and interests, the five personality sliders, Looks, and how they
-come across. `companion` holds what only Prospero's Companion uses: how they know the user and the everyday life its
+come across, and how their voice sounds for text to speech. `companion` holds what only Prospero's Companion uses: how they know the user and the everyday life its
 simulation runs (routine, weekly schedule, life themes, texting habits, emotional edges).
 
 Each field's limit is the tightest of the apps that read it, so nothing is cut short on the way in. `for_companion`,
@@ -101,7 +101,11 @@ class Character(Input):
     setting: str = Field(default='', max_length=200)
     about: str = Field(default='', max_length=2000)
     personality: str = Field(default='', max_length=8000)
+    # How they talk: their words, rhythm, humour and what they avoid saying, as instructions for writing them.
     voice: str = Field(default='', max_length=600)
+    # How they sound: the physical voice for text to speech (age, pitch, pace, texture), never personality or their
+    # name. Kept apart from `voice` so neither the user nor a model mixes the two.
+    sound: str = Field(default='', max_length=300)
     appearance: str = Field(default='', max_length=600)
     background: str = Field(default='', max_length=12000)
     wants: str = Field(default='', max_length=300)
