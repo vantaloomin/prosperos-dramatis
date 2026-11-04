@@ -3,6 +3,7 @@ import type { Block, BlockKind } from './api'
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const KINDS: BlockKind[] = ['work', 'study', 'errand', 'leisure', 'social', 'rest', 'sleep']
+const KIND_NAMES: Record<BlockKind, string> = { work: 'Work', study: 'Study', errand: 'Errands', leisure: 'Leisure', social: 'Social', rest: 'Rest', sleep: 'Sleep' }
 
 /** Problems Companion would refuse, or that would leave its life simulation without a night's sleep. */
 export function scheduleProblems(blocks: Block[]): string[] {
@@ -33,7 +34,7 @@ export function Schedule({ blocks, onChange }: { blocks: Block[]; onChange: (blo
         <div key={index} className="block">
           <input aria-label="What it is" value={block.label} maxLength={120} onChange={(event) => change(index, { label: event.target.value })} />
           <select aria-label="Kind" value={block.kind} onChange={(event) => change(index, { kind: event.target.value as BlockKind })}>
-            {KINDS.map((kind) => <option key={kind} value={kind}>{kind}</option>)}
+            {KINDS.map((kind) => <option key={kind} value={kind}>{KIND_NAMES[kind]}</option>)}
           </select>
           <input aria-label="Starts" type="time" value={block.start} onChange={(event) => change(index, { start: event.target.value })} />
           <input aria-label="Ends" type="time" value={block.end} onChange={(event) => change(index, { end: event.target.value })} />

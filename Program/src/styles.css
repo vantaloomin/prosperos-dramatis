@@ -22,8 +22,6 @@ input[type='checkbox'], input[type='radio'], input[type='range'] { accent-color:
 .top { grid-area: top; display: flex; gap: 0.6rem; align-items: center; padding: 0.6rem 1rem; background: var(--panel); color: var(--accent); flex-wrap: wrap; }
 .top h1 { color: var(--ink); }
 .top-model { margin-left: auto; color: var(--ink); }
-.top-model .model-line { margin: 0; }
-.top-model .model-form { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0; }
 .pane { background: var(--panel); padding: 1rem; overflow: auto; }
 .library { grid-area: library; } .work { grid-area: work; }
 @media (max-width: 800px) {
@@ -158,7 +156,7 @@ input.narrow { width: 13rem; }
 .block { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; width: 100%; }
 .block > input:first-child { flex: 1; min-width: 10rem; width: auto; }
 .block select { width: auto; }
-.block input[type='time'] { width: 7.5rem; }
+.block input[type='time'] { width: auto; min-width: 8.5rem; }
 .days { display: inline-flex; gap: 0.15rem; flex-wrap: wrap; }
 .app-section { border-top: 1px solid var(--line); margin-top: 1rem; }
 .model-line { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; font-size: 0.85rem; }
@@ -404,3 +402,12 @@ button.text-button { border: none; background: none; padding: 0.2rem 0; color: v
 .narrow-only { display: none; }
 @media (max-width: 600px) { .wide-only { display: none; } .narrow-only { display: inline; } }
 .setting-row > button, .setting-row-label { white-space: nowrap; }
+/* One Models button in the top bar: amber while no text model is set up. */
+button.models-button { color: var(--ink); }
+.dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--ok); flex: none; }
+.dot.amber { background: #d99a1e; }
+h3.models-section { display: flex; gap: 0.4rem; align-items: center; margin: 0 0 0.75rem; font-size: 1rem; }
+.models-dialog > section + section { border-top: 1px solid var(--line); }
+.models-dialog .model-form { margin: 0; align-items: end; }
+.models-dialog .model-form input, .models-dialog .model-form select { width: 100%; }
+.models-dialog .model-line { font-size: 0.9rem; }

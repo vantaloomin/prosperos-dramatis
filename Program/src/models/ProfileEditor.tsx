@@ -97,7 +97,7 @@ export function ProfileEditor({ profile, others, onDone }: { profile?: ModelProf
 function SaveActions({ ready, keyless, typed, canSave, saving, error, onCancel }: { ready: boolean; keyless: boolean; typed: boolean; canSave: boolean; saving: boolean; error: string; onCancel: () => void }) {
   const what = typed ? 'the key' : 'it'
   return <>
-    {!ready && <p className="subtle">You can save {what} now and choose a model later. A profile needs a model before it can do a job.</p>}
+    {!ready && canSave && <p className="subtle">You can save {what} now and choose a model later.</p>}
     {error && <Notice tone="error">{error}</Notice>}
     <div className="form-actions"><button type="submit" className="button primary" disabled={!canSave} aria-disabled={saving}>{saving ? 'Saving…' : 'Save profile'}</button><button type="button" className="button" onClick={onCancel}>Cancel</button>{!keyless && <span className="subtle keychain-note">Keys are kept in your system keychain, never in Dramatis' settings file.</span>}</div>
   </>
