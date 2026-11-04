@@ -41,8 +41,7 @@ export function ModelSettings() {
   const done = (saved?: ModelProfile) => { setEditing(null); if (saved) { setResult({ tone: 'info', text: `${saved.name} saved. New requests use it.` }); refresh() } }
   const profiles = overview.profiles
   return <section className="form-stack models">
-    <p className="subtle">A profile is one provider, model and key: a hosted service, your Codex or Claude Code login, or a model running on this computer. Saving never contacts the service.</p>
-    {profiles.length === 0 && editing !== 'new' && <p className="subtle">No model yet. Add one to draft characters, use the Sidebar Assistant and get help on the Cast board.</p>}
+    {profiles.length === 0 && editing !== 'new' && <p className="subtle">No text model yet.</p>}
     {profiles.length > 0 && <ul className="model-profiles">
       {profiles.map(profile => editing === profile.id
         ? <li key={profile.id}><ProfileEditor profile={profile} others={profiles} onDone={done} /></li>
@@ -84,7 +83,7 @@ function ProfileCard({ profile, jobs, onEdit, onCopied, onChanged, setResult }: 
     <div className="form-actions">
       <button type="button" className="button" onClick={() => void verify()} disabled={busy}><PlugZap size={15} aria-hidden="true" />{busy ? 'Checking…' : 'Check connection'}</button>
       <button type="button" className="button" onClick={onEdit} aria-label={`Edit ${profile.name}`}><Pencil size={15} aria-hidden="true" />Edit</button>
-      <button type="button" className="button" onClick={() => void copy()} disabled={busy} aria-label={`Add another model like ${profile.name}`}><Copy size={15} aria-hidden="true" />Add another model</button>
+      <button type="button" className="button" onClick={() => void copy()} disabled={busy} aria-label={`Duplicate ${profile.name}`}><Copy size={15} aria-hidden="true" />Duplicate</button>
       <button type="button" className="button" onClick={remove} disabled={busy} aria-label={`Delete ${profile.name}`}><Trash2 size={15} aria-hidden="true" />Delete</button>
     </div>
   </li>
@@ -102,11 +101,10 @@ function JobAssignments({ overview, onChanged, setResult }: { overview: ModelsOv
   return <fieldset className="model-routes form-stack"><legend>Which profile does each job</legend>
     {overview.jobs.map(job => <div className="field" key={job.key}>
       <label htmlFor={`model-job-${job.key}`}>{job.name}</label>
-      <select id={`model-job-${job.key}`} value={overview.routes[job.key] ?? ''} aria-describedby={`model-job-${job.key}-hint`} onChange={event => void change(job, event.target.value)}>
+      <select id={`model-job-${job.key}`} value={overview.routes[job.key] ?? ''} title={job.detail} onChange={event => void change(job, event.target.value)}>
         <option value="">{job.key === WRITING ? 'None' : `Same as writing${writing ? ` (${writing.name})` : ''}`}</option>
         {ready.map(profile => <option key={profile.id} value={profile.id}>{profile.name}</option>)}
       </select>
-      <small id={`model-job-${job.key}-hint`} className="hint">{job.detail}</small>
     </div>)}
   </fieldset>
 }

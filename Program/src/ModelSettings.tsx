@@ -9,9 +9,12 @@ const OPEN = 'dramatis:set-up-model'
 /** Open Models from anywhere, such as the Cast board's Set up a text model. */
 export const openModelSettings = () => window.dispatchEvent(new Event(OPEN))
 
-/** The writing profile in one line; Models (Companion's profiles and jobs, src/models) opens over the screen. */
+/** One Models button in the top bar, with a dot that turns amber while no text model is set up (portraits are
+ * optional, so they never turn it). It opens one dialog: Text (Companion's profiles and jobs, src/models) and
+ * Portraits. */
 export function ModelSettings() {
   const models = useModels()
+  const images = useQuery({ queryKey: ['images'], queryFn: () => getJson<ImageConfig>('/api/images') })
   const dialog = useRef<HTMLDialogElement>(null)
   const [open, setOpen] = useState(false)
   const show = () => { setOpen(true); dialog.current?.showModal() }
@@ -20,25 +23,31 @@ export function ModelSettings() {
     return () => window.removeEventListener(OPEN, show)
   }, [])
   const writing = profileFor(models.data, 'writing')
+  const missing = !!models.data && !writing
+  const state = [writing ? `Text: ${writing.name}` : models.data ? 'No text model yet' : '',
+    images.data ? (images.data.kind === 'off' ? 'Portraits off' : `Portraits: ${IMAGE_KINDS[images.data.kind]}`) : ''].filter(Boolean).join('. ')
   return (
-    <div className="model-line small">
-      <Cpu size={14} aria-hidden />
-      {writing ? <>{writing.provider_name} · <code>{writing.config.model}</code></> : models.data ? 'No text model yet' : null}
-      <button type="button" className="link" onClick={show}>{writing ? 'Change' : 'Set up'}</button>
+    <>
+      <button type="button" className="models-button" onClick={show} title={state} aria-label={`Models. ${state}`}>
+        <Cpu size={15} aria-hidden /> Models <span className={missing ? 'dot amber' : 'dot'} aria-hidden />
+      </button>
       <dialog ref={dialog} className="models-dialog" aria-labelledby="models-title" onClose={() => setOpen(false)}>
         <header><h2 id="models-title">Models</h2><button type="button" className="icon-button" aria-label="Close" onClick={() => dialog.current?.close()}><X size={18} aria-hidden /></button></header>
-        {open && <ModelProfiles />}
+        {open && <>
+          <section aria-labelledby="models-text"><h3 id="models-text" className="models-section"><Cpu size={16} aria-hidden /> Text</h3><ModelProfiles /></section>
+          <section aria-labelledby="models-portraits"><h3 id="models-portraits" className="models-section"><ImageIcon size={16} aria-hidden /> Portraits</h3><ImageSettings /></section>
+        </>}
       </dialog>
-    </div>
+    </>
   )
 }
 
 const IMAGE_KINDS = { off: 'No image maker', comfyui: 'ComfyUI', codex: 'Codex (ChatGPT subscription)', hosted: 'An image API' }
 const COMFYUI_ADDRESS = 'http://127.0.0.1:8188'
 
-/** Which image maker draws portraits, beside the model line and edited the same way: Companion's own choices. Off until
- * set up; Check asks the maker what it has without drawing anything. */
-export function ImageSettings() {
+/** Which image maker draws portraits: Companion's own choices. Off until set up; Check asks the maker what it has
+ * without drawing anything. */
+function ImageSettings() {
   const client = useQueryClient()
   const current = useQuery({ queryKey: ['images'], queryFn: () => getJson<ImageConfig>('/api/images') })
   const [editing, setEditing] = useState<ImageConfig & { key: string } | null>(null)
@@ -54,8 +63,8 @@ export function ImageSettings() {
     const what = chosen.kind === 'hosted' ? chosen.providers[chosen.provider]?.label : IMAGE_KINDS[chosen.kind]
     const detail = chosen.kind === 'comfyui' ? [chosen.families[chosen.family], chosen.model] : chosen.kind === 'hosted' ? [chosen.model] : []
     return (
-      <div className="model-line small">
-        <ImageIcon size={14} aria-hidden /> {chosen.kind === 'off' ? 'Portraits off' : <>Portraits: {what}</>}
+      <div className="model-line">
+        {chosen.kind === 'off' ? 'Off' : what}
         {detail.filter(Boolean).map((part) => <span key={part}> · <code>{part}</code></span>)}
         {chosen.kind !== 'off' && <button type="button" className="link" disabled={check.isPending} onClick={() => check.mutate()}>{check.isPending ? 'Checking…' : 'Check'}</button>}
         <button type="button" className="link" onClick={() => setEditing({ ...chosen, key: '' })}>{chosen.kind === 'off' ? 'Set up' : 'Change'}</button>
@@ -74,7 +83,7 @@ export function ImageSettings() {
     base_url: typed ? editing.base_url : kind === 'comfyui' ? COMFYUI_ADDRESS : kind === 'hosted' ? chosen.providers[provider]?.base_url ?? '' : '',
   })
   return (
-    <form className="model-form" onSubmit={(event) => { event.preventDefault(); save.mutate(editing) }}>
+    <form className="model-form form-grid" onSubmit={(event) => { event.preventDefault(); save.mutate(editing) }}>
       <select aria-label="Image maker" value={editing.kind} onChange={(event) => pick(event.target.value as ImageConfig['kind'])}>
         {Object.entries(IMAGE_KINDS).map(([value, name]) => <option key={value} value={value}>{name}</option>)}
       </select>
