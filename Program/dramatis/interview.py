@@ -2,8 +2,7 @@
 they said can become proposals for their fields (prompts/from-interview.md). Both are routes of their own here.
 
 - `interview` returns the transcript and one sample line of their speech, for the form to show under How they talk.
-  The character goes to the model without their secret, so the transcript never gives it away on a card exported
-  without it.
+  They know their own secret and keep it: they may steer around it, but never say it.
 - `proposals` reads the transcript back and suggests new values for a few fields (PROPOSABLE), each with a reason.
   Nothing changes until the user applies one on the form. `sound` is never proposed: it is the physical voice, which a
   written interview cannot show.

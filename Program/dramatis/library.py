@@ -38,7 +38,8 @@ def write(path: Path, data: bytes):
 def summary(record: dict) -> dict:
     character = record['character']
     return {'id': record['id'], 'name': character.get('name') or 'Unnamed', 'about': character.get('about', '')[:200],
-            'apps': character.get('apps', []), 'updated': record['updated'], 'portrait': record['portrait']}
+            'apps': character.get('apps', []), 'updated': record['updated'],
+            'portrait': path_of(record['id'], '.png').is_file()}
 
 
 def listing() -> list[dict]:
@@ -67,9 +68,8 @@ def save(character: Character, character_id: str | None = None, seed: str = '') 
     else:
         stamp = now()
         record = {'id': secrets.token_hex(ID_LENGTH // 2), 'created': stamp, 'updated': stamp,
-                  'seed': seed or secrets.token_hex(5), 'character': character.model_dump(), 'portrait': False}
-    write(path_of(record['id']), (json.dumps(record, ensure_ascii=False, indent=1) + '\n').encode('utf-8'))
-    return get(record['id'])
+                  'seed': seed or secrets.token_hex(5), 'character': character.model_dump()}
+    return store(record)
 
 
 def delete(character_id: str):
@@ -84,12 +84,20 @@ def portrait(character_id: str) -> bytes | None:
 
 
 def set_portrait(character_id: str, data: bytes | None) -> dict:
-    """Their portrait, a PNG (the picture a PNG card is made from), or None to take it away."""
-    get(character_id)
+    """Their portrait, a PNG (the picture a PNG card is made from), or None to take it away. It counts as a change to
+    them, so the library's thumbnail and the card's modification date follow it."""
+    record = get(character_id)
     if data is None:
         path_of(character_id, '.png').unlink(missing_ok=True)
     else:
         require(data.startswith(PNG), 'Choose a PNG picture. A JPEG can be saved as PNG in any picture editor.', 422)
         require(len(data) <= MAX_PORTRAIT, 'Portraits are limited to 10 MB.', 422)
         write(path_of(character_id, '.png'), data)
-    return get(character_id)
+    return store(record | {'updated': now()})
+
+
+def store(record: dict) -> dict:
+    """A character's file, written whole. Whether they have a portrait is read from the picture itself."""
+    kept = {key: value for key, value in record.items() if key != 'portrait'}
+    write(path_of(record['id']), (json.dumps(kept, ensure_ascii=False, indent=1) + '\n').encode('utf-8'))
+    return get(record['id'])

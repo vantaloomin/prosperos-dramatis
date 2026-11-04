@@ -68,7 +68,7 @@ a few fields, each with a reason, which you **Apply**, **Dismiss** or **Undo**. 
 **Inner life, inner square and a secret.** Optional, folded sections for the lie they believe, the truth they need and
 what could force it; who they were, are expected to be, want to be and fear becoming, each pressed by other characters
 in your library; and a secret, with what people believe instead and who knows. Each app gets them folded into fields
-it already reads. A card leaves the secret out unless you tick **Include their secret**.
+it already reads, the secret included, so the character knows what they are keeping.
 
 **An audit for AI slop.** Everything the model writes is checked against Wren Halloway's list of stock names (Elara
 Voss), words and patterns that mark text as model-written, plus the signs from Wikipedia's
@@ -80,6 +80,15 @@ those words.
 
 **Works in.** While you edit, each app checks the character with its own rules, and the form shows **Works in
 Companion**, or what that app would refuse.
+
+**Portraits.** Add a PNG of your own, or set up an image maker with **Portraits** at the top right and press **Make
+a portrait**. The image makers are Prospero's Companion's own, run with its code: ComfyUI with one of its model
+families (Krea 2, Qwen Image 2.1, Z-Image Turbo, Anima, or Booru for SDXL, Pony and Illustrious checkpoints), Codex
+under your ChatGPT sign-in, or an image API with your key (OpenAI, OpenRouter, Google, NanoGPT, NovelAI or another).
+**Check** asks the maker whether it has what it needs without drawing anything. Your model writes the picture's prompt
+from how they look (Appearance, Looks, age and setting; never how they see themselves or how others see them), you
+pick a style, and the new portrait shows beside the old one until you choose **Use this**. It is cropped to a card's
+2:3, and the prompt always asks for a dressed adult.
 
 **Cards.** **Export card** saves a character card (Character Card V3, PNG or JSON) in one of two kinds. The PNG
 puts the card into their portrait, or a plain picture if they have none.
@@ -153,8 +162,8 @@ Each app keeps its own port and data folder, so they all run at once without cla
 ## Staying in step with the apps
 
 Dramatis checks characters with each app's own code rather than a copy of their rules: Companion's, Adventure's and
-Dungeon's request models, Companion's card reader, and the personality slider rules and words that Companion and
-Adventure share. They're copied into `Program/dramatis/formats/`, with the commit each came from recorded in
+Dungeon's request models, Companion's card reader and image makers, and the personality slider rules and words that
+Companion and Adventure share. They're copied into `Program/dramatis/formats/`, with the commit each came from recorded in
 `SOURCE.json`. To update them:
 
 ```
@@ -168,8 +177,9 @@ CI checks the copies against each app's latest `main` on every pull request and 
 ## Privacy
 
 Dramatis only listens on your own computer (127.0.0.1). Characters and portraits stay in your data folder. The only
-thing that leaves your PC is what you ask your model to write, sent to the model you picked. API keys are kept in your
-system's credential store (Windows Credential Manager), never in a file.
+thing that leaves your PC is what you ask your model to write, sent to the model you picked, and a portrait's prompt,
+sent to the image maker you picked. API keys are kept in your system's credential store (Windows Credential Manager),
+never in a file.
 
 ## Development
 

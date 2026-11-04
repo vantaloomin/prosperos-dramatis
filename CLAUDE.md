@@ -18,7 +18,7 @@ character creator.
   there with no model; only structure is a hard error. Genres, group types, axes and tags are data
   (`dramatis/data/cast_*.json`), so a new template is a JSON entry. Routes are in `cast_routes.py`.
 - A character's depth (`interview`, `arc`, `secret`, `psyche`) is optional and no app has a field for it: the app
-  shapes fold it into fields they read, and a card drops the secret unless `?secret=1`. The interview's routes live in
+  shapes fold it into fields they read. The secret goes everywhere the character does, so they can keep it. The interview's routes live in
   `dramatis/interview.py`, its own router; Help me write reaches nested fields by dotted keys (`arc.lie`,
   `psyche.was`), listed in `slop.DEPTH`.
 - The Cast board is `src/cast/` with its calls and pure cast edits in `src/castApi.ts`. App keeps each open board

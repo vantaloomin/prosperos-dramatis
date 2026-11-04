@@ -28,14 +28,13 @@ export function InnerLife({ arc, onChange, help }: { arc: Arc; onChange: (arc: A
   )
 }
 
-/** Something they keep from most people. The library always keeps it; a card carries it only when the user ticks
- * Include their secret in the Export card menu. */
+/** Something they keep from most people. It goes with them into every card and app, so they know what they are
+ * keeping. */
 export function SecretSection({ secret, onChange, help }: { secret: Secret; onChange: (secret: Secret) => void; help: Help }) {
   const set = (change: Partial<Secret>) => onChange({ ...secret, ...change })
   return (
     <Folded title="Secret" filled={!!(secret.truth || secret.cover_story || secret.known_by)}>
       <TextArea name="secret.truth" label="What's really true" value={secret.truth} onChange={(truth) => set({ truth })} maxLength={600} rows={3}
-        hint="Cards leave it out unless you tick Include their secret."
         help={help('secret.truth', 'their secret', secret.truth, (truth) => set({ truth }))} />
       <div className="grid two">
         <TextArea name="secret.cover_story" label="What people believe instead" value={secret.cover_story} onChange={(cover_story) => set({ cover_story })} maxLength={400} rows={2}

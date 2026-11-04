@@ -1,10 +1,13 @@
 """Dramatis' own folder: settings.json and the character library (DRAMATIS_HOME overrides where).
 
 - `model`: which model drafts (dramatis/ai.py); its API key is in the system keyring, not here.
+- `image`: which image maker draws portraits (dramatis/images.py), off until set; its key is in the keyring too.
 """
 import json
 import os
 from pathlib import Path
+
+KEYS = ('model', 'image')
 
 
 def home() -> Path:
@@ -25,11 +28,11 @@ def load() -> dict:
     except (OSError, ValueError):
         saved = {}
     saved = saved if isinstance(saved, dict) else {}
-    return {'model': saved.get('model') if isinstance(saved.get('model'), dict) else {}}
+    return {key: saved.get(key) if isinstance(saved.get(key), dict) else {} for key in KEYS}
 
 
 def save(settings: dict) -> dict:
-    kept = load() | {key: settings[key] for key in ('model',) if key in settings}
+    kept = load() | {key: settings[key] for key in KEYS if key in settings}
     path().parent.mkdir(parents=True, exist_ok=True)
     path().write_text(json.dumps(kept, indent=2) + '\n', encoding='utf-8')
     return load()

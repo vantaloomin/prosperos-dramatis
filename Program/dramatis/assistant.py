@@ -110,11 +110,8 @@ def fields_text(character: dict) -> str:
 
 
 def character_text(character: dict) -> str:
-    """The form as the model sees it: the interview and the secret included, the sliders said nowhere."""
-    found = drafting.for_model(character, interview=True)
-    if character.get('secret'):
-        found['secret'] = character['secret']
-    return json.dumps(found, ensure_ascii=False, indent=1)
+    """The form as the model sees it: the interview included, the sliders said nowhere."""
+    return json.dumps(drafting.for_model(character, interview=True), ensure_ascii=False, indent=1)
 
 
 def conversation(history: list[dict], message: str) -> str:

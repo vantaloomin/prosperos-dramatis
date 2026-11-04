@@ -8,9 +8,8 @@
   what only the Prospero apps use (Companion's schedule, routine, texting habits, emotional edges, the sliders) never
   leaves the suite. Those apps keep every extension a card carries and send it on when the card is shared again.
 
-Both kinds describe the character in the card's own fields, in words any app can read. Their secret stays in the
-library: either kind carries it only when the user includes it. A PNG card carries the V3 card
-in a `ccv3` text chunk and a V2 copy in `chara`: SillyTavern and Marinara read `ccv3` first, Front Porch reads only
+Both kinds describe the character in the card's own fields, in words any app can read, their secret included: the
+character's own model has to know it to keep it. A PNG card carries the V3 card in a `ccv3` text chunk and a V2 copy in `chara`: SillyTavern and Marinara read `ccv3` first, Front Porch reads only
 `chara`. The picture is their portrait, or a plain one when they have none.
 
 **In.** A card file is read with Companion's own card reader (vendored). A Prospero card Dramatis made comes back
@@ -29,7 +28,7 @@ from typing import Literal
 from pydantic import ValidationError
 
 from dramatis import NAME, VERSION
-from dramatis.character import Character, Secret, secret_text, shapes
+from dramatis.character import Character, secret_text, shapes
 from dramatis.formats.companion import cards as reader
 from dramatis.formats.companion.errors import DomainError
 
@@ -78,11 +77,8 @@ def description(character: Character) -> str:
     return '\n\n'.join(f'{label}: {text}' if label else text for label, text in sections if text)
 
 
-def card(character: Character, created: str, updated: str, target: Target = 'prospero', secret: bool = False) -> dict:
-    """The V3 card. Tags stay empty: chat apps file every tag a card brings into the user's own tag list. Without
-    `secret`, nothing in it carries their secret: not the description, the app shapes or the extension."""
-    if not secret:
-        character = character.model_copy(update={'secret': Secret()})
+def card(character: Character, created: str, updated: str, target: Target = 'prospero') -> dict:
+    """The V3 card. Tags stay empty: chat apps file every tag a card brings into the user's own tag list."""
     extensions = {}
     if target == 'prospero':
         extensions['prospero'] = {'format': FORMAT, 'format_version': FORMAT_VERSION, 'app': NAME,

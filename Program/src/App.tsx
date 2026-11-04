@@ -8,7 +8,7 @@ import { castCalls, draftIdea, editCorner, findCorner, type Cast, type SavedCast
 import { Assistant } from './assistant/Assistant'
 import { useAssistantShown } from './assistant/store'
 import { Editor } from './Editor'
-import { ModelSettings } from './ModelSettings'
+import { ImageSettings, ModelSettings } from './ModelSettings'
 import { Start, type Begun, type Picks } from './Start'
 
 /** A corner waiting for a character: drafting from the Cast board carries it to the quick start and the form, and the
@@ -160,7 +160,7 @@ export function App() {
         <Drama size={18} aria-hidden />
         <h1>Prospero's Dramatis</h1>
         <span className="muted small">{health.data ? `v${health.data.version}` : health.isError ? 'server not reachable' : '…'}</span>
-        <div className="top-model"><ModelSettings /></div>
+        <div className="top-model"><ModelSettings /><ImageSettings /></div>
       </header>
       <aside className="pane library" aria-label="Library">
         <Library chosen={chosen} onOpen={(id) => void open(id)} onNew={() => go({ kind: 'start' })} />
