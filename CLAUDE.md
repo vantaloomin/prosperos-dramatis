@@ -33,8 +33,12 @@ character creator.
 - The Sidebar Assistant (after Adventure's, which came from Companion's sidecar; both are built on their apps' stories,
   so it is ported, not vendored) is `dramatis/assistant.py` with `prompts/assistant.md`, and `src/assistant/` on the
   screen. It gets the live form, the form as its last answer left it and the focused field (`data-field` on each
-  `Field`, the same keys as Help me write), and answers `{"reply", "edits"}`; each edit is a proposal the user applies (then marked, with Undo) or dismisses.
+  `Field`, the same keys as Help me write), and answers `{"reply", "edits"}`; each edit is a proposal on the form.
   A field it may edit is in `assistant.guides()`.
+- Every model output for the character form (Help me write, the assistant, the interview, the split) is a proposal in
+  `src/proposals.ts`: it stands in its field at once, marked, with Keep / Put back under it, and Save keeps what is
+  still open. A model action is a `ModelButton` (bolt icon, Stop while it runs, `src/modelCall.ts`); a field's Help me
+  write is the bolt `Field` draws from its `write` prop. Fields have labels only, no hint lines.
 - Every model call goes through `dramatis/ai.py` `complete`, run with Companion's own providers (vendored in
   `formats/companion/providers`). Profiles and which one does each job (`writing`, `assistant`, `cast`) are
   `dramatis/profiles.py` (in settings.json, keys in the keyring), routes in `model_routes.py`; a caller names its job

@@ -5,11 +5,13 @@ import { sendJson, type Character, type Slider, type SliderView, type Trait } fr
 const SOURCE_NAMES = { rolled: 'Rolled', idea: 'From their words', you: 'Set by you' }
 
 /** The five personality sliders, settled by Companion's own rules on the server: what the user set, then what the
- * character's words say ("shy", "kind"), then rolled from the form's seed. Roll again changes only the Rolled ones. */
+ * character's words say ("shy", "kind"), then rolled from the form's seed. Roll again changes only the Rolled ones.
+ * Type shows the four-letter type they read as; typing one sets four sliders from it. */
 export function Sliders({ character, seed, onChange }: { character: () => Character; seed: string; onChange: (sliders: Record<Trait, Slider>) => void }) {
   const [view, setView] = useState<SliderView | null>(null)
   const [roll, setRoll] = useState(0)
-  const [type, setType] = useState('')
+  // What the user is typing into Type; null shows the type the sliders read as.
+  const [type, setType] = useState<string | null>(null)
   const [error, setError] = useState('')
   const ask = async (body: { roll?: number; type?: string; sliders?: Record<string, Slider> | null }) => {
     setError('')
@@ -36,7 +38,6 @@ export function Sliders({ character, seed, onChange }: { character: () => Charac
   }
   return (
     <div className="sliders">
-      <p className="muted small">{view.chips.length ? view.chips.join(' · ') : 'In between on everything.'}{view.type && <> · reads as {view.type}</>}</p>
       {view.traits.map((trait) => {
         const current = view.sliders[trait.key]
         return (
@@ -55,9 +56,13 @@ export function Sliders({ character, seed, onChange }: { character: () => Charac
       })}
       <div className="row">
         <button type="button" onClick={() => { const next = roll + 1; setRoll(next); void ask({ roll: next }) }}><Dices size={14} aria-hidden /> Roll again</button>
-        <input aria-label="Start from a four-letter type" placeholder="Start from a type (ENFJ)" maxLength={4} value={type} className="narrow"
-          onChange={(event) => setType(event.target.value.toUpperCase())} />
-        <button type="button" disabled={type.length !== 4} onClick={() => void ask({ type })}>Set</button>
+        <label className="type-label" htmlFor="slider-type">Type</label>
+        <input id="slider-type" className="type" maxLength={4} value={type ?? view.type ?? ''} onBlur={() => setType(null)}
+          onChange={(event) => {
+            const typed = event.target.value.toUpperCase().replace(/[^A-Z]/g, '')
+            setType(typed)
+            if (typed.length === 4) void ask({ type: typed }).then(() => setType(null))
+          }} />
       </div>
       {error && <p className="error small" role="alert">{error}</p>}
     </div>

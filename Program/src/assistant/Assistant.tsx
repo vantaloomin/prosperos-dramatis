@@ -1,24 +1,18 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
-import { ArrowUp, MessageSquareText, RotateCcw, TriangleAlert, Undo2, X } from 'lucide-react'
-import { useModelReady } from '../Fields'
+import { ArrowUp, MessageSquareText, RotateCcw, Square, TriangleAlert, X } from 'lucide-react'
+import { cleaned } from '../api'
+import { reveal, useModelReady } from '../Fields'
+import { proposals, useOutcomes, type Outcome } from '../proposals'
 import { shown, type Edit, type Turn } from './edits'
 import { assistant, useAssistant } from './store'
 
-/** Shows a field on the form: opens the folded section it is in, scrolls to it and puts the cursor there. */
-export function reveal(field: string) {
-  const found = document.querySelector<HTMLElement>(`.editor [data-field="${CSS.escape(field)}"]`)
-  if (!found) return
-  for (let fold = found.closest('details'); fold; fold = fold.parentElement?.closest('details') ?? null) fold.open = true
-  found.scrollIntoView({ block: 'center', behavior: 'smooth' })
-  found.querySelector<HTMLElement>('input, textarea, select')?.focus({ preventScroll: true })
-}
-
-/** The Sidebar Assistant, after Prospero's Adventure's: a chat beside the character form that sees it as you type
- * and proposes edits you apply one by one, each marked on the form with Undo once applied (dramatis/assistant.py). */
+/** The Sidebar Assistant, after Prospero's Adventure's: a chat beside the character form that sees it as you type.
+ * The changes it proposes go straight into their fields as proposals, kept or put back there or here
+ * (dramatis/assistant.py, src/proposals.ts). */
 export function Assistant() {
   const chat = useAssistant()
   const ready = useModelReady('assistant')
-  const name = chat.form?.get().name || 'them'
+  const name = proposals.form()?.get().name || 'them'
   return (
     <aside className="pane assistant" aria-labelledby="assistant-title">
       <header>
@@ -34,57 +28,64 @@ export function Assistant() {
 
 function Transcript({ turns, busy, name }: { turns: Turn[]; busy: boolean; name: string }) {
   const box = useRef<HTMLDivElement>(null)
+  const outcomes = useOutcomes()
   useEffect(() => { box.current?.scrollTo({ top: box.current.scrollHeight }) }, [turns.length, busy])
   return (
     <div className="assistant-transcript" ref={box} aria-live="polite">
       {turns.length === 0 && (
         <div className="muted small">
           <p>Ask about {name}, or for a change: &ldquo;does their fear fit their background?&rdquo;, &ldquo;make this shorter&rdquo;, &ldquo;give them a sister they don&rsquo;t talk to&rdquo;.</p>
-          <p>It reads the form as you type. You apply each change it proposes, and nothing is kept until you save.</p>
+          <p>It reads the form as you type. A change it proposes shows in its field, for you to keep or put back.</p>
         </div>
       )}
       {turns.map((turn) => (
         <article key={turn.id} className="assistant-turn">
           <p className="assistant-message">{turn.message.length > 600 ? `${turn.message.slice(0, 600)}…` : turn.message}</p>
           <p className="assistant-reply">{turn.reply}</p>
-          {turn.edits.map((edit) => <EditCard key={edit.id} edit={edit} hard={turn.audit.filter((hit) => hit.field === edit.field && hit.severity === 'hard').map((hit) => hit.match.trim() || hit.rule)} />)}
-          {turn.edits.filter((edit) => edit.status === 'pending').length > 1 && <button type="button" onClick={() => assistant.applyTurn(turn)}>Apply all</button>}
+          {turn.edits.map((edit) => <EditCard key={edit.id} edit={edit} outcome={outcomes[edit.id] ?? 'proposed'} hard={turn.audit.filter((hit) => hit.field === edit.field && hit.severity === 'hard').map((hit) => hit.match.trim() || hit.rule)} />)}
+          {turn.edits.filter((edit) => outcomes[edit.id] === 'proposed').length > 1 && (
+            <div className="row">
+              <button type="button" className="primary" onClick={() => proposals.keepAll(turn.edits.map((edit) => edit.id))}>Keep all</button>
+              <button type="button" className="quiet" onClick={() => proposals.putBackAll(turn.edits.map((edit) => edit.id))}>Put all back</button>
+            </div>
+          )}
         </article>
       ))}
-      {busy && <p className="muted small" role="status">Thinking it over. A local model can take a minute or two.</p>}
+      {busy && <p className="muted small" role="status">Thinking it over…</p>}
     </div>
   )
 }
 
-function EditCard({ edit, hard }: { edit: Edit; hard: string[] }) {
+const SAID: Record<Outcome, string> = { proposed: 'On the form', kept: 'Kept', 'put back': 'Put back', replaced: 'Replaced by a later one' }
+
+function EditCard({ edit, outcome, hard }: { edit: Edit; outcome: Outcome; hard: string[] }) {
   return (
-    <section className={`assistant-edit ${edit.status}`} aria-label={edit.label}>
+    <section className={`assistant-edit ${outcome === 'proposed' ? 'pending' : outcome === 'kept' ? 'applied' : 'dismissed'}`} aria-label={edit.label}>
       <div className="row">
         <button type="button" className="link" onClick={() => reveal(edit.field)}>{edit.label}</button>
-        {edit.status === 'applied' && <button type="button" onClick={() => assistant.undo(edit.id)}><Undo2 size={13} aria-hidden /> Undo</button>}
-        {edit.status === 'pending' && <span className="row">
-          <button type="button" className="primary" onClick={() => assistant.apply(edit.id)}>Apply</button>
-          <button type="button" className="link" onClick={() => assistant.dismiss(edit.id)}>Dismiss</button>
-        </span>}
-        {edit.status === 'dismissed' && <span className="muted small">Dismissed</span>}
+        {outcome === 'proposed' ? <span className="row">
+          <button type="button" className="primary" onClick={() => proposals.keep(edit.field)}>Keep</button>
+          <button type="button" className="quiet" onClick={() => proposals.putBack(edit.field)}>Put back</button>
+        </span> : <span className="muted small">{SAID[outcome]}</span>}
       </div>
       {hard.length > 0 && <p className="error small"><TriangleAlert size={13} aria-hidden /> Reads as model-written: {hard.join(', ')}</p>}
       <details>
         <summary className="small">Compare</summary>
         <p className="muted small">Before</p><p className="assistant-value">{shown(edit.before)}</p>
-        <p className="muted small">After</p><p className="assistant-value">{shown(edit.value)}</p>
+        <p className="muted small">Proposed</p><p className="assistant-value">{shown(edit.value)}</p>
       </details>
     </section>
   )
 }
 
 function Composer({ ready }: { ready: boolean }) {
-  const { busy, error, focus, form } = useAssistant()
+  const { busy, error, focus } = useAssistant()
+  const form = proposals.form()
   const [message, setMessage] = useState('')
   const send = async (event?: FormEvent) => {
     event?.preventDefault()
     const text = message.trim()
-    if (text && await assistant.send(text)) setMessage('')
+    if (text && await assistant.send(text, cleaned)) setMessage('')
   }
   const keyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); void send() }
@@ -103,7 +104,9 @@ function Composer({ ready }: { ready: boolean }) {
         value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={keyDown} />
       <div className="row">
         <span className="muted small">Ctrl+Enter sends</span>
-        <button type="submit" className="primary send" aria-label="Send to the Sidebar Assistant" disabled={busy || !ready || !message.trim()}><ArrowUp size={15} /></button>
+        {busy
+          ? <button type="button" className="send" aria-label="Stop" onClick={() => assistant.stop()}><Square size={13} /></button>
+          : <button type="submit" className="primary send" aria-label="Send to the Sidebar Assistant" disabled={!ready || !message.trim()}><ArrowUp size={15} /></button>}
       </div>
     </form>
   )

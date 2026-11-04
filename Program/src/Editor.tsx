@@ -1,13 +1,14 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { CheckCircle2, Download, MessageSquareText, Trash2, TriangleAlert } from 'lucide-react'
-import { APPS, APP_NAMES, type AuditHit, sendJson, type App, type Character, type Gender, type Looks, type Problems, type Relationship, type Saved } from './api'
+import { APPS, APP_NAMES, cleaned, type AuditHit, sendJson, type App, type Character, type Gender, type Looks, type Problems, type Relationship, type Saved } from './api'
 import { assistant, useAssistantShown } from './assistant/store'
-import { trackFocus, useAssistantForm } from './assistant/useForm'
-import { Field, HelpMeWrite, ListArea, TextArea, TextInput, cleanList, useModelReady } from './Fields'
+import { trackFocus, useProposalForm } from './assistant/useForm'
+import { Field, Fold, ListField, TextArea, TextInput, useModelReady } from './Fields'
 import { FromTheirCard } from './FromTheirCard'
 import { InnerLife, SecretSection } from './InnerLife'
 import { Interview, sampleLine } from './Interview'
+import { proposals, useOpenCount } from './proposals'
 import { Psyche } from './Psyche'
 import { Portrait } from './Portrait'
 import { AppPicks } from './Start'
@@ -51,15 +52,6 @@ function ExportCard({ id }: { id: string }) {
   )
 }
 
-/** The form as the server takes it: lists without blank lines, numbers as numbers. */
-export function cleaned(character: Character): Character {
-  return {
-    ...character, skills: cleanList(character.skills), flaws: cleanList(character.flaws), interests: cleanList(character.interests),
-    companion: { ...character.companion, life_themes: cleanList(character.companion.life_themes) },
-    card: character.card && { ...character.card, tags: cleanList(character.card.tags), alternate_greetings: character.card.alternate_greetings.filter((text) => text.trim()) },
-  }
-}
-
 interface Props {
   saved: Saved | null; start: Character; seed: string; filledIn?: string[]; note?: string
   /** A picture to save with them, as base64 PNG: an imported file's own. */
@@ -67,7 +59,10 @@ interface Props {
   onSaved: (saved: Saved) => void; onDeleted: () => void
 }
 
-/** One character, every field, for whichever apps they are made for. Nothing is saved until Save. */
+const ZONES: string[] = (() => { try { return Intl.supportedValuesOf('timeZone') } catch { return [] } })()
+
+/** One character, every field, for whichever apps they are made for. What a model writes goes into its field as a
+ * proposal to keep or put back (src/proposals.ts); nothing is saved until Save. */
 export function Editor({ saved, start, seed, filledIn, note, portrait, onSaved, onDeleted }: Props) {
   const client = useQueryClient()
   const ready = useModelReady()
@@ -84,7 +79,8 @@ export function Editor({ saved, start, seed, filledIn, note, portrait, onSaved, 
   const current = () => cleaned(character)
   const has = (app: App) => character.apps.includes(app)
   const assisting = useAssistantShown()
-  useAssistantForm(character, setCharacter, cleaned)
+  const waiting = useOpenCount()
+  useProposalForm(character, setCharacter)
 
   // What each app's own models make of the form, a moment after the last change.
   useEffect(() => {
@@ -96,15 +92,14 @@ export function Editor({ saved, start, seed, filledIn, note, portrait, onSaved, 
     return () => clearTimeout(timer)
   }, [character])
 
-  const help = <T,>(field: string, label: string, value: T, apply: (value: T) => void): ReactNode =>
-    ready ? <HelpMeWrite field={field} label={label} character={current} current={value} apply={apply} /> : null
-
   const submit = async (event: FormEvent) => {
     event.preventDefault()
     setBusy(true)
     setResult(null)
     try {
-      const body = { character: cleaned(character), seed }
+      // Saving keeps what the form shows, proposals included.
+      const kept = proposals.keepAll()
+      const body = { character: cleaned(proposals.form()?.get() ?? character), seed }
       let next = saved ? await sendJson<Saved>(`/api/characters/${saved.id}`, 'PUT', body) : await sendJson<Saved>('/api/characters', 'POST', body)
       if (pendingPortrait) {
         const pictured = await sendJson<Saved>(`/api/characters/${next.id}/portrait`, 'PUT', { filename: 'portrait.png', data: pendingPortrait })
@@ -112,7 +107,8 @@ export function Editor({ saved, start, seed, filledIn, note, portrait, onSaved, 
         setPendingPortrait(null)
       }
       await client.invalidateQueries({ queryKey: ['characters'] })
-      setResult({ tone: 'note', text: `Saved ${next.character.name || 'them'}.` })
+      const proposed = kept === 1 ? ', with the proposal that was waiting' : kept ? `, with the ${kept} proposals that were waiting` : ''
+      setResult({ tone: 'note', text: `Saved ${next.character.name || 'them'}${proposed}.` })
       onSaved(next)
     } catch (failure) {
       setResult({ tone: 'error', text: failure instanceof Error ? failure.message : 'They could not be saved.' })
@@ -129,11 +125,13 @@ export function Editor({ saved, start, seed, filledIn, note, portrait, onSaved, 
   const filled = new Set(filledIn ?? [])
   const mark = (field: string, label: string) => filled.has(field) ? `${label} (filled in)` : label
   const blocked = has('companion') && scheduleProblems(character.companion.schedule).length > 0
+  const zones = ZONES.includes(character.companion.timezone) || !character.companion.timezone ? ZONES : [character.companion.timezone, ...ZONES]
   return (
     <form className="editor" onSubmit={submit} onFocus={(event) => trackFocus(event.target)}>
       <div className="editor-head">
         <h2>{character.name || 'New character'}</h2>
         <div className="row">
+          {waiting > 0 && <span className="muted small">{waiting === 1 ? '1 proposal waiting' : `${waiting} proposals waiting`}</span>}
           <button type="button" aria-pressed={assisting} onClick={() => assistant.toggle()}><MessageSquareText size={14} aria-hidden /> Assistant</button>
           <button type="submit" className="primary" disabled={busy || blocked}>{busy ? 'Saving…' : saved ? 'Save' : 'Save to the library'}</button>
           {saved && <>
@@ -160,110 +158,98 @@ export function Editor({ saved, start, seed, filledIn, note, portrait, onSaved, 
                   <option value="">Not said</option><option value="woman">Woman</option><option value="man">Man</option><option value="nonbinary">Nonbinary</option>
                 </select>
               )}</Field>
-              <Field name="age" label="Age" hint="18 or older.">{(id) => (
+              <Field name="age" label="Age">{(id) => (
                 <input id={id} type="number" min={18} max={5000} value={character.age ?? ''} onChange={(event) => set({ age: event.target.value ? Number(event.target.value) : null })} />
               )}</Field>
             </div>
-            <TextInput name="setting" label="Where and when" value={character.setting} onChange={(setting) => set({ setting })} maxLength={200} placeholder="Baltimore, today" />
+            <TextInput name="setting" label="Where and when" value={character.setting} onChange={(setting) => set({ setting })} maxLength={200} />
+            <div className="grid three">
+              <TextInput name="kind" label="Kind, if not human" value={character.kind} onChange={(kind) => set({ kind: kind.toLowerCase().replace(/[^a-z0-9-]/g, '') })} maxLength={40} />
+              <Field label="How long they live">{(id) => (
+                <select id={id} value={character.lifespan ?? ''} onChange={(event) => set({ lifespan: event.target.value === '' ? null : Number(event.target.value) })}>
+                  {LIFESPANS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                </select>
+              )}</Field>
+              <Field label="Birthday">{(id) => (
+                <input id={id} value={character.birthday} maxLength={5} placeholder="MM-DD" onChange={(event) => set({ birthday: event.target.value })} />
+              )}</Field>
+            </div>
             <AppPicks apps={character.apps} onChange={(apps) => set({ apps })} />
           </div>
         </div>
-        <TextArea name="about" label={mark('about', 'About them')} value={character.about} onChange={(about) => set({ about })} maxLength={2000} rows={3}
-          hint="Who they are, what they do, who they live or travel with. Companion reads it as who they are; Adventure and Dungeon as About you."
-          help={help('about', 'About them', character.about, (about) => set({ about }))} />
-        <TextArea name="personality" label={mark('personality', 'Personality')} value={character.personality} onChange={(personality) => set({ personality })} maxLength={8000} rows={4}
-          help={help('personality', 'their personality', character.personality, (personality) => set({ personality }))} />
+        <TextArea name="about" label={mark('about', 'About them')} write="about them" value={character.about} onChange={(about) => set({ about })} maxLength={2000} rows={3} />
+        <TextArea name="personality" label={mark('personality', 'Personality')} write="their personality" value={character.personality} onChange={(personality) => set({ personality })} maxLength={8000} rows={4} />
         <div className="grid two">
-          <TextArea name="voice" label={mark('voice', 'How they talk')} value={character.voice} onChange={(voice) => set({ voice })} maxLength={600} rows={3}
-            hint="Their words, rhythm, humour and what they avoid saying: instructions for writing them."
-            help={<>{said && <q className="sample">{said}</q>}{help('voice', 'how they talk', character.voice, (voice) => set({ voice }))}</>} />
-          <TextArea name="sound" label={mark('sound', 'How they sound')} value={character.sound} onChange={(sound) => set({ sound })} maxLength={300} rows={3}
-            hint="The voice itself, for text to speech: age, pitch, pace, texture. Not personality or their name." help={help('sound', 'how they sound', character.sound, (sound) => set({ sound }))} />
+          <div className="stack tight">
+            <TextArea name="voice" label={mark('voice', 'How they talk')} write="how they talk" value={character.voice} onChange={(voice) => set({ voice })} maxLength={600} rows={3} />
+            {said && <q className="sample">{said}</q>}
+          </div>
+          <TextArea name="sound" label={mark('sound', 'How they sound aloud')} write="how they sound aloud" value={character.sound} onChange={(sound) => set({ sound })} maxLength={300} rows={3} />
         </div>
       </section>
 
       <section>
         <h3>How they come across</h3>
         <div className="grid two">
-          <TextArea name="seen_as" label={mark('seen_as', 'Outward appearance')} value={character.seen_as} onChange={(seen_as) => set({ seen_as })} maxLength={400} rows={3}
-            hint="How other people see them, reputation included (people think he's a jerk). Other characters hear this when they talk to or about them."
-            help={help('seen_as', 'their outward appearance', character.seen_as, (seen_as) => set({ seen_as }))} />
-          <TextArea name="sees_self" label={mark('sees_self', 'How they see themselves')} value={character.sees_self} onChange={(sees_self) => set({ sees_self })} maxLength={1200} rows={3}
-            hint="Private, in their own words. It can disagree with how others see them."
-            help={help('sees_self', 'how they see themselves', character.sees_self, (sees_self) => set({ sees_self }))} />
+          <TextArea name="seen_as" label={mark('seen_as', 'How others see them')} write="how others see them" value={character.seen_as} onChange={(seen_as) => set({ seen_as })} maxLength={400} rows={3} />
+          <TextArea name="sees_self" label={mark('sees_self', 'How they see themselves')} write="how they see themselves" value={character.sees_self} onChange={(sees_self) => set({ sees_self })} maxLength={1200} rows={3} />
         </div>
       </section>
 
       <section>
-        <h3>Personality sliders</h3>
+        <h3>Personality</h3>
         <Sliders character={current} seed={seed} onChange={(personality_sliders) => set({ personality_sliders })} />
       </section>
 
       <section>
         <h3>Their story</h3>
-        <TextArea name="background" label={mark('background', 'Background')} value={character.background} onChange={(background) => set({ background })} maxLength={12000} rows={5}
-          help={help('background', 'their background', character.background, (background) => set({ background }))} />
+        <TextArea name="background" label={mark('background', 'Background')} write="their background" value={character.background} onChange={(background) => set({ background })} maxLength={12000} rows={5} />
         <div className="grid two">
-          <TextArea name="wants" label={mark('wants', 'What they want')} value={character.wants} onChange={(wants) => set({ wants })} maxLength={300} rows={2}
-            help={help('wants', 'what they want', character.wants, (wants) => set({ wants }))} />
-          <TextArea name="fears" label={mark('fears', 'What they fear')} value={character.fears} onChange={(fears) => set({ fears })} maxLength={300} rows={2}
-            help={help('fears', 'what they fear', character.fears, (fears) => set({ fears }))} />
+          <TextArea name="wants" label={mark('wants', 'What they want')} write="what they want" value={character.wants} onChange={(wants) => set({ wants })} maxLength={300} rows={2} />
+          <TextArea name="fears" label={mark('fears', 'What they fear')} write="what they fear" value={character.fears} onChange={(fears) => set({ fears })} maxLength={300} rows={2} />
         </div>
         <div className="grid three">
-          <ListArea name="skills" label={mark('skills', 'Skills')} value={character.skills} onChange={(skills) => set({ skills })} help={help('skills', 'skills', character.skills, (skills) => set({ skills }))} />
-          <ListArea name="flaws" label={mark('flaws', 'Flaws')} value={character.flaws} onChange={(flaws) => set({ flaws })} help={help('flaws', 'flaws', character.flaws, (flaws) => set({ flaws }))} />
-          <ListArea name="interests" label={mark('interests', 'Interests')} value={character.interests} onChange={(interests) => set({ interests })} help={help('interests', 'interests', character.interests, (interests) => set({ interests }))} />
+          <ListField name="skills" label={mark('skills', 'Skills')} write="skills" add="Add a skill" value={character.skills} onChange={(skills) => set({ skills })} />
+          <ListField name="flaws" label={mark('flaws', 'Flaws')} write="flaws" add="Add a flaw" value={character.flaws} onChange={(flaws) => set({ flaws })} />
+          <ListField name="interests" label={mark('interests', 'Interests')} write="interests" add="Add an interest" value={character.interests} onChange={(interests) => set({ interests })} />
         </div>
       </section>
 
-      <Interview character={character} ready={ready} current={current} set={set} onSample={setSample} />
-      <InnerLife arc={character.arc} onChange={(arc) => set({ arc })} help={help} />
-      <Psyche psyche={character.psyche} selfId={saved?.id} onChange={(psyche) => set({ psyche })} help={help} />
-      <SecretSection secret={character.secret} onChange={(secret) => set({ secret })} help={help} />
+      <section>
+        <h3>Depth</h3>
+        <div className="folds">
+          <Interview character={character} ready={ready} set={set} onSample={setSample} />
+          <InnerLife arc={character.arc} onChange={(arc) => set({ arc })} />
+          <Psyche psyche={character.psyche} selfId={saved?.id} onChange={(psyche) => set({ psyche })} />
+          <SecretSection secret={character.secret} onChange={(secret) => set({ secret })} />
+        </div>
+      </section>
 
       <section>
         <h3>How they look</h3>
-        <TextArea name="appearance" label={mark('appearance', 'Appearance')} hint="Plain physical facts: what a portrait shows."  value={character.appearance} onChange={(appearance) => set({ appearance })} maxLength={600} rows={2}
-          help={help('appearance', 'their appearance', character.appearance, (appearance) => set({ appearance }))} />
-        <details>
-          <summary>Looks, field by field</summary>
-          <p className="muted small">So every picture shows the same person. A field left empty is drawn for them by the app they go to.</p>
-          <div className="grid three">
-            <Field label="Height (cm)">{(id) => <input id={id} type="number" min={120} max={230} value={character.looks.height_cm ?? ''} onChange={(event) => set({ looks: { ...character.looks, height_cm: event.target.value ? Number(event.target.value) : null } })} />}</Field>
-            <Field label="Weight (kg)">{(id) => <input id={id} type="number" min={35} max={250} value={character.looks.weight_kg ?? ''} onChange={(event) => set({ looks: { ...character.looks, weight_kg: event.target.value ? Number(event.target.value) : null } })} />}</Field>
-            {LOOKS.map(([key, label]) => (
-              <TextInput key={key} label={label} value={String(character.looks[key] ?? '')} maxLength={key === 'hair' || key === 'feature' ? 200 : 120}
-                onChange={(value) => set({ looks: { ...character.looks, [key]: value } })} />
-            ))}
-          </div>
-        </details>
-      </section>
-
-      <FromTheirCard card={character.card} onChange={(card) => set({ card })} />
-
-      <details className="section">
-        <summary>More about them</summary>
-        <div className="grid three">
-          <TextInput name="kind" label="Kind" value={character.kind} onChange={(kind) => set({ kind: kind.toLowerCase().replace(/[^a-z0-9-]/g, '') })} maxLength={40}
-            hint="Empty for an ordinary human, else a word such as elf." />
-          <Field label="How long they live">{(id) => (
-            <select id={id} value={character.lifespan ?? ''} onChange={(event) => set({ lifespan: event.target.value === '' ? null : Number(event.target.value) })}>
-              {LIFESPANS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-            </select>
-          )}</Field>
-          <Field label="Birthday" hint="Month and day, MM-DD.">{(id) => (
-            <input id={id} value={character.birthday} maxLength={5} placeholder="04-21" onChange={(event) => set({ birthday: event.target.value })} />
-          )}</Field>
+        <TextArea name="appearance" label={mark('appearance', 'Appearance')} write="their appearance" value={character.appearance} onChange={(appearance) => set({ appearance })} maxLength={600} rows={2} />
+        <div className="folds">
+          <Fold title="Details" filled={Object.values(character.looks).some((value) => value !== null && value !== '')}>
+            <div className="grid three">
+              <Field label="Height (cm)">{(id) => <input id={id} type="number" min={120} max={230} value={character.looks.height_cm ?? ''} onChange={(event) => set({ looks: { ...character.looks, height_cm: event.target.value ? Number(event.target.value) : null } })} />}</Field>
+              <Field label="Weight (kg)">{(id) => <input id={id} type="number" min={35} max={250} value={character.looks.weight_kg ?? ''} onChange={(event) => set({ looks: { ...character.looks, weight_kg: event.target.value ? Number(event.target.value) : null } })} />}</Field>
+              {LOOKS.map(([key, label]) => (
+                <TextInput key={key} label={label} value={String(character.looks[key] ?? '')} maxLength={key === 'hair' || key === 'feature' ? 200 : 120}
+                  onChange={(value) => set({ looks: { ...character.looks, [key]: value } })} />
+              ))}
+            </div>
+          </Fold>
+          <FromTheirCard card={character.card} onChange={(card) => set({ card })} />
         </div>
-      </details>
+      </section>
 
       {has('companion') && (
         <section className="app-section">
           <h3>For Companion</h3>
           <div className="grid two">
-            <Field label="Relationship" hint="Romance starts only with your yes.">{(id) => (
+            <Field label="Relationship">{(id) => (
               <select id={id} value={character.companion.relationship} onChange={(event) => setLife({ relationship: event.target.value as Relationship })}>
-                <option value="friendship">Friendship</option><option value="romance">Romance</option><option value="mentor">Mentor</option><option value="family">Family</option><option value="other">Something else</option>
+                <option value="friendship">Friendship</option><option value="romance">Romance, only with your yes</option><option value="mentor">Mentor</option><option value="family">Family</option><option value="other">Something else</option>
               </select>
             )}</Field>
             <Field label="How close you start">{(id) => (
@@ -273,22 +259,26 @@ export function Editor({ saved, start, seed, filledIn, note, portrait, onSaved, 
             )}</Field>
           </div>
           <TextArea name="history_together" label="How you know each other" value={character.companion.history_together} onChange={(history_together) => setLife({ history_together })} maxLength={2000} rows={2} />
-          <TextArea name="routine" label={mark('routine', 'Their routine, in their words')} value={character.companion.routine} onChange={(routine) => setLife({ routine })} maxLength={8000} rows={3}
-            help={help('routine', 'their routine', character.companion.routine, (routine) => setLife({ routine }))} />
-          <Field name="schedule" label="Their week" help={help('schedule', 'their week', character.companion.schedule, (schedule) => setLife({ schedule }))}>{() => (
+          <TextArea name="routine" label={mark('routine', 'Their routine, in their words')} write="their routine" value={character.companion.routine} onChange={(routine) => setLife({ routine })} maxLength={8000} rows={3} />
+          <Field name="schedule" label="Their week" write="their week" filled={character.companion.schedule.length > 0} group>{() => (
             <Schedule blocks={character.companion.schedule} onChange={(schedule) => setLife({ schedule })} />
           )}</Field>
-          <ListArea name="life_themes" label={mark('life_themes', 'Life themes')} value={character.companion.life_themes} onChange={(life_themes) => setLife({ life_themes })} rows={3}
-            hint="What their everyday life tends to involve. One per line." help={help('life_themes', 'life themes', character.companion.life_themes, (life_themes) => setLife({ life_themes }))} />
-          <TextInput label="Time zone" value={character.companion.timezone} onChange={(timezone) => setLife({ timezone })} maxLength={64} hint="Where their clock is, such as America/New_York." />
+          <ListField name="life_themes" label={mark('life_themes', 'Life themes')} write="life themes" add="Add a life theme" value={character.companion.life_themes} onChange={(life_themes) => setLife({ life_themes })} />
+          <div className="grid two">
+            <Field label="Time zone">{(id) => (
+              <select id={id} value={character.companion.timezone} onChange={(event) => setLife({ timezone: event.target.value })}>
+                <option value="">Not set</option>
+                {zones.map((zone) => <option key={zone} value={zone}>{zone.replace(/_/g, ' ')}</option>)}
+              </select>
+            )}</Field>
+          </div>
           <fieldset className="ticks">
             <legend>How they text</legend>
             {([['bursts', 'In bursts of short texts'], ['lowercase', 'All lowercase'], ['typos', 'With typos'], ['quick', 'Quick to reply']] as const).map(([key, label]) => (
               <label key={key} className="check"><input type="checkbox" checked={character.companion.texting[key]} onChange={(event) => setLife({ texting: { ...character.companion.texting, [key]: event.target.checked } })} /> {label}</label>
             ))}
           </fieldset>
-          <TextArea label="When you are away" value={character.companion.absence_reaction} onChange={(absence_reaction) => setLife({ absence_reaction })} maxLength={2000} rows={2}
-            hint="Empty means they are fine with time apart. Jealousy or missing you are yours to add." />
+          <TextArea label="When you are away" value={character.companion.absence_reaction} onChange={(absence_reaction) => setLife({ absence_reaction })} maxLength={2000} rows={2} />
         </section>
       )}
     </form>
