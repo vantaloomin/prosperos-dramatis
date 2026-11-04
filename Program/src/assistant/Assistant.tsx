@@ -17,7 +17,7 @@ export function reveal(field: string) {
  * and proposes edits you apply one by one, each marked on the form with Undo once applied (dramatis/assistant.py). */
 export function Assistant() {
   const chat = useAssistant()
-  const ready = useModelReady()
+  const ready = useModelReady('assistant')
   const name = chat.form?.get().name || 'them'
   return (
     <aside className="pane assistant" aria-labelledby="assistant-title">

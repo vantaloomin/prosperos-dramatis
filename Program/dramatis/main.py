@@ -14,7 +14,6 @@ from pydantic import BaseModel, Field
 from dramatis import (
     NAME,
     VERSION,
-    ai,
     assistant,
     cards,
     cast_ai,
@@ -22,6 +21,7 @@ from dramatis import (
     drafting,
     interview,
     library,
+    model_routes,
     portraits,
     slop,
 )
@@ -37,13 +37,6 @@ Relationship = Literal['friendship', 'romance', 'mentor', 'family', 'other']
 
 class Body(BaseModel):
     model_config = {'extra': 'forbid', 'str_strip_whitespace': True}
-
-
-class ModelBody(Body):
-    provider: str
-    model: str = ''
-    base_url: str = ''
-    key: str | None = None
 
 
 class DraftBody(Body):
@@ -146,14 +139,6 @@ def api() -> APIRouter:  # noqa: C901 - one route each, kept together
     def health():
         return {'ok': True, 'name': NAME, 'version': VERSION, 'formats': format_source()}
 
-    @router.get('/models')
-    def get_models():
-        return ai.config()
-
-    @router.put('/models')
-    def put_models(body: ModelBody):
-        return ai.configure(body.provider, body.model, body.base_url, body.key)
-
     @router.get('/characters')
     def characters():
         return library.listing()
@@ -253,6 +238,7 @@ def create_app(dist: Path = DIST) -> FastAPI:
     app.include_router(portraits.router())
     app.include_router(cast_ai.router)
     app.include_router(assistant.router)
+    app.include_router(model_routes.router)
     if (dist / 'index.html').is_file():
         app.mount('/assets', StaticFiles(directory=dist / 'assets'), name='assets')
 

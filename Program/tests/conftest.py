@@ -1,12 +1,21 @@
 import pytest
 
-from dramatis import ai
+from dramatis import ai, profiles
+from dramatis.formats.companion.providers.vault import MemoryVault
 
 
 @pytest.fixture(autouse=True)
 def own_home(tmp_path, monkeypatch):
     """Each test keeps its settings and library in its own folder, never the user's."""
     monkeypatch.setenv('DRAMATIS_HOME', str(tmp_path / 'home'))
+
+
+@pytest.fixture(autouse=True)
+def own_keyring(monkeypatch):
+    """Keys go to a keyring of the test's own, never the user's."""
+    found = MemoryVault()
+    monkeypatch.setattr(profiles, 'VAULT', found)
+    return found
 
 
 @pytest.fixture

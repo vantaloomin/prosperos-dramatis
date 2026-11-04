@@ -1,13 +1,12 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import { Sparkles, Undo2 } from 'lucide-react'
-import { getJson, sendJson, type Character, type ModelConfig } from './api'
+import { sendJson, type Character } from './api'
+import { profileFor, useModels } from './models/ModelSettings'
 import { assistant, useMarked } from './assistant/store'
 
-/** Whether a model is set up to draft: Claude through the API needs a key; a local server or the CLI may not. */
-export function useModelReady(): boolean {
-  const models = useQuery({ queryKey: ['models'], queryFn: () => getJson<ModelConfig>('/api/models') })
-  return !!models.data && (models.data.provider !== 'anthropic' || models.data.has_key)
+/** Whether a finished model profile does `job` (its own, or the writing profile): dramatis/profiles.py. */
+export function useModelReady(job: 'writing' | 'assistant' | 'cast' = 'writing'): boolean {
+  return !!profileFor(useModels().data, job)
 }
 
 /** `name` is the field's key in the character (dotted for their depth, as Help me write and the Sidebar Assistant use

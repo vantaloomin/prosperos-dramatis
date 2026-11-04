@@ -1,6 +1,7 @@
 """Dramatis' own folder: settings.json and the character library (DRAMATIS_HOME overrides where).
 
-- `model`: which model drafts (dramatis/ai.py); its API key is in the system keyring, not here.
+- `model`: the model profiles and which one does each job (dramatis/profiles.py); their keys are in the system
+  keyring, not here.
 - `image`: which image maker draws portraits (dramatis/images.py), off until set; its key is in the keyring too.
 """
 import json
