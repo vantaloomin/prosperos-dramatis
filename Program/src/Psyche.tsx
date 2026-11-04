@@ -19,7 +19,7 @@ export function Psyche({ psyche, selfId, onChange, help }: { psyche: PsycheValue
       <div className="grid two">
         {IMPULSES.map(([key, label, helpLabel]) => (
           <div key={key} className="stack">
-            <TextArea label={label} value={value[key].text} onChange={(text) => set(key, { text })} maxLength={300} rows={2}
+            <TextArea name={`psyche.${key}`} label={label} value={value[key].text} onChange={(text) => set(key, { text })} maxLength={300} rows={2}
               help={help(`psyche.${key}`, helpLabel, value[key].text, (text) => set(key, { text }))} />
             <PressedBy chosen={value[key].pressed_by} selfId={selfId} onChange={(pressed_by) => set(key, { pressed_by })} />
           </div>

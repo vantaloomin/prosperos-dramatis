@@ -26,6 +26,11 @@ character creator.
 - The Cast board's AI help is `dramatis/cast_ai.py` (routes under `/api/cast-ai`, prompts `prompts/cast-*.md`) and
   `src/cast/CastAi.tsx`, placed on the board by `src/cast/slots.tsx`; Apply and Undo edits live in `src/castApi.ts`.
   Every result is a proposal: Apply changes the board, never the cast file.
+- The Sidebar Assistant (after Adventure's, which came from Companion's sidecar; both are built on their apps' stories,
+  so it is ported, not vendored) is `dramatis/assistant.py` with `prompts/assistant.md`, and `src/assistant/` on the
+  screen. It gets the live form, the form as its last answer left it and the focused field (`data-field` on each
+  `Field`, the same keys as Help me write), and answers `{"reply", "edits"}`; each edit is a proposal the user applies (then marked, with Undo) or dismisses.
+  A field it may edit is in `assistant.guides()`.
 - The model never saves anything: drafts go to the form for review, and only Save writes to the library.
 - Before pushing, from `Program/`: `python -m ruff check .`, `python -m pytest -q`, `npm run build`.
 - `main` takes changes through pull requests.
