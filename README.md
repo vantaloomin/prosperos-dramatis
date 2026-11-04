@@ -63,10 +63,18 @@ those words.
 **Works in.** While you edit, each app checks the character with its own rules, and the form shows **Works in
 Companion**, or what that app would refuse.
 
-**Cards.** **Card (PNG)** puts the card into their portrait (or a plain picture if they have none), and **Card
-(JSON)** saves it on its own. The card's usual fields describe the character in words any app can read, so
-SillyTavern, Chub, RisuAI and most other chat apps open it too. Under `extensions.prospero` it carries the whole
-character and each app's own shape of them, so nothing is lost on the way into a Prospero app.
+**Cards.** **Export card** saves a character card (Character Card V3, PNG or JSON) in one of two kinds. The PNG
+puts the card into their portrait, or a plain picture if they have none.
+
+- **Prospero apps**: everything, for Companion, Adventure and Dungeon. Under `extensions.prospero` it carries the
+  whole character and each app's own shape of them, so nothing is lost on the way in, and Dramatis opens it whole.
+- **SillyTavern, Marinara, Front Porch and other chat apps**: the same card with nothing under `extensions`, so what
+  only the Prospero apps use (Companion's schedule, routine, texting habits and emotional edges, the sliders) stays
+  in the suite. Those apps keep any extension a card brings and pass it on when the card is shared again, so this is
+  the one to hand around.
+
+Both describe the character in the card's own fields (description, personality and scenario), so any app reads the
+same person. The PNG carries the V3 card and a V2 copy, because Front Porch reads only the V2 one.
 
 ## Getting started
 
