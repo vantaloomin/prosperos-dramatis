@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # Daily, so drift from the apps' main branches shows up even when Dramatis itself is quiet.
+    - cron: "27 6 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    working-directory: Program
+
+jobs:
+  backend:
+    name: backend (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e ".[dev]"
+      - name: Lint
+        run: python -m ruff check .
+      - name: Test
+        run: python -m pytest -q
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Program/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build
+
+  formats:
+    # Dramatis must make characters each app loads unchanged: fail when Companion, Adventure or Dungeon has changed
+    # the vendored files (fix: run scripts/sync_format.py against those checkouts and check the tests).
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: vantaloomin/prosperos-companion
+          ref: main
+          path: companion
+          persist-credentials: false
+          sparse-checkout: |
+            Program/companion/errors.py
+            Program/companion/models.py
+            Program/companion/imports/cards.py
+            Program/companion/world/personality.py
+            Program/companion/world/data/personality.json
+          sparse-checkout-cone-mode: false
+      - uses: actions/checkout@v4
+        with:
+          repository: vantaloomin/prosperos-adventure
+          ref: main
+          path: adventure
+          persist-credentials: false
+          sparse-checkout: Program/adventure/models.py
+          sparse-checkout-cone-mode: false
+      - uses: actions/checkout@v4
+        with:
+          repository: vantaloomin/prosperos-dungeon
+          ref: main
+          path: dungeon
+          persist-credentials: false
+          sparse-checkout: Program/dungeon/models.py
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python scripts/sync_format.py --companion ../companion --adventure ../adventure --dungeon ../dungeon --check
