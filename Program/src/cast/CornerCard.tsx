@@ -87,7 +87,8 @@ function TagPicker({ tags, bank, onChange }: { tags: string[]; bank: TagInfo[]; 
             else setText(value)
           }}
           onKeyDown={(event) => {
-            if ((event.key === 'Enter' || event.key === ',') && text.trim()) { event.preventDefault(); add(text) }
+            // Enter adds the tag; it never submits the board.
+            if (event.key === 'Enter' || (event.key === ',' && text.trim())) { event.preventDefault(); if (text.trim()) add(text) }
             if (event.key === 'Backspace' && !text && tags.length) onChange(tags.slice(0, -1))
           }}
           onBlur={() => { if (text.trim()) add(text) }} />

@@ -127,7 +127,7 @@ function SplitPrompt({ cast, side, mode, axes, genre, group, update, onDone }: {
   const help = axes.find((item) => item.kind === kind)?.help
   const roles = group?.roles ?? []
   const count = mode === 'partial' ? 2 : Math.min(4, Math.max(3, roles.length || 4))
-  const labels = Array.from({ length: count }, (_, n) => roles[n] ?? '')
+  const picked = Array.from({ length: count }, (_, n) => roles[n] ?? '')
   return (
     <div className="split-prompt">
       <label htmlFor={id}>Within {side.label || 'this side'}, they disagree about</label>
@@ -136,7 +136,7 @@ function SplitPrompt({ cast, side, mode, axes, genre, group, update, onDone }: {
       </select>
       {help && <span className="hint">{help}</span>}
       <div className="row">
-        <button type="button" className="primary" onClick={() => { update((current) => splitSide(current, side.id, kind, '', labels)); onDone() }}>
+        <button type="button" className="primary" onClick={() => { update((current) => splitSide(current, side.id, kind, '', picked)); onDone() }}>
           Split into {count}
         </button>
         <button type="button" onClick={onDone}>Cancel</button>

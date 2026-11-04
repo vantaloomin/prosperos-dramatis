@@ -128,13 +128,14 @@ export function dropCorner(cast: Cast, id: string): Cast {
 }
 
 /** Split a side: an inner square on its own axis, with two corners (Split in two) or three or four (Split this side). */
-export function splitSide(cast: Cast, sideId: string, kind: AxisKind, question: string, labels: string[]): Cast {
+/** Split a side: an inner square on its own axis, with a corner per role (a group type's roles, or blanks). */
+export function splitSide(cast: Cast, sideId: string, kind: AxisKind, question: string, roles: string[]): Cast {
   const used = new Set(corners(cast).map((item) => item.corner.id))
   const inner: Square = {
-    axis: { kind, label: '' }, question, corners: labels.map((label) => {
+    axis: { kind, label: '' }, question, corners: roles.map((role) => {
       const id = nextFree(used, sideId)
       used.add(id)
-      return emptyCorner(id, label, { role: tagOf(label) })
+      return emptyCorner(id, role ? words(role) : '', { role: tagOf(role) })
     }),
   }
   return editCorner(cast, sideId, (side) => ({ ...side, inner, depth: depthOf(inner) }))

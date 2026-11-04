@@ -67,7 +67,7 @@ export function ResonanceLines({ board, elements, lines, links, selected, tags, 
       const end = edge(to, origin, centre(from, origin))
       next.push({ key: line.key, kind: line.kind, x1: start.x, y1: start.y, x2: end.x, y2: end.y })
     }
-    const round = (items: Drawn[]) => JSON.stringify(items.map((item) => [item.key, Math.round(item.x1), Math.round(item.y1), Math.round(item.x2), Math.round(item.y2)]))
+    const round = (items: Drawn[]) => JSON.stringify(items.map((item) => [item.key, item.kind, Math.round(item.x1), Math.round(item.y1), Math.round(item.x2), Math.round(item.y2)]))
     if (round(next) !== round(drawn)) setDrawn(next)
   })
   void tick

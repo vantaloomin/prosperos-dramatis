@@ -153,7 +153,7 @@ input.tag-input { flex: 1; min-width: 7rem; width: auto; font-size: 0.85rem; pad
 .inner-square { border-top: 1px solid var(--line); padding-top: 0.6rem; }
 .inner-corners { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 1.25rem; }
 .lines { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
-.lines svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.lines > svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .lines line { stroke: var(--accent); stroke-width: 2; stroke-linecap: round; }
 .lines line.candidate { stroke-dasharray: 6 5; opacity: 0.6; }
 .lines line.psyche { stroke: var(--muted); stroke-dasharray: 2 4; stroke-width: 1.5; }
