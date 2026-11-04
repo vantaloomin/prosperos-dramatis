@@ -113,3 +113,11 @@ def test_braces_in_the_users_words_stay_as_typed(model):
     model.replies = [said()]
     ask(character=CHARACTER | {'about': 'Writes {{fields}} on every form.'})
     assert 'Writes {{fields}} on every form.' in model.asked[0][0]
+
+
+def test_it_sees_the_secret_it_may_edit_and_never_gives_an_adult_a_child_s_look(model):
+    model.replies = [said(edits=[{'field': 'appearance', 'value': 'Slight, with a childlike face.'}]),
+                     said(edits=[{'field': 'appearance', 'value': 'Slight, with a childlike face.'}])]
+    found = ask('Make her look younger.')
+    assert found['edits'] == [] and 'younger than 18' in model.asked[1][1]
+    assert 'She stole morphine once.' in model.asked[0][0]

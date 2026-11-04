@@ -83,3 +83,15 @@ def test_proposals_need_an_interview_and_go_through_the_api(model):
     model.replies = [json.dumps({'proposals': []})]
     found = api.post('/api/draft/from-interview', json={'character': CHARACTER | {'interview': TRANSCRIPT}})
     assert found.json() == {'proposals': [], 'audit': []}
+
+
+def test_the_interview_keeps_the_secret_and_its_proposals_never_see_it(model):
+    model.replies = [answer()]
+    interview.interview(CHARACTER)
+    assert 'She stole morphine once.' in model.asked[0][0]
+    model.replies = [json.dumps({'proposals': [
+        {'field': 'appearance', 'value': 'Slight, with a teenage face.', 'reason': 'x'},
+        {'field': 'voice', 'value': 'Two words at a time.', 'reason': 'x'}]})]
+    found = interview.proposals(CHARACTER | {'interview': TRANSCRIPT})
+    assert [item['field'] for item in found['proposals']] == ['voice']
+    assert 'She stole morphine once.' not in model.asked[1][0]

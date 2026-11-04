@@ -112,7 +112,7 @@ def fields_text(character: dict) -> str:
 
 def character_text(character: dict) -> str:
     """The form as the model sees it: the interview included, the sliders said nowhere."""
-    return json.dumps(drafting.for_model(character, interview=True), ensure_ascii=False, indent=1)
+    return json.dumps(drafting.for_model(character, interview=True, secret=True), ensure_ascii=False, indent=1)
 
 
 def conversation(history: list[dict], message: str) -> str:

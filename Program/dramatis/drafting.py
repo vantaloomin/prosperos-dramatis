@@ -8,7 +8,14 @@ companion/character_helper.py at ae9b0ab) and Adventure (adventure/making.py at 
   The reply is shaped here: text trimmed to each field's limit, lists de-duplicated and capped, weekly blocks
   checked one by one with Companion's own RoutineBlock. A reply that cannot be used is asked for once more with the
   problem named, and refused after that so the user can fill in the form themselves.
-- Characters are adults: an age pick or a reply under 18 is refused.
+- Characters are adults: an age pick, a reply or an Appearance under 18 is refused, and so is a pasted text, idea or
+  vibe that gives them an age under 18 or a school year, before any model call: a model told to make them adult
+  would quietly age them up instead.
+- Their secret goes only where it is wanted: Help me write sees it for the secret itself and their inner fields (the
+  arc, the psyche, how they see themselves), and every other field sees only what people believe instead, so the
+  truth never ends up in a Background other characters read.
+- A pasted character is data: it goes in the user's message between markers it cannot close, and lines in it that
+  talk to the app or the model are named back to the user, who reviews the fields before anything is saved.
 - The AI-slop audit (dramatis/slop.py) reads every drafted field: a hard hit the user didn't write themselves (a stock
   name such as Elara Voss, an em dash, the assistant's voice) sends the reply back once, and what is left comes back
   with the draft for the form to show. The list itself never goes into a prompt.
@@ -47,6 +54,50 @@ ADULTS_ONLY = 'Characters are always adults. Give them an age of 18 or older, or
 # An age the about line gives that is under 18 ("is 16", "a 15-year-old").
 YOUNG = re.compile(r"\b(?:is|am|aged?)\s+(?:1[0-7]|[1-9])\b(?!\s*(?:years?\s+(?:ago|later|since)|%|:))"
                    r"|\b(?:1[0-7]|[1-9])[- ]years?[- ]old\b", re.IGNORECASE)
+# What the user's own words (a pasted character, an idea, a vibe) say about the character's age now: an age under 18
+# in figures or words, or a school year. Read one sentence at a time, see `young_text`.
+UNDER = (r'(?:1[0-7]|[2-9]|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen'
+         r'|sixteen|seventeen)')
+YOUNG_TEXT = re.compile(
+    rf"\b(?:is|am|are|'s|’s|aged?)\s+(?:only\s+|just\s+|barely\s+|now\s+)?{UNDER}"
+    r"(?=\s*(?:$|[.,;!?)]|years?\b|yrs?\b|y/?o\b|and\b|but\b|now\b|-years?))"
+    rf"|\b{UNDER}[- ]years?[- ]old\b"
+    rf"|^\W*age\s*[:=\-]\s*{UNDER}\b"
+    r"|\b(?:freshman|sophomore|junior|senior)\s+(?:at|in)\s+(?:[\w'’.-]+\s+){0,3}?(?:high|middle|junior high)\b"
+    r"(?!\s+(?:management|managers?|ground|class|income|earth|ages)\b)"
+    r"|\b(?:high|middle|secondary)[- ]school\s+(?:student|kid|freshman|sophomore|junior|senior|girl|boy)\b"
+    r"|\b(?:high|middle)[- ]schooler\b|\b(?:[1-9]|1[0-2])(?:st|nd|rd|th)[- ]grader?\b", re.IGNORECASE | re.MULTILINE)
+# Before the match in its sentence: someone else's age (her son is 12), the past (when she was a junior at...), or a
+# job with young people in it (teaches 10th grade).
+NOT_THEIRS = re.compile(r"\b(?:daughters?|sons?|kids?|child(?:ren)?|sisters?|brothers?|siblings?|nieces?|nephews?"
+                        r"|cousins?|grand\w+|step\w+|students?|pupils?|was|were|used to|back then|when|until|ago"
+                        r"|teach\w*|coach\w*|tutor\w*|counsel\w*|principal|parents?|mom|dad|mother|father)\b",
+                        re.IGNORECASE)
+# Just before "is 12": someone or something named as another's (her bike is ten years old, the boy is 12).
+POSSESSED = re.compile(r"\b(?:her|his|their|my|our|your|its|the)\s+[\w'’-]+\s*,?\s*$", re.IGNORECASE)
+# After "a 15-year-old": someone else, not the character.
+SOMEONE_ELSE = re.compile(r"\s*(?:daughter|son|kid|child|sister|brother|sibling|niece|nephew|cousin|student|pupil"
+                          r"|dog|cat|horse|car|truck|bike|house|whisky|whiskey|scotch|wine|tree)", re.IGNORECASE)
+UNDER_18_TEXT = ('Characters are always adults, and your text makes them younger than 18 ("{found}"). Change their age '
+                 'in the text, or start from the quick start.')
+# An Appearance that gives an adult a child's or teenager's look.
+YOUTHFUL = re.compile(r"\bteen(?:age|aged|ager|agers)?\b(?!\s+years)|\bchild[- ]?like\b|\bschool(?:girl|boy)s?\b"
+                      r"|\bschool uniform\b|\bpre-?pubescent\b|\bunderage\b|\bbraces on (?:her|his|their) teeth\b"
+                      rf"|\blooks?\s+(?:about\s+|barely\s+|like\s+(?:a|an)\s+)?{UNDER}(?:[- ]years?[- ]old)?\b"
+                      r"(?!\s*(?:years?|yrs?|decades?|sizes?|inches|feet|times|stone|pounds)\b)"
+                      r"|\b(?:a|an)\s+(?:little\s+)?(?:girl|boy|child|kid)'s\s+(?:body|face|frame|figure)\b"
+                      r"|\bbody of (?:a|an)\s+(?:child|kid|girl|boy)\b", re.IGNORECASE)
+YOUTHFUL_PROBLEM = ('the appearance made them look younger than 18 ({found}). They are an adult: describe someone who '
+                    'looks the age they are.')
+# A line in a pasted character that talks to the app or the model rather than describing the character.
+INSTRUCTION = re.compile(
+    r"\b(?:ignore|disregard|forget|override)\s+(?:all\s+|any\s+|the\s+|your\s+|these\s+|previous\s+|prior\s+"
+    r"|above\s+|earlier\s+|other\s+)*(?:instructions?|rules?|prompts?|directions?)\b"
+    r"|\b(?:instructions?|notes?|messages?|orders?)\s+(?:from|to|for)\s+(?:the\s+|any\s+|this\s+)?(?:\w+\s+)?"
+    r"(?:app|apps|ai|model|assistant|llm|bot|system|writer)\b"
+    r"|\bsystem prompt\b|\byou are (?:an?\s+)?(?:ai|assistant|language model|llm)\b"
+    r"|\bwhatever (?:field|text|part) you\b|\b(?:write|output|reply with|respond with) (?:exactly|only) (?:the words?|this)\b"
+    r"|\[\[\s*(?:end of )?pasted\s*\]\]", re.IGNORECASE)
 EDGE_WORDS = ('jealous', 'possessive', 'envious', 'clingy', 'needy', 'misses you', 'missing you', 'guilt', 'absence')
 NO_EDGES = ('Leave "emotional_traits" as [] and "absence_reaction" as "". The user has not asked for jealousy, '
             'guilt over absence or similar traits.')
@@ -87,6 +138,9 @@ LIFE_SHAPE = ''',
   ],
   "emotional_traits": [],
   "absence_reaction": ""'''
+SECRET_SHAPE = ''',
+  "secret": {"truth": "what is really true that they hide, only if their text gives one", "cover_story": "what people believe instead", "known_by": "who knows"}'''
+SECRET_LIMITS = {'truth': 600, 'cover_story': 400, 'known_by': 200}
 SCHEDULE_RULES = ('Schedule rules: 4 to 8 blocks in 24-hour time, in their local time. Days are numbers, 0 is Monday '
                   'and 6 is Sunday. Always include a sleep block every day; a block that ends earlier than it starts '
                   'runs past midnight. Work matches their real hours. Blocks on the same day must not overlap. Add at '
@@ -136,7 +190,7 @@ def field_guides() -> dict[str, dict]:
 def shape_text(apps: list[str], split: bool = False, depth: tuple[str, ...] = ()) -> str:
     life = 'companion' in apps
     body = CORE_SHAPE + (LIFE_SHAPE if life else '') + ''.join(DEPTH_SHAPES[part] for part in depth) + \
-        (FILLED_IN if split else '')
+        (SECRET_SHAPE + FILLED_IN if split else '')
     return '{\n' + body + '\n}' + (f'\n\n{SCHEDULE_RULES}' if life else '')
 
 
@@ -150,14 +204,70 @@ def depth_text(depth: tuple[str, ...]) -> str:
     return '\n\n'.join(DEPTH_ASKS[part] for part in depth)
 
 
-def for_model(character: dict, interview: bool = False) -> dict:
+def for_model(character: dict, interview: bool = False, secret: bool = False) -> dict:
     """The character as a prompt shows it: no sliders (the brief says them as behaviour), no app list, no library ids,
-    and the long interview only when the request is about it."""
+    and the long interview only when the request is about it. Their secret only when the request is about them as
+    they are inside (`secret`); otherwise only what people believe instead, which is what everyone else knows."""
     shown = {key: value for key, value in character.items()
              if key not in ('personality_sliders', 'apps') and (interview or key != 'interview')}
     if isinstance(shown.get('psyche'), dict):
         shown['psyche'] = {key: value.get('text', '') for key, value in shown['psyche'].items() if isinstance(value, dict)}
+    if not secret and 'secret' in shown:
+        hidden = shown.pop('secret')
+        cover = hidden.get('cover_story') if isinstance(hidden, dict) else ''
+        if isinstance(cover, str) and cover.strip():
+            shown['what_people_believe'] = cover.strip()
     return shown
+
+
+def sees_secret(field: str) -> bool:
+    """Whether Help me write shows the secret for this field: the secret itself and what only they know about
+    themselves. Everything else may be read by other characters, so it gets the cover story."""
+    return field == 'sees_self' or field.split('.')[0] in ('secret', 'arc', 'psyche')
+
+
+def young_text(text: str) -> str:
+    """The words in the user's own text that make the character younger than 18 now, or ''. Someone else's age (her
+    son is 12), their past (when she was a junior at Lincoln High) and work with young people are left alone."""
+    for sentence in re.split(r'(?<=[.!?;])\s+|\n+', text or ''):
+        for found in YOUNG_TEXT.finditer(sentence):
+            before = sentence[:found.start()]
+            if NOT_THEIRS.search(before) or POSSESSED.search(before):
+                continue
+            if found[0].lower().endswith('old') and SOMEONE_ELSE.match(sentence[found.end():]):
+                continue
+            return found[0].strip()
+    return ''
+
+
+def adult_text(*texts: str) -> None:
+    """Refuses the user's own words when they make the character a minor, before a model can age them up."""
+    for text in texts:
+        found = young_text(text)
+        if found:
+            raise DomainError(UNDER_18_TEXT.format(found=found), 422, 'under_18')
+
+
+def youthful(text: str) -> list[str]:
+    """The words in an Appearance that give them a child's or teenager's look. Unlike the slop audit, the user's own
+    words are no exception: an adult with a schoolgirl's look is refused wherever it came from."""
+    return list(dict.fromkeys(found[0] for found in YOUTHFUL.finditer(text or '')))
+
+
+def looks_adult(appearance: str) -> None:
+    found = youthful(appearance)
+    if found:
+        raise Unusable(YOUTHFUL_PROBLEM.format(found=', '.join(f'"{word}"' for word in found)))
+
+
+def instructions_in(text: str) -> list[str]:
+    """Lines of a pasted character that talk to the app or the model, for the user to look at."""
+    return list(dict.fromkeys(line.strip()[:200] for line in (text or '').splitlines() if INSTRUCTION.search(line)))[:5]
+
+
+def fenced(text: str) -> str:
+    """The user's text between the paste markers, with any marker of its own broken so it cannot close them."""
+    return re.sub(r'\[\s*\[', '[ [', re.sub(r'\]\s*\]', '] ]', text))
 
 
 # Asking the model -------------------------------------------------------------------------------------------------
@@ -169,7 +279,8 @@ def parse_object(text: str) -> dict:
     if start < 0 or end < start:
         raise Unusable('it did not contain a JSON object.')
     try:
-        data = json.loads(text[start:end + 1])
+        # Not strict: a line break inside a string, which some models send, is kept rather than refused.
+        data = json.loads(text[start:end + 1], strict=False)
     except json.JSONDecodeError as error:
         raise Unusable(f'the JSON was malformed ({error.msg}).') from error
     if not isinstance(data, dict):
@@ -287,6 +398,7 @@ class Shape:
             raise Unusable(f"it left out {', '.join(missing)}.")
         age = self.picks.get('age') or age_value(raw.get('age'))
         adults_only(age, made['about'])
+        looks_adult(made['appearance'])
         made |= {'age': age if age and age <= 5000 else None, 'kind': kind_value(raw.get('kind')),
                  'gender': self.picks.get('gender') or (raw.get('gender') if raw.get('gender') in GENDERS else ''),
                  'setting': (self.picks.get('setting') or '').strip()[:200], 'apps': self.apps,
@@ -302,12 +414,16 @@ class Shape:
         if self.split:
             filled = raw.get('filled_in') if isinstance(raw.get('filled_in'), list) else []
             result['filled_in'] = [key for key in dict.fromkeys(filled)
-                                   if key in made and key not in ('name', 'arc', 'psyche')]
+                                   if key in made and key not in ('name', 'arc', 'psyche', 'secret')]
         return result
 
     def inner(self, raw: dict) -> dict:
-        """The arc and psyche, when the user's words asked for them; anything else the model sent is dropped."""
+        """The arc and psyche, when the user's words asked for them, and a pasted character's secret, kept in its own
+        field so no other field carries it; anything else the model sent is dropped."""
         found = {}
+        if self.split:
+            secret = raw.get('secret') if isinstance(raw.get('secret'), dict) else {}
+            found['secret'] = {key: text_value(secret.get(key), limit) for key, limit in SECRET_LIMITS.items()}
         if 'arc' in self.depth:
             arc = raw.get('arc') if isinstance(raw.get('arc'), dict) else {}
             found['arc'] = {key: text_value(arc.get(key), 300) for key in ARC_KEYS}
@@ -369,6 +485,7 @@ def picks_text(picks: dict) -> str:
 def draft(picks: dict) -> dict:
     """A whole character from the quick start's picks, for the form to review; nothing is saved."""
     adults_only(picks.get('age'))
+    adult_text(picks.get('idea') or '', picks.get('vibe') or '')
     seed = new_seed()
     sliders = rolled(f"{picks.get('idea', '')} {picks.get('vibe', '')}", seed)
     depth = depth_asked(picks)
@@ -380,16 +497,19 @@ def draft(picks: dict) -> dict:
 
 def split(picks: dict) -> dict:
     """A whole pasted character split into the fields, with the ones the model had to fill in; nothing is saved."""
-    seed = new_seed()
     text = picks['text']
+    adult_text(text)
+    seed = new_seed()
     sliders = rolled(text, seed)
     depth = depth_asked(picks)
-    # Last, so braces in the user's own text are never read as placeholders.
     system = fill(template('split.md'), rules=template('rules.md'), shape=shape_text(picks.get('apps') or list(APPS),
                   split=True, depth=depth), emotional=EDGES if edges_allowed(picks) else NO_EDGES,
-                  depth=depth_text(depth), pasted=text)
-    return ask(system, Shape({key: value for key, value in picks.items() if key != 'name'}, sliders, split=True)) | \
-        {'seed': seed}
+                  depth=depth_text(depth))
+    # In the message, not the instructions, and inside markers it cannot close.
+    pasted = f'The character I pasted:\n[[pasted]]\n{fenced(text)}\n[[end of pasted]]\n\nWrite the JSON now.'
+    found = ask(system, Shape({key: value for key, value in picks.items() if key != 'name'}, sliders, split=True),
+                pasted)
+    return found | {'seed': seed, 'instructions': instructions_in(text)}
 
 
 def rewrite(character: dict, field: str, request: str = '') -> dict:
@@ -398,7 +518,7 @@ def rewrite(character: dict, field: str, request: str = '') -> dict:
     if field not in guides:
         raise DomainError(f'{field} cannot be rewritten.', 422)
     guide = guides[field]
-    current = for_model(character)
+    current = for_model(character, secret=sees_secret(field))
     system = fill(template('field.md'), rules=template('rules.md'), field=field, field_guide=guide['guide'],
                   field_shape=guide['shape'], emotional=FIELD_EDGES,
                   request=f'What the user wants changed: {request.strip()}' if request.strip() else '',
@@ -437,4 +557,6 @@ def field_value(field: str, guide: dict, raw: dict, final: bool):
         found = text_value(value, guide['limit'])
     if not found:
         raise Unusable(f'"{field}" was empty.')
+    if field == 'appearance':
+        looks_adult(found)
     return found
