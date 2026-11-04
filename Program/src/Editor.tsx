@@ -11,9 +11,10 @@ import { Interview, sampleLine } from './Interview'
 import { isEmpty, pathOf, proposals, useOpenCount, useWritten, valueAt, withValue } from './proposals'
 import { Psyche } from './Psyche'
 import { Portrait } from './Portrait'
-import { AppPicks } from './Start'
+import { AppPicks, type Begun } from './Start'
 import { Schedule, scheduleProblems } from './Schedule'
 import { Sliders } from './Sliders'
+import { draftStore } from './drafts'
 
 const LIFESPANS: [string, string][] = [['', 'As long as their kind does'], ['0', "Doesn't age"], ['80', 'About 80 years'],
   ['150', 'About 150 years'], ['300', 'About 300 years'], ['600', 'About 600 years'], ['1000', 'About 1,000 years']]
@@ -59,14 +60,23 @@ interface Props {
   brought?: boolean; allowed?: string
   /** A picture to save with them, as base64 PNG: an imported file's own. */
   portrait?: string
+  /** Where the form keeps its unsaved changes (src/drafts.ts): their id, or a new form's own key; `begun` is how it
+   * opened, kept with the draft. */
+  draftKey: string; begun: Begun
   onSaved: (saved: Saved) => void; onDeleted: () => void
+  /** Drop the unsaved changes: back to what was saved, or the form goes for a new one. */
+  onDiscard: () => void
 }
+
+const asSaved = (character: Character) => JSON.stringify(cleaned(character))
+/** Whether a new form holds anything worth keeping as a draft. */
+const begunOn = (character: Character) => !!(character.name.trim() || character.about.trim() || character.personality.trim() || character.background.trim())
 
 const ZONES: string[] = (() => { try { return Intl.supportedValuesOf('timeZone') } catch { return [] } })()
 
 /** One character, every field, for whichever apps they are made for. What a model writes goes into its field as a
  * proposal to keep or put back (src/proposals.ts); nothing is saved until Save. */
-export function Editor({ saved, start, seed, filledIn, note, portrait, brought, allowed, onSaved, onDeleted }: Props) {
+export function Editor({ saved, start, seed, filledIn, note, portrait, brought, allowed, draftKey, begun, onSaved, onDeleted, onDiscard }: Props) {
   const client = useQueryClient()
   const ready = useModelReady()
   const [character, setCharacter] = useState<Character>(start)
@@ -83,7 +93,15 @@ export function Editor({ saved, start, seed, filledIn, note, portrait, brought, 
   const has = (app: App) => character.apps.includes(app)
   const assisting = useAssistantShown()
   const waiting = useOpenCount()
-  useProposalForm(character, setCharacter)
+  useProposalForm(character, setCharacter, draftKey)
+  // What Save would change: the form against the character as last saved (or saved from here).
+  const baseline = useRef(saved ? asSaved(saved.character) : null)
+  const settled = useRef(false)
+  const [key, setKey] = useState(draftKey)
+  const changed = baseline.current === null ? begunOn(character) : asSaved(character) !== baseline.current
+  useEffect(() => {
+    draftStore.put({ key, saved, begun: { ...begun, character, filledIn: undefined, note: undefined }, changed })
+  }, [character, saved, key, changed]) // eslint-disable-line react-hooks/exhaustive-deps
   const written = useWritten()
   // A split's fields that the user's text said nothing about go onto the form as proposals, from empty.
   useEffect(() => {
@@ -116,13 +134,16 @@ export function Editor({ saved, start, seed, filledIn, note, portrait, brought, 
     try {
       // Saving keeps what the form shows, proposals included.
       const kept = proposals.keepAll()
-      const body = { character: cleaned(proposals.form()?.get() ?? character), seed }
+      const sent = proposals.form()?.get() ?? character
+      const body = { character: cleaned(sent), seed }
       let next = saved ? await sendJson<Saved>(`/api/characters/${saved.id}`, 'PUT', body) : await sendJson<Saved>('/api/characters', 'POST', body)
       if (pendingPortrait) {
         const pictured = await sendJson<Saved>(`/api/characters/${next.id}/portrait`, 'PUT', { filename: 'portrait.png', data: pendingPortrait })
         next = { ...pictured, problems: next.problems }
         setPendingPortrait(null)
       }
+      baseline.current = asSaved(sent)
+      if (key !== next.id) { draftStore.drop(key); setKey(next.id) }
       await client.invalidateQueries({ queryKey: ['characters'] })
       const proposed = kept === 1 ? ', with the proposal that was waiting' : kept ? `, with the ${kept} proposals that were waiting` : ''
       setResult({ tone: 'note', text: `Saved ${next.character.name || 'them'}${proposed}.` })
@@ -131,9 +152,17 @@ export function Editor({ saved, start, seed, filledIn, note, portrait, brought, 
       setResult({ tone: 'error', text: failure instanceof Error ? failure.message : 'They could not be saved.' })
     } finally { setBusy(false) }
   }
+  const discard = () => {
+    const what = saved ? `Put ${saved.character.name || 'them'} back as last saved, and lose the changes since?` : `Discard ${character.name || 'this new character'}? They were never saved.`
+    if (!window.confirm(what)) return
+    proposals.putBackAll()
+    draftStore.drop(key)
+    onDiscard()
+  }
   const remove = async () => {
     if (!saved || !window.confirm(`Delete ${saved.character.name || 'this character'} from the library? Cards you exported stay where they are.`)) return
     await sendJson(`/api/characters/${saved.id}`, 'DELETE')
+    draftStore.drop(key)
     await client.invalidateQueries({ queryKey: ['characters'] })
     onDeleted()
   }
@@ -148,7 +177,8 @@ export function Editor({ saved, start, seed, filledIn, note, portrait, brought, 
         <div className="row">
           {waiting > 0 && <span className="muted small">{waiting === 1 ? '1 proposal waiting' : `${waiting} proposals waiting`}</span>}
           <button type="button" aria-pressed={assisting} onClick={() => assistant.toggle()}><MessageSquareText size={14} aria-hidden /> Assistant</button>
-          <button type="submit" className="primary" disabled={busy || blocked}>{busy ? 'Saving…' : saved ? 'Save' : 'Save to the library'}</button>
+          {changed && <button type="button" className="quiet" onClick={discard}>{saved ? 'Discard changes' : 'Discard'}</button>}
+          <button type="submit" className="primary" disabled={busy || blocked || (!!saved && !changed && !waiting && !pendingPortrait)}>{busy ? 'Saving…' : saved ? 'Save' : 'Save to the library'}</button>
           {saved && <>
             <ExportCard id={saved.id} />
             <button type="button" className="icon danger" aria-label="Delete them" onClick={() => void remove()}><Trash2 size={15} /></button>
@@ -212,7 +242,14 @@ export function Editor({ saved, start, seed, filledIn, note, portrait, brought, 
 
       <section>
         <h3>Personality</h3>
-        <Sliders character={current} seed={seed} still={brought} onChange={(personality_sliders) => set({ personality_sliders })} />
+        <Sliders character={current} seed={seed} still={brought} onChange={(personality_sliders) => {
+          // An older character saved before sliders were kept settles them on opening: that is not a change.
+          if (!settled.current && saved && !saved.character.personality_sliders && baseline.current === asSaved(saved.character)) {
+            baseline.current = asSaved({ ...saved.character, personality_sliders })
+          }
+          settled.current = true
+          set({ personality_sliders })
+        }} />
       </section>
 
       <section>

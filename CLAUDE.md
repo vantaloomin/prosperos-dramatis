@@ -39,6 +39,8 @@ character creator.
   `src/proposals.ts`: it stands in its field at once, marked, with Keep / Put back under it, and Save keeps what is
   still open. A model action is a `ModelButton` (bolt icon, Stop while it runs, `src/modelCall.ts`); a field's Help me
   write is the bolt `Field` draws from its `write` prop. Fields have labels only, no hint lines.
+- A character form with unsaved changes is a draft in `src/drafts.ts` (by id, or `new-…` before its first save), kept
+  in localStorage, so switching characters or reloading loses nothing; the library marks them and Discard drops one.
 - Every model call goes through `dramatis/ai.py` `complete`, run with Companion's own providers (vendored in
   `formats/companion/providers`). Profiles and which one does each job (`writing`, `assistant`, `cast`) are
   `dramatis/profiles.py` (in settings.json, keys in the keyring), routes in `model_routes.py`; a caller names its job

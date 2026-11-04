@@ -12,7 +12,13 @@ h1, h2 { font-family: 'Literata', Georgia, serif; font-weight: 600; margin: 0; }
 h1 { font-size: 1.1rem; }
 h2 { font-size: 1.05rem; display: flex; gap: 0.4rem; align-items: center; margin-bottom: 0.75rem; }
 h3 { font-size: 0.95rem; font-weight: 600; color: var(--ink); margin: 1.6rem 0 0.4rem; }
-.shell { display: grid; min-height: 100vh; gap: 1px; background: var(--line); grid-template: 'top top' auto 'library work' 1fr / 270px 1fr; }
+.shell { display: grid; height: 100vh; height: 100dvh; gap: 1px; background: var(--line); grid-template: 'top top' auto 'library work' minmax(0, 1fr) / 270px 1fr; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+main:focus { outline: none; }
+.skip { position: absolute; left: 0.5rem; top: -3rem; z-index: 20; padding: 0.4rem 0.8rem; border-radius: 6px; background: var(--accent); color: var(--panel); }
+.skip:focus { top: 0.5rem; }
+button.drawer-toggle, button.drawer-close, .drawer-scrim { display: none; }
+input[type='checkbox'], input[type='radio'], input[type='range'] { accent-color: var(--accent); }
 .top { grid-area: top; display: flex; gap: 0.6rem; align-items: center; padding: 0.6rem 1rem; background: var(--panel); color: var(--accent); flex-wrap: wrap; }
 .top h1 { color: var(--ink); }
 .top-model { margin-left: auto; color: var(--ink); }
@@ -20,7 +26,14 @@ h3 { font-size: 0.95rem; font-weight: 600; color: var(--ink); margin: 1.6rem 0 0
 .top-model .model-form { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0; }
 .pane { background: var(--panel); padding: 1rem; overflow: auto; }
 .library { grid-area: library; } .work { grid-area: work; }
-@media (max-width: 800px) { .shell { grid-template: 'top' auto 'work' auto 'library' auto / 1fr; } }
+@media (max-width: 800px) {
+  .shell, .shell.assisting { height: auto; min-height: 100dvh; grid-template: 'top' auto 'work' 1fr / 1fr; }
+  button.drawer-toggle { display: inline-flex; }
+  .library { display: none; }
+  .library.open { display: block; position: fixed; inset: 0 auto 0 0; width: min(20rem, 85vw); z-index: 12; box-shadow: 8px 0 24px rgb(0 0 0 / 0.25); }
+  .library.open button.drawer-close { display: inline-flex; float: right; }
+  .drawer-scrim { display: block; position: fixed; inset: 0; z-index: 11; background: rgb(0 0 0 / 0.35); }
+}
 .muted { color: var(--muted); }
 .small { font-size: 0.85rem; }
 .note { border-left: 3px solid var(--accent); padding-left: 0.75rem; }
@@ -99,7 +112,7 @@ details.section > :not(summary) + :not(summary) { margin-top: 0.75rem; }
 .choices { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.3rem; }
 .choices button { width: 100%; text-align: left; background: var(--panel); gap: 0.6rem; }
 .choices button > span:last-child { display: grid; }
-.thumb { width: 2.2rem; height: 3.3rem; border-radius: 4px; object-fit: cover; background: color-mix(in srgb, var(--accent) 25%, var(--bg)); flex: none; }
+.thumb { width: 2.2rem; height: 3.3rem; border-radius: 4px; object-fit: cover; background: color-mix(in srgb, var(--accent) 25%, var(--bg)); flex: none; display: inline-grid; place-items: center; font-size: 0.8rem; font-weight: 600; color: var(--accent); }
 .start { display: grid; gap: 1.25rem; max-width: 52rem; }
 .card { border: 1px solid var(--line); border-radius: 10px; padding: 1rem 1.1rem; background: var(--panel); }
 .card > p:first-of-type { margin-top: 0; }
@@ -262,8 +275,8 @@ button.side-toggle { width: 100%; justify-content: flex-start; background: var(-
 .checks .ai-check li button.icon { width: auto; background: none; }
 @media (max-width: 720px) { .ai-panel { position: fixed; left: 1rem; right: 1rem; top: auto; bottom: 1rem; width: auto; } }
 /* The Sidebar Assistant: a third column beside the form, over the page on narrower screens. */
-.shell.assisting { grid-template: 'top top top' auto 'library work assistant' 1fr / 270px minmax(0, 1fr) 360px; }
-.assistant { grid-area: assistant; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 0.6rem; padding: 0.75rem 1rem; overflow: hidden; }
+.shell.assisting { grid-template: 'top top top' auto 'library work assistant' minmax(0, 1fr) / 270px minmax(0, 1fr) 360px; }
+.assistant { grid-area: assistant; min-height: 0; display: flex; flex-direction: column; gap: 0.6rem; padding: 0.75rem 1rem; overflow: hidden; }
 .assistant header { display: flex; align-items: center; gap: 0.2rem; }
 .assistant header h2 { margin: 0 auto 0 0; }
 .assistant-transcript { flex: 1; overflow-y: auto; display: grid; align-content: start; gap: 1rem; }
@@ -287,12 +300,13 @@ button.side-toggle { width: 100%; justify-content: flex-start; background: var(-
 .assistant-focus { display: flex; align-items: center; gap: 0.2rem; }
 button.send { padding: 0.35rem 0.5rem; }
 @media (max-width: 1200px) {
-  .shell.assisting { grid-template: 'top top' auto 'library work' 1fr / 270px minmax(0, 1fr); }
+  .shell.assisting { grid-template: 'top top' auto 'library work' minmax(0, 1fr) / 270px minmax(0, 1fr); }
   .assistant { position: fixed; top: 0; right: 0; bottom: 0; width: min(380px, 100vw); z-index: 5; box-shadow: -8px 0 24px rgb(0 0 0 / 0.18); }
 }
 @media (max-width: 800px) {
-  .shell.assisting { grid-template: 'top' auto 'work' auto 'library' auto / 1fr; }
-  .assistant { width: 100vw; }
+  .shell.assisting { height: auto; min-height: 100dvh; grid-template: 'top' auto 'work' 1fr / 1fr; }
+  /* On a phone the assistant is a sheet over the lower part of the screen. */
+  .assistant { top: auto; left: 0; width: 100vw; height: 85dvh; border-radius: 12px 12px 0 0; box-shadow: 0 -8px 24px rgb(0 0 0 / 0.25); }
 }
 /* Models: Companion's profiles and jobs (src/models), over the screen */
 .models-dialog { width: min(46rem, calc(100vw - 2rem)); max-height: calc(100vh - 2rem); padding: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--ink); box-shadow: 0 12px 40px rgb(0 0 0 / 0.25); }
