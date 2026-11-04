@@ -9,8 +9,8 @@ emotional edges).
 Their depth is optional and no app has a field for it yet: an in-voice `interview`, an inner `arc` (the lie they
 believe, the truth they need, what could force it), a `secret`, and a `psyche` (who they were, are expected to be,
 want to be and fear becoming, each with the characters who press on it). The whole character rides in a card's
-extension; the app shapes fold the parts each app can use into fields it already reads (`folded`), and a card leaves
-the secret out unless the user includes it (dramatis/cards.py).
+extension; the app shapes fold the parts each app can use into fields it already reads (`folded`), the secret
+included, so the character knows what they are keeping.
 
 Each field's limit is the tightest of the apps that read it, so nothing is cut short on the way in. `for_companion`,
 `for_adventure` and `for_dungeon` lay a character out as each app's own request models expect, and check it with
@@ -243,7 +243,7 @@ def companion_sees_self(character: Character) -> str:
 
 
 def adventure_sees_self(character: Character) -> str:
-    """Adventure's private view of themselves: their own lines, then the lie they believe, an included secret and
+    """Adventure's private view of themselves: their own lines, then the lie they believe, their secret and
     their psyche, as many as fit."""
     secret = secret_text(character.secret)
     extras = [f'What I tell myself: {sentence(character.arc.lie)}' if character.arc.lie else '',

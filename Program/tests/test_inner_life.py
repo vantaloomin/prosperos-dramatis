@@ -46,16 +46,14 @@ def test_companion_keeps_within_its_background_limit_and_never_cuts_their_own_te
     assert problems(character) == {}
 
 
-def test_the_card_leaves_the_secret_out_unless_it_is_included():
+def test_the_card_carries_the_arc_and_the_secret():
     character = Character.model_validate(CHARACTER)
-    kept = card(character, '', '')
-    assert 'morphine' not in json.dumps(kept, ensure_ascii=False)
-    assert 'Lie they believe: that needing anyone gets you left' in kept['data']['description']
-    assert 'Truth they need: that people stay when asked' in kept['data']['description']
-    shared = card(character, '', '', secret=True)
-    assert 'Secret: She stole morphine from the ward once.' in shared['data']['description']
-    assert shared['data']['extensions']['prospero']['character']['secret'] == SECRET
-    assert 'morphine' in shared['data']['extensions']['prospero']['apps']['companion']['background']
+    full = card(character, '', '')
+    assert 'Lie they believe: that needing anyone gets you left' in full['data']['description']
+    assert 'Truth they need: that people stay when asked' in full['data']['description']
+    assert 'Secret: She stole morphine from the ward once.' in full['data']['description']
+    assert full['data']['extensions']['prospero']['character']['secret'] == SECRET
+    assert 'morphine' in full['data']['extensions']['prospero']['apps']['companion']['background']
     assert description(Character.model_validate({'about': 'A nurse.'})) == 'A nurse.'
 
 
@@ -66,19 +64,14 @@ def test_arc_and_secret_round_trip_through_save_load_and_card():
     loaded = api.get(f"/api/characters/{made['id']}").json()['character']
     assert loaded['arc'] == ARC and loaded['secret'] == SECRET and loaded['interview'].startswith('**What')
     plain = api.get(f"/api/characters/{made['id']}/card.json")
-    assert 'morphine' not in plain.text
     assert plain.json()['data']['extensions']['prospero']['character']['arc'] == ARC
-    shared = api.get(f"/api/characters/{made['id']}/card.json?secret=1").json()
-    assert shared['data']['extensions']['prospero']['character']['secret'] == SECRET
     png = api.get(f"/api/characters/{made['id']}/card.png")
-    assert b'morphine' not in png.content and png.status_code == 200
-    chat = api.get(f"/api/characters/{made['id']}/card.json?for=chat")
-    assert 'morphine' not in chat.text and 'Lie they believe' in chat.json()['data']['description']
-    chat = api.get(f"/api/characters/{made['id']}/card.json?for=chat&secret=1").json()
-    assert 'Secret: She stole morphine' in chat['data']['description']
+    assert png.status_code == 200
+    chat = api.get(f"/api/characters/{made['id']}/card.json?for=chat").json()
+    assert 'Secret: She stole morphine' in chat['data']['description'] and 'Lie they believe' in chat['data']['description']
     opened = api.post('/api/cards/open', json={'filename': 'Dana.json',
                                                 'data': base64.b64encode(plain.content).decode()}).json()
-    assert opened['character']['arc'] == ARC and opened['character']['secret']['truth'] == ''
+    assert opened['character']['arc'] == ARC and opened['character']['secret'] == SECRET
 
 
 def test_a_saved_character_from_before_the_new_fields_opens_with_them_empty():
@@ -96,11 +89,10 @@ def test_help_me_write_fills_one_part_of_the_arc_and_audits_it(model):
     model.replies = ['{"value": "that she has to earn her place every shift"}']
     found = drafting.rewrite(CHARACTER, 'arc.lie')
     assert found == {'field': 'arc.lie', 'value': 'that she has to earn her place every shift', 'audit': []}
-    # Writing anything but the secret, the model never sees it, so it cannot leak into a field a card exports.
-    assert 'morphine' not in model.asked[0][0] and 'that needing anyone gets you left' in model.asked[0][0]
+    assert 'that needing anyone gets you left' in model.asked[0][0] and 'morphine' in model.asked[0][0]
     model.replies = ['{"value": "Elara knows"}', '{"value": "only her brother and his wife"}']
     found = drafting.rewrite(CHARACTER, 'secret.known_by')
-    assert 'morphine' in model.asked[1][0] and 'Elara' in model.asked[2][1]
+    assert 'Elara' in model.asked[2][1]
     assert found['value'] == 'only her brother and his wife'
 
 

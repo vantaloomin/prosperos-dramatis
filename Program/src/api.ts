@@ -45,7 +45,7 @@ export interface CompanionLife {
 }
 /** Their inner arc: the lie they believe, the truth they need, and what could force it. */
 export interface Arc { lie: string; truth: string; catalyst: string }
-/** Kept in the library; a card carries it only with `?secret=1`. */
+/** Something they keep from most people; it goes with them into every card and app. */
 export interface Secret { truth: string; cover_story: string; known_by: string }
 /** One pull on them, and the library characters who press on it (never written by a model). */
 export interface Impulse { text: string; pressed_by: string[] }

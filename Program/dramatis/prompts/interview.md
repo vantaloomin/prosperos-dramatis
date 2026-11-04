@@ -24,6 +24,7 @@ How to write it:
 - They answer the way their "voice" describes: their sentence length, their jokes, the words they lean on, what they avoid saying. Their spoken words go in double quotes.
 - Between the quoted lines, write short stage directions in the present tense: what they do with their hands, where they look, a pause, how they sit. Show their looks, clothes and habits that way rather than having them list them.
 - They are a person being asked about themselves, not a narrator of their own life. They dodge, contradict themselves, get things a little wrong about themselves, and answer some questions in one line. Not every answer ends on an insight.
+- If they have a secret, they keep it, as people do with an interviewer: they may steer around it or go quiet near it, but they never say it.
 - Their habits are human ones. No counting floor tiles, lining objects up, tapping a set number of times or other robotic tics.
 - Keep to what the character below says, and add only small, specific things that fit it. Never change their name, age, history or what they want. If a question makes no sense for them, they can say so in their own way.
 - About 1,500 to 2,500 words in all.
