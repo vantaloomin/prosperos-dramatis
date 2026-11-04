@@ -5,6 +5,8 @@ import { APP_NAMES, getJson, type Health, type Saved, type Summary } from './api
 import { CastBoard, linkSaved, type Board } from './cast/CastBoard'
 import { CastStart } from './cast/CastStart'
 import { castCalls, draftIdea, editCorner, findCorner, type Cast, type SavedCast } from './castApi'
+import { Assistant } from './assistant/Assistant'
+import { useAssistantShown } from './assistant/store'
 import { Editor } from './Editor'
 import { ModelSettings } from './ModelSettings'
 import { Start, type Begun, type Picks } from './Start'
@@ -89,6 +91,7 @@ export function App() {
   const [boards, setBoards] = useState<Record<string, Board>>({})
   const [linked, setLinked] = useState<{ castKey: string; text: string } | null>(null)
   const [error, setError] = useState('')
+  const assisting = useAssistantShown()
   const go = (next: View) => { setError(''); setLinked(null); setView(next) }
 
   const open = async (id: string) => {
@@ -152,7 +155,7 @@ export function App() {
   const pendingBoard = pending && boards[pending.castKey]
   const chosen = view.kind === 'edit' ? view.saved?.id ?? null : null
   return (
-    <div className="shell">
+    <div className={assisting ? 'shell assisting' : 'shell'}>
       <header className="top">
         <Drama size={18} aria-hidden />
         <h1>Prospero's Dramatis</h1>
@@ -193,6 +196,7 @@ export function App() {
               onOpenCharacter={(id) => void open(id)} />
           ) : null}
       </main>
+      {assisting && <Assistant />}
     </div>
   )
 }

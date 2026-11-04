@@ -194,3 +194,43 @@ button.side-toggle { width: 100%; justify-content: flex-start; background: var(-
   .psyche-square { margin-top: 1rem; }
   .impulses { grid-template-columns: 1fr; }
 }
+
+/* The Sidebar Assistant: a third column beside the form, over the page on narrower screens. */
+.shell.assisting { grid-template: 'top top top' auto 'library work assistant' 1fr / 270px minmax(0, 1fr) 360px; }
+.assistant { grid-area: assistant; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 0.6rem; padding: 0.75rem 1rem; overflow: hidden; }
+.assistant header { display: flex; align-items: center; gap: 0.2rem; }
+.assistant header h2 { margin: 0 auto 0 0; }
+.assistant-transcript { flex: 1; overflow-y: auto; display: grid; align-content: start; gap: 1rem; }
+.assistant-transcript p { margin: 0 0 0.4rem; }
+.assistant-turn { display: grid; gap: 0.45rem; }
+.assistant-turn p { margin: 0; }
+.assistant-message { justify-self: end; max-width: 90%; padding: 0.45rem 0.7rem; border-radius: 10px; background: color-mix(in srgb, var(--accent) 12%, var(--bg)); white-space: pre-wrap; }
+.assistant-reply { white-space: pre-wrap; }
+.assistant-turn > button.link { justify-self: start; }
+.assistant-edit { border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 6px; padding: 0.45rem 0.6rem; display: grid; gap: 0.3rem; }
+.assistant-edit.waiting { border-left-style: dashed; }
+.assistant-edit.undone { border-left-color: var(--line); }
+.assistant-edit > .row { justify-content: space-between; }
+.assistant-edit > .row > button.link { font-weight: 600; text-decoration: none; padding: 0; }
+.assistant-edit details > summary { margin: 0; }
+.assistant-edit .error { display: flex; gap: 0.3rem; align-items: center; }
+.assistant-value { white-space: pre-wrap; max-height: 12rem; overflow: auto; font-size: 0.85rem; padding: 0.3rem 0.45rem; border-radius: 4px; background: var(--bg); }
+.assistant-composer { display: grid; gap: 0.4rem; }
+.assistant-composer p { margin: 0; }
+.assistant-composer .row { justify-content: space-between; }
+.assistant-focus { display: flex; align-items: center; gap: 0.2rem; }
+button.send { padding: 0.35rem 0.5rem; }
+/* A field the assistant's edit still stands in, until it is undone or typed over. */
+.field.edited { border-left: 3px solid var(--accent); padding-left: 0.5rem; margin-left: calc(-0.5rem - 3px); border-radius: 2px; animation: edited 1.8s ease-out; }
+.field.edited > label { color: var(--accent); }
+.field.edited > button.link { justify-self: start; padding: 0; }
+@keyframes edited { from { background: color-mix(in srgb, var(--accent) 22%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .field.edited { animation: none; } }
+@media (max-width: 1200px) {
+  .shell.assisting { grid-template: 'top top' auto 'library work' 1fr / 270px minmax(0, 1fr); }
+  .assistant { position: fixed; top: 0; right: 0; bottom: 0; width: min(380px, 100vw); z-index: 5; box-shadow: -8px 0 24px rgb(0 0 0 / 0.18); }
+}
+@media (max-width: 800px) {
+  .shell.assisting { grid-template: 'top' auto 'work' auto 'library' auto / 1fr; }
+  .assistant { width: 100vw; }
+}

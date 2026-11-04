@@ -17,11 +17,11 @@ export function InnerLife({ arc, onChange, help }: { arc: Arc; onChange: (arc: A
   return (
     <Folded title="Inner life" filled={!!(arc.lie || arc.truth || arc.catalyst)}>
       <div className="grid three">
-        <TextArea label="Lie they believe" value={arc.lie} onChange={(lie) => set({ lie })} maxLength={300} rows={3}
+        <TextArea name="arc.lie" label="Lie they believe" value={arc.lie} onChange={(lie) => set({ lie })} maxLength={300} rows={3}
           help={help('arc.lie', 'the lie they believe', arc.lie, (lie) => set({ lie }))} />
-        <TextArea label="Truth they need" value={arc.truth} onChange={(truth) => set({ truth })} maxLength={300} rows={3}
+        <TextArea name="arc.truth" label="Truth they need" value={arc.truth} onChange={(truth) => set({ truth })} maxLength={300} rows={3}
           help={help('arc.truth', 'the truth they need', arc.truth, (truth) => set({ truth }))} />
-        <TextArea label="What could force it" value={arc.catalyst} onChange={(catalyst) => set({ catalyst })} maxLength={300} rows={3}
+        <TextArea name="arc.catalyst" label="What could force it" value={arc.catalyst} onChange={(catalyst) => set({ catalyst })} maxLength={300} rows={3}
           help={help('arc.catalyst', 'what could force it', arc.catalyst, (catalyst) => set({ catalyst }))} />
       </div>
     </Folded>
@@ -34,13 +34,13 @@ export function SecretSection({ secret, onChange, help }: { secret: Secret; onCh
   const set = (change: Partial<Secret>) => onChange({ ...secret, ...change })
   return (
     <Folded title="Secret" filled={!!(secret.truth || secret.cover_story || secret.known_by)}>
-      <TextArea label="What's really true" value={secret.truth} onChange={(truth) => set({ truth })} maxLength={600} rows={3}
+      <TextArea name="secret.truth" label="What's really true" value={secret.truth} onChange={(truth) => set({ truth })} maxLength={600} rows={3}
         hint="Cards leave it out unless you tick Include their secret."
         help={help('secret.truth', 'their secret', secret.truth, (truth) => set({ truth }))} />
       <div className="grid two">
-        <TextArea label="What people believe instead" value={secret.cover_story} onChange={(cover_story) => set({ cover_story })} maxLength={400} rows={2}
+        <TextArea name="secret.cover_story" label="What people believe instead" value={secret.cover_story} onChange={(cover_story) => set({ cover_story })} maxLength={400} rows={2}
           help={help('secret.cover_story', 'what people believe instead', secret.cover_story, (cover_story) => set({ cover_story }))} />
-        <TextArea label="Who knows" value={secret.known_by} onChange={(known_by) => set({ known_by })} maxLength={200} rows={2}
+        <TextArea name="secret.known_by" label="Who knows" value={secret.known_by} onChange={(known_by) => set({ known_by })} maxLength={200} rows={2}
           help={help('secret.known_by', 'who knows', secret.known_by, (known_by) => set({ known_by }))} />
       </div>
     </Folded>

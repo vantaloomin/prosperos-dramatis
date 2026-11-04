@@ -1,7 +1,8 @@
-import { useId, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Sparkles, Undo2 } from 'lucide-react'
 import { getJson, sendJson, type Character, type ModelConfig } from './api'
+import { assistant, useMarked } from './assistant/store'
 
 /** Whether a model is set up to draft: Claude through the API needs a key; a local server or the CLI may not. */
 export function useModelReady(): boolean {
@@ -9,37 +10,46 @@ export function useModelReady(): boolean {
   return !!models.data && (models.data.provider !== 'anthropic' || models.data.has_key)
 }
 
-interface FieldProps { label: string; hint?: string; children: (id: string) => ReactNode; help?: ReactNode }
+/** `name` is the field's key in the character (dotted for their depth, as Help me write and the Sidebar Assistant use
+ * it): the assistant knows which field the user is in by it, and marks the fields its edits stand in. */
+interface FieldProps { label: string; hint?: string; children: (id: string) => ReactNode; help?: ReactNode; name?: string }
 
-export function Field({ label, hint, children, help }: FieldProps) {
+export function Field({ label, hint, children, help, name }: FieldProps) {
   const id = useId()
+  const marked = useMarked(name)
+  const box = useRef<HTMLDivElement>(null)
+  // An edit into a folded section (Inner life, Secret) opens it, so the change is never out of sight.
+  useEffect(() => {
+    for (let fold = marked ? box.current?.closest('details') : null; fold; fold = fold.parentElement?.closest('details') ?? null) fold.open = true
+  }, [marked])
   return (
-    <div className="field">
+    <div className={marked ? 'field edited' : 'field'} data-field={name} ref={box}>
       <label htmlFor={id}>{label}</label>
       {children(id)}
       {hint && <span className="hint">{hint}</span>}
+      {marked && name && <button type="button" className="link small" onClick={() => assistant.undoField(name)}><Undo2 size={13} aria-hidden /> Undo the assistant&rsquo;s change</button>}
       {help}
     </div>
   )
 }
 
-interface TextProps { label: string; value: string; onChange: (value: string) => void; maxLength: number; hint?: string; placeholder?: string; help?: ReactNode }
+interface TextProps { label: string; value: string; onChange: (value: string) => void; maxLength: number; hint?: string; placeholder?: string; help?: ReactNode; name?: string }
 
-export function TextInput({ label, value, onChange, maxLength, hint, placeholder, help }: TextProps) {
-  return <Field label={label} hint={hint} help={help}>{(id) => (
+export function TextInput({ label, value, onChange, maxLength, hint, placeholder, help, name }: TextProps) {
+  return <Field label={label} hint={hint} help={help} name={name}>{(id) => (
     <input id={id} value={value} maxLength={maxLength} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />
   )}</Field>
 }
 
-export function TextArea({ label, value, onChange, maxLength, hint, placeholder, help, rows = 3 }: TextProps & { rows?: number }) {
-  return <Field label={label} hint={hint} help={help}>{(id) => (
+export function TextArea({ label, value, onChange, maxLength, hint, placeholder, help, name, rows = 3 }: TextProps & { rows?: number }) {
+  return <Field label={label} hint={hint} help={help} name={name}>{(id) => (
     <textarea id={id} value={value} maxLength={maxLength} rows={rows} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />
   )}</Field>
 }
 
 /** A list edited one item per line; blank lines are dropped when the form is saved (`cleanList`). */
-export function ListArea({ label, value, onChange, hint, help, rows = 4 }: { label: string; value: string[]; onChange: (value: string[]) => void; hint?: string; help?: ReactNode; rows?: number }) {
-  return <Field label={label} hint={hint ?? 'One per line.'} help={help}>{(id) => (
+export function ListArea({ label, value, onChange, hint, help, name, rows = 4 }: { label: string; value: string[]; onChange: (value: string[]) => void; hint?: string; help?: ReactNode; name?: string; rows?: number }) {
+  return <Field label={label} hint={hint ?? 'One per line.'} help={help} name={name}>{(id) => (
     <textarea id={id} value={value.join('\n')} rows={rows} onChange={(event) => onChange(event.target.value.split('\n'))} />
   )}</Field>
 }
