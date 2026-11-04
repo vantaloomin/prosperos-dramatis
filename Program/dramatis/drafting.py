@@ -16,8 +16,7 @@ companion/character_helper.py at ae9b0ab) and Adventure (adventure/making.py at 
   which stay off unless the user turns them on or their words ask for them.
 - Their depth is asked for only when the user's words give the model something to go on: an arc when they ask for
   one, a psyche when they say who the character was, is expected to be, wants to be or fears becoming. A psyche's
-  `pressed_by` is never the model's. Their secret goes to the model only when Help me write is writing the secret, so
-  it cannot leak into a field a card exports without it.
+  `pressed_by` is never the model's.
 
 Nothing is saved: a draft goes back to the form for review. The prompts are files in dramatis/prompts.
 """
@@ -151,12 +150,11 @@ def depth_text(depth: tuple[str, ...]) -> str:
     return '\n\n'.join(DEPTH_ASKS[part] for part in depth)
 
 
-def for_model(character: dict, secret: bool = False, interview: bool = False) -> dict:
+def for_model(character: dict, interview: bool = False) -> dict:
     """The character as a prompt shows it: no sliders (the brief says them as behaviour), no app list, no library ids,
-    and the secret and the long interview only when the request is about them."""
+    and the long interview only when the request is about it."""
     shown = {key: value for key, value in character.items()
-             if key not in ('personality_sliders', 'apps') and (secret or key != 'secret')
-             and (interview or key != 'interview')}
+             if key not in ('personality_sliders', 'apps') and (interview or key != 'interview')}
     if isinstance(shown.get('psyche'), dict):
         shown['psyche'] = {key: value.get('text', '') for key, value in shown['psyche'].items() if isinstance(value, dict)}
     return shown
@@ -400,7 +398,7 @@ def rewrite(character: dict, field: str, request: str = '') -> dict:
     if field not in guides:
         raise DomainError(f'{field} cannot be rewritten.', 422)
     guide = guides[field]
-    current = for_model(character, secret=field.startswith('secret.'))
+    current = for_model(character)
     system = fill(template('field.md'), rules=template('rules.md'), field=field, field_guide=guide['guide'],
                   field_shape=guide['shape'], emotional=FIELD_EDGES,
                   request=f'What the user wants changed: {request.strip()}' if request.strip() else '',

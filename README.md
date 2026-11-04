@@ -60,7 +60,7 @@ a few fields, each with a reason, which you **Apply**, **Dismiss** or **Undo**. 
 **Inner life, inner square and a secret.** Optional, folded sections for the lie they believe, the truth they need and
 what could force it; who they were, are expected to be, want to be and fear becoming, each pressed by other characters
 in your library; and a secret, with what people believe instead and who knows. Each app gets them folded into fields
-it already reads. A card leaves the secret out unless you tick **Include their secret**.
+it already reads, the secret included, so the character knows what they are keeping.
 
 **An audit for AI slop.** Everything the model writes is checked against Wren Halloway's list of stock names (Elara
 Voss), words and patterns that mark text as model-written, plus the signs from Wikipedia's

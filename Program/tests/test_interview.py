@@ -23,8 +23,9 @@ def test_the_interview_comes_back_with_a_sample_from_it(model):
     found = interview.interview(CHARACTER)
     assert found['interview'] == TRANSCRIPT and found['sample'] == 'Somebody has to.' and found['audit'] == []
     system = model.asked[0][0]
-    # The secret never reaches the interview, so a card exported without it carries no trace of it.
-    assert 'morphine' not in system and 'Dana Okafor' in system and 'Needs time alone to recharge' in system
+    # They know their secret, and the interview has them keep it.
+    assert 'morphine' in system and 'they never say it' in system
+    assert 'Dana Okafor' in system and 'Needs time alone to recharge' in system
 
 
 def test_a_sample_not_in_the_transcript_is_taken_from_it_instead(model):
@@ -73,7 +74,7 @@ def test_proposals_are_only_for_listed_fields_and_never_sound(model):
     assert found['proposals'][0]['value'] == 'Two or three words at a time; jokes flat.'
     assert all(len(item) <= 300 for item in found['proposals'][1]['value'])
     assert len(found['proposals'][2]['value']) == 600
-    assert 'Nights. ER.' in model.asked[0][0] and 'morphine' not in model.asked[0][0]
+    assert 'Nights. ER.' in model.asked[0][0]
 
 
 def test_proposals_need_an_interview_and_go_through_the_api(model):
