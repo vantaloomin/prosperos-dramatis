@@ -15,11 +15,14 @@ from dramatis.formats.companion.images.adapters.hosted import HostedAdapter
 from dramatis.main import create_app
 
 PRIVATE = {'seen_as': 'People think she is cold', 'sees_self': 'I am the only grown-up here',
-           'background': 'Her father left when she was nine'}
+           'background': 'Her father left when she was nine',
+           'interview': 'I keep the spare key under the radiator'}
+SECRET = 'She took the money from the ward fund'
 DANA = {'name': 'Dana Okafor', 'gender': 'woman', 'age': 38, 'setting': 'Baltimore, today',
         'about': 'An ER nurse.', 'personality': 'Steady at work, scattered at home.',
         'appearance': 'Tall and broad-shouldered, cropped grey-streaked hair.',
-        'looks': {'height_cm': 180, 'eyes': 'dark brown', 'feature': 'a chipped front tooth'}} | PRIVATE
+        'looks': {'height_cm': 180, 'eyes': 'dark brown', 'feature': 'a chipped front tooth'},
+        'secret': {'truth': SECRET}} | PRIVATE
 DRAWN = 'A tall broad-shouldered woman in her late thirties, waist-up, three-quarter view, plain grey background.'
 
 
@@ -65,7 +68,7 @@ def test_the_prompt_holds_what_a_portrait_shows_and_nothing_private():
     found = portraits.facts(Character.model_validate(DANA))
     assert 'Tall and broad-shouldered' in found and '180 cm' in found and 'a chipped front tooth' in found
     assert '- Age: 38' in found and 'Baltimore, today' in found and 'Steady at work' in found
-    assert 'Dana' not in found and not any(text in found for text in PRIVATE.values())
+    assert 'Dana' not in found and not any(text in found for text in [*PRIVATE.values(), SECRET])
 
 
 def test_image_settings_are_off_until_set_and_keep_the_key_out_of_the_file(keys):
@@ -101,7 +104,7 @@ def test_make_a_portrait_draws_a_card_sized_png_and_saves_nothing(model, maker):
     with Image.open(io.BytesIO(base64.b64decode(found['image']))) as drawn:
         assert drawn.format == 'PNG' and drawn.size == PLAIN_SIZE
     system, _ = model.asked[0]
-    assert not any(text in system for text in PRIVATE.values()) and 'Dana' not in system
+    assert not any(text in system for text in [*PRIVATE.values(), SECRET]) and 'Dana' not in system
     assert api().get(f"/api/characters/{made['id']}").json()['portrait'] is False
 
     # Use this: the existing portrait route saves the picture as it came back.
