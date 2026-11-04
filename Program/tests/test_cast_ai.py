@@ -204,7 +204,7 @@ def test_the_turn_is_found_on_a_confirmed_link_and_kept_to_the_note(model):
     assert 'keep it within 400' in model.asked[1][1]
     system = model.asked[0][0]
     assert 'To keep the harbour open.' in system and 'Lies when cornered' in system and 'bridge' in system
-    assert 'harbour plans' not in system  # the secret stays out, as it does for every draft
+    assert 'She sold the harbour plans.' in system  # a secret travels with the character, and may be the turn
     nothing_written()
 
 
@@ -230,7 +230,7 @@ def test_a_relationship_reads_one_side_s_wants_against_the_other_s_flaws(model):
     system = model.asked[0][0]
     assert "what Ida Brandt wants against Tom Achebe's flaws" in system
     assert 'Trusts the wrong people' in system and 'Thinks she is the only honest one.' in system
-    assert 'harbour plans' not in system
+    assert 'She sold the harbour plans.' in system
     nothing_written()
 
 

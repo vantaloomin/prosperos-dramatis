@@ -8,8 +8,8 @@ Suggest a relationship, each a route under /api/cast-ai.
   of the audit comes back as `audit`, each hit's `field` saying where it sits (`proposals.0.stance`, `turn`,
   `proposal.dynamic`).
 - The board goes to the model as JSON (`board`), with the characters in its corners by name. The people a turn or a
-  relationship is about also go with a brief of their own form (`brief`), which leaves their secret out the same way
-  drafting does.
+  relationship is about also go with a brief of their own form (`brief`), their secret included, since a secret
+  travels with the character and is often what a turn or a hidden tension turns on.
 - Suggested tags are matched to the tag bank where they can be (`bank_tag`) and kept as typed where they can't; a
   suggestion whose stance reads as the wrong kind is still returned, for Check my square to flag.
 - Check my square's flags are soft, like the computed checks: they sit beside them and block nothing.
@@ -30,9 +30,10 @@ TURN = 400  # the link's note, where Apply puts the turn
 READS_AS = ('value', 'method', 'secret')
 # The four-corner web's judgement calls, which the computed checks only remind about (casts.REMINDERS).
 JUDGEMENTS = ('challenger-has-flaw', 'comforter-not-villain', 'warning-sympathetic')
-# What a brief of a character keeps: who they are, what they want and fear, how they fall short, how they're seen.
+# What a brief of a character keeps: who they are, what they want and fear, how they fall short, how they're seen,
+# and what they hide.
 BRIEF = ('name', 'kind', 'age', 'about', 'personality', 'wants', 'fears', 'flaws', 'seen_as', 'sees_self', 'arc',
-         'psyche')
+         'psyche', 'secret')
 # Endings dropped before a tag is compared with the bank, longest first; 'ation' keeps its t (negotiating, negotiation).
 SUFFIXES = {'ation': 'at', 'ing': '', 'ion': '', 'ed': '', 'es': '', 's': '', 'y': '', 'e': ''}
 
@@ -79,6 +80,8 @@ def board(cast: Cast, names: dict[str, str]) -> str:
 def brief(character_id: str) -> dict:
     """A character the call is about, as much of their form as it needs; library.get refuses one that is gone."""
     shown = drafting.for_model(library.get(character_id)['character'])
+    if isinstance(shown.get('secret'), dict):
+        shown['secret'] = {key: value for key, value in shown['secret'].items() if value}
     return {key: shown[key] for key in BRIEF if shown.get(key) not in (None, '', [], {})}
 
 

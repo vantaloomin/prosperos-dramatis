@@ -11,6 +11,6 @@ The link:
 The two of them, as JSON:
 {{people}}
 
-Use what is on the board and in their forms, and keep to what the story's question asks. The turn comes from who they are, not from a stroke of luck.
+Use what is on the board and in their forms, and keep to what the story's question asks. The turn comes from who they are, not from a stroke of luck. A secret either of them keeps can be what makes them move, or what moving costs.
 
 Reply with one JSON object and nothing else: {"turn": "two or three plain sentences, at most {{limit}} characters: who moves, when, and what it costs"}

@@ -14,7 +14,7 @@ The board, as JSON:
 Between them:
 {{context}}
 
-Write it from {{who}}'s side. Read the hidden tension from what {{who}} wants against {{whom}}'s flaws: where those flaws get in the way of what {{who}} is after, or feed it, in a way {{who}} would not say out loud. Use only what is on the board and in their forms.
+Write it from {{who}}'s side. Read the hidden tension from what {{who}} wants against {{whom}}'s flaws: where those flaws get in the way of what {{who}} is after, or feed it, in a way {{who}} would not say out loud. A secret either of them keeps may sit under the hidden tension; the dynamic stays what anyone watching them would see. Use only what is on the board and in their forms.
 
 Reply with one JSON object and nothing else:
 {"dynamic": "one plain sentence, at most 300 characters: how {{who}} sees {{whom}}", "hidden_tension": "one plain sentence, at most 300 characters", "trust": a whole number from 1 (none at all) to 10 (complete), for how far {{who}} trusts {{whom}}}
