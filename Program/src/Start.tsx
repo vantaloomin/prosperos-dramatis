@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type DragEvent, type FormEvent } from 'react'
 import { ClipboardPaste, FileUp, Square, UserPlus } from 'lucide-react'
-import { APPS, APP_NAMES, emptyCharacter, fileData, sendJson, type App, type Character, type Drafted, type Gender, type Opened, type OpenedFile, type Relationship } from './api'
+import { APPS, APP_NAMES, RELATIONSHIPS, emptyCharacter, fileData, sendJson, type App, type Character, type Drafted, type Gender, type Opened, type OpenedFile, type Relationship } from './api'
 import { Bolt, Field, Fold, TextArea, TextInput, useModelReady } from './Fields'
 import { useModelCall } from './modelCall'
 import { profileFor, useModels } from './models/ModelSettings'
@@ -16,8 +16,6 @@ export interface Picks { idea?: string; setting?: string }
 
 const AGES = [['', 'Any age'], ['24', 'Mid-twenties'], ['32', 'Early thirties'], ['38', 'Late thirties'], ['45', 'Mid-forties'],
   ['55', 'Mid-fifties'], ['65', 'Sixties'], ['75', 'Seventies']] as const
-const RELATIONSHIPS: [Relationship, string][] = [['friendship', 'Friendship'], ['romance', 'Romance, only with your yes'], ['mentor', 'Mentor'],
-  ['family', 'Family'], ['other', 'Something else']]
 const VIBES = ['Dry humour', 'Warm', 'Blunt', 'Shy', 'Chatty', 'Restless', 'Old-fashioned', 'Night owl', 'Outdoorsy', 'Bookish']
 
 export function AppPicks({ apps, onChange }: { apps: App[]; onChange: (apps: App[]) => void }) {
@@ -97,7 +95,7 @@ function QuickStart({ initial, onBegin }: { initial?: Picks; onBegin: (begun: Be
               {RELATIONSHIPS.map(([value, name]) => <option key={value} value={value}>{name}</option>)}
             </select>
           )}</Field>
-          <label className="check"><input type="checkbox" checked={picks.emotional_edges} onChange={(event) => set({ emotional_edges: event.target.checked })} /> Emotional edges in Companion, such as jealousy or missing you</label>
+          {picks.relationship !== 'persona' && <label className="check"><input type="checkbox" checked={picks.emotional_edges} onChange={(event) => set({ emotional_edges: event.target.checked })} /> Emotional edges in Companion, such as jealousy or missing you</label>}
         </Fold>
         {call.error && <p className="error" role="alert">{call.error}</p>}
         <div className="row">

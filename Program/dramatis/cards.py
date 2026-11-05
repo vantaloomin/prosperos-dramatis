@@ -83,7 +83,8 @@ def description(character: Character) -> str:
 
 def card(character: Character, created: str, updated: str, target: Target = 'prospero') -> dict:
     """The V3 card. Tags are only the ones a card they were imported from had: chat apps file every tag a card brings
-    into the user's own tag list. How they know the user is the scenario, or the imported card's own one."""
+    into the user's own tag list. How they know the user is the scenario (a user persona has none), or the imported
+    card's own one."""
     parts = character.card or CardParts()
     extensions = dict(parts.extensions)
     if target == 'prospero':
@@ -92,7 +93,7 @@ def card(character: Character, created: str, updated: str, target: Target = 'pro
                                   'apps': shapes(character)}
     data = {
         'name': character.name or 'Unnamed', 'description': description(character),
-        'personality': character.personality, 'scenario': character.companion.history_together or parts.scenario,
+        'personality': character.personality, 'scenario': ('' if character.is_persona() else character.companion.history_together) or parts.scenario,
         'first_mes': parts.first_mes, 'mes_example': parts.mes_example,
         'creator_notes': parts.creator_notes or MADE_WITH, 'system_prompt': parts.system_prompt,
         'post_history_instructions': parts.post_history_instructions,

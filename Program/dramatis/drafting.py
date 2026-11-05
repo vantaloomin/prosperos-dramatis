@@ -20,7 +20,8 @@ companion/character_helper.py at ae9b0ab) and Adventure (adventure/making.py at 
   name such as Elara Voss, an em dash, the assistant's voice) sends the reply back once, and what is left comes back
   with the draft for the form to show. The list itself never goes into a prompt.
 - The user's picks win over the model: name, gender, age, where and when, the relationship, and emotional edges,
-  which stay off unless the user turns them on or their words ask for them.
+  which stay off unless the user turns them on or their words ask for them. A user persona (the user themself, to
+  play as) gets no everyday life in Companion and no relationship to the user: Companion takes them as a persona.
 - Their depth is asked for only when the user's words give the model something to go on: an arc when they ask for
   one, a psyche when they say who the character was, is expected to be, wants to be or fears becoming. A psyche's
   `pressed_by` is never the model's.
@@ -35,7 +36,7 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from dramatis import ai, slop
-from dramatis.character import APPS, Character
+from dramatis.character import APPS, PERSONA, Character
 from dramatis.formats.companion import personality
 from dramatis.formats.companion.errors import DomainError
 from dramatis.formats.companion.models import RoutineBlock
@@ -104,6 +105,9 @@ NO_EDGES = ('Leave "emotional_traits" as [] and "absence_reaction" as "". The us
 EDGES = ('The user asked for emotional edges. You may add up to 3 "emotional_traits", each {"name": short name, '
          '"intensity": "mild" | "moderate" | "strong", "note": how it shows}, and an "absence_reaction" sentence, '
          'but only ones their idea supports.')
+# The relationship row for a user persona: who they are to the user, in place of how they know them.
+PERSONA_PICK = ("the user themself: the user's own persona, someone they play as rather than a companion they talk to. "
+                'They have no relationship with the user; write them as a person in their own right.')
 FIELD_EDGES = 'Do not add jealousy, guilt over absence, possessiveness or neediness unless the character already has them.'
 PERSONALITY_BRIEF = ('Their personality, decided by the app. Build the character around it and do not soften it; '
                      'show it as behaviour, never as trait names or scores.')
@@ -187,8 +191,8 @@ def field_guides() -> dict[str, dict]:
     return json.loads(template('fields.json'))
 
 
-def shape_text(apps: list[str], split: bool = False, depth: tuple[str, ...] = ()) -> str:
-    life = 'companion' in apps
+def shape_text(apps: list[str], split: bool = False, depth: tuple[str, ...] = (), persona: bool = False) -> str:
+    life = 'companion' in apps and not persona
     body = CORE_SHAPE + (LIFE_SHAPE if life else '') + ''.join(DEPTH_SHAPES[part] for part in depth) + \
         (SECRET_SHAPE + FILLED_IN if split else '')
     return '{\n' + body + '\n}' + (f'\n\n{SCHEDULE_RULES}' if life else '')
@@ -369,6 +373,15 @@ def adults_only(age: int | None, about: str = '') -> None:
         raise DomainError(ADULTS_ONLY, 422, 'under_18')
 
 
+def is_persona(picks: dict) -> bool:
+    return picks.get('relationship') == PERSONA
+
+
+def emotional_text(picks: dict) -> str:
+    """Whether the model may add emotional edges; nothing for a persona, who has no everyday life to put them in."""
+    return '' if is_persona(picks) else EDGES if edges_allowed(picks) else NO_EDGES
+
+
 def edges_allowed(picks: dict) -> bool:
     words = f"{picks.get('idea', '')} {picks.get('vibe', '')}".lower()
     return bool(picks.get('emotional_edges')) or any(word in words for word in EDGE_WORDS)
@@ -438,11 +451,11 @@ class Shape:
         return ' '.join(str(self.picks.get(key) or '') for key in ('name', 'idea', 'vibe', 'setting', 'text'))
 
     def life(self, raw: dict, made: dict, final: bool) -> dict:
-        """Companion's part: how they know the user (the user's picks) and, when they are made for Companion, the
-        everyday life the model wrote."""
+        """Companion's part: how they know the user (the user's picks) and, when they are made for Companion as a
+        companion rather than a persona, the everyday life the model wrote."""
         life = {'relationship': self.picks.get('relationship') or 'friendship',
                 'timezone': (self.picks.get('timezone') or '')[:64]}
-        if 'companion' not in self.apps:
+        if 'companion' not in self.apps or is_persona(self.picks):
             return life
         blocks = schedule_value(raw.get('schedule'))
         if not sleeps_every_day(blocks) and not final:
@@ -478,6 +491,7 @@ def picks_text(picks: dict) -> str:
     rows = [('Idea', picks.get('idea') or 'None given. Surprise them with someone ordinary and specific.'),
             ('Name', picks.get('name')), ('Gender', picks.get('gender')), ('Age', picks.get('age')),
             ('Where and when they come from', picks.get('setting')), ('Vibe', picks.get('vibe')),
+            ('Who they are to the user', PERSONA_PICK) if is_persona(picks) else
             ('Relationship to the user', picks.get('relationship') if 'companion' in apps else ''),
             ('Made for', '; '.join(APP_NAMES[app] for app in apps))]
     return '\n'.join(f'- {label}: {value}' for label, value in rows if value)
@@ -491,8 +505,8 @@ def draft(picks: dict) -> dict:
     sliders = rolled(f"{picks.get('idea', '')} {picks.get('vibe', '')}", seed)
     depth = depth_asked(picks)
     system = fill(template('draft.md'), rules=template('rules.md'), picks=picks_text(picks),
-                  personality=personality_brief(sliders), emotional=EDGES if edges_allowed(picks) else NO_EDGES,
-                  depth=depth_text(depth), shape=shape_text(picks.get('apps') or list(APPS), depth=depth))
+                  personality=personality_brief(sliders), emotional=emotional_text(picks), depth=depth_text(depth),
+                  shape=shape_text(picks.get('apps') or list(APPS), depth=depth, persona=is_persona(picks)))
     return ask(system, Shape(picks, sliders)) | {'seed': seed}
 
 
@@ -504,7 +518,7 @@ def split(picks: dict) -> dict:
     sliders = rolled(text, seed)
     depth = depth_asked(picks)
     system = fill(template('split.md'), rules=template('rules.md'), shape=shape_text(picks.get('apps') or list(APPS),
-                  split=True, depth=depth), emotional=EDGES if edges_allowed(picks) else NO_EDGES,
+                  split=True, depth=depth, persona=is_persona(picks)), emotional=emotional_text(picks),
                   depth=depth_text(depth))
     # In the message, not the instructions, and inside markers it cannot close.
     pasted = f'The character I pasted:\n[[pasted]]\n{fenced(text)}\n[[end of pasted]]\n\nWrite the JSON now.'

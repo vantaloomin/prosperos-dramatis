@@ -200,3 +200,13 @@ def test_a_childlike_appearance_is_sent_back_then_refused(model):
 def test_a_line_break_inside_a_string_is_kept(model):
     model.replies = [reply(sees_self='PLACEHOLDER').replace('PLACEHOLDER', 'I keep things moving.\nI am tired.')]
     assert drafting.draft(PICKS)['character']['sees_self'] == 'I keep things moving.\nI am tired.'
+
+
+def test_a_user_persona_gets_no_everyday_life_or_relationship_to_the_user(model):
+    model.replies = [reply()]
+    found = drafting.draft(PICKS | {'relationship': 'persona', 'emotional_edges': True})
+    life = found['character']['companion']
+    assert life['relationship'] == 'persona' and life['schedule'] == [] and life['emotional_traits'] == []
+    system = system_of(model)
+    assert "the user's own persona" in system and 'Relationship to the user' not in system
+    assert '"schedule"' not in system and 'emotional_traits' not in system

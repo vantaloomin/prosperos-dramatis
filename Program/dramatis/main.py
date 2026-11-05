@@ -4,7 +4,7 @@ import binascii
 import json
 import re
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated
 
 from fastapi import APIRouter, FastAPI, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
@@ -26,14 +26,13 @@ from dramatis import (
     portraits,
     slop,
 )
-from dramatis.character import APPS, App, Character, Gender, problems, shapes
+from dramatis.character import APPS, App, Character, Gender, Relationship, problems, shapes
 from dramatis.formats.companion import personality
 from dramatis.formats.companion.errors import DomainError, require
 
 HERE = Path(__file__).resolve().parent
 DIST = HERE.parent / 'dist'
 SOURCE = HERE / 'formats' / 'SOURCE.json'
-Relationship = Literal['friendship', 'romance', 'mentor', 'family', 'other']
 
 
 class Body(BaseModel):

@@ -69,6 +69,9 @@ def test_companion_fields_only_for_a_companion_character(model):
     assert found['edits'] == [] and '"routine" is not a field' in model.asked[1][1]
     model.replies = [said(edits=[{'field': 'routine', 'value': 'Days now.'}])]
     assert ask()['edits'][0]['path'] == ['companion', 'routine']
+    model.replies = [said(edits=[{'field': 'routine', 'value': 'Days now.'}]), said()]
+    persona = CHARACTER | {'companion': CHARACTER['companion'] | {'relationship': 'persona'}}
+    assert ask(character=persona)['edits'] == []
 
 
 def test_an_age_under_18_never_lands(model):

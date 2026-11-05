@@ -54,9 +54,11 @@ def guides() -> dict[str, dict]:
 
 
 def editable(character: dict) -> dict[str, dict]:
-    """The fields it may change on this character: Companion's part only when they are made for Companion."""
+    """The fields it may change on this character: Companion's part only when they are made for Companion as a
+    companion, since a user persona has no life there."""
     apps = character.get('apps') or list(APPS)
-    return {key: guide for key, guide in guides().items() if 'companion' in apps or key not in COMPANION_ONLY}
+    life = 'companion' in apps and not drafting.is_persona(character.get('companion') or {})
+    return {key: guide for key, guide in guides().items() if life or key not in COMPANION_ONLY}
 
 
 def path(field: str) -> tuple[str, ...]:
