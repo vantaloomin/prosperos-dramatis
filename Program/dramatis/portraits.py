@@ -2,8 +2,9 @@
 line is added (data/portrait-styles.json), and the image maker draws it (dramatis/images.py, with Companion's own
 image adapters).
 
-The prompt is built only from what a portrait shows: appearance, every set Looks field, age, gender, kind, where and
-when they live, and their personality for the expression. Nothing private goes in (how others see them, how they see
+The prompt is built only from what a portrait shows: every set Looks field (the Details, which a draft settles
+before it writes the Appearance, dramatis/looks.py), then the appearance, age, gender, kind, where and when they live,
+and their personality for the expression. Where an older Appearance and a Details field disagree, the field wins. Nothing private goes in (how others see them, how they see
 themselves, their background), and no name, so a model draws no text and no famous namesake. A prompt the model
 writes with anything sexual or young in it is sent back once, then refused.
 
@@ -50,9 +51,9 @@ def facts(character: Character) -> str:
     looks = character.looks.model_dump()
     rows = [('Age', str(character.age) if character.age else 'an adult; their age is not given'),
             ('Gender', character.gender), ('Kind', character.kind or 'human'),
-            ('Where and when they live', character.setting or 'the present day'),
-            ('Appearance', character.appearance)]
+            ('Where and when they live', character.setting or 'the present day')]
     rows += [(label, f'{looks[key]}{unit}') for key, label, unit in LOOKS if looks[key] not in (None, '')]
+    rows.append(('Appearance', character.appearance))
     rows.append(('Temperament, for the expression only', character.personality[:600]))
     return '\n'.join(f'- {label}: {value}' for label, value in rows if value)
 

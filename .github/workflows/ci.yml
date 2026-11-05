@@ -78,7 +78,10 @@ jobs:
             Program/companion/imports/formats.py
             Program/companion/imports/lorebooks.py
             Program/companion/world/personality.py
+            Program/companion/world/looks.py
+            Program/companion/world/dating.py
             Program/companion/world/data/personality.json
+            Program/companion/world/data/looks.json
             Program/companion/providers/
             Program/companion/images/tags.py
             Program/companion/images/node_packs.py

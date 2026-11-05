@@ -44,6 +44,7 @@ export interface Looks {
   height_cm: number | null; weight_kg: number | null; build: string; skin: string; face: string; jaw: string; nose: string
   eyes: string; eye_shape: string; hair: string; facial_hair: string; feature: string
 }
+export type LooksFrom = Partial<Record<keyof Looks, 'idea' | 'rolled'>>
 export interface Block { key?: string; label: string; kind: BlockKind; days: number[]; start: string; end: string; themes: string[] }
 export interface EmotionalTrait { name: string; intensity: 'mild' | 'moderate' | 'strong'; note: string }
 export interface CompanionLife {
@@ -69,6 +70,8 @@ export interface Character {
   name: string; gender: Gender; age: number | null; kind: string; lifespan: number | null; birthday: string; setting: string
   about: string; personality: string; voice: string; sound: string; appearance: string; background: string; wants: string; fears: string
   skills: string[]; flaws: string[]; interests: string[]; looks: Looks
+  /** Where a draft's Details came from (dramatis/looks.py); a field the user sets has no mark. */
+  looks_from: LooksFrom
   personality_sliders: Partial<Record<Trait, Slider>> | null; seen_as: string; sees_self: string
   apps: App[]; companion: CompanionLife
   interview: string; arc: Arc; secret: Secret; psyche: Psyche | null; card: CardParts | null
@@ -115,7 +118,7 @@ export function emptyCharacter(apps: App[] = APPS): Character {
   return {
     name: '', gender: '', age: null, kind: '', lifespan: null, birthday: '', setting: '', about: '', personality: '',
     voice: '', sound: '', appearance: '', background: '', wants: '', fears: '', skills: [], flaws: [], interests: [],
-    looks: emptyLooks(), personality_sliders: null, seen_as: '', sees_self: '', apps,
+    looks: emptyLooks(), looks_from: {}, personality_sliders: null, seen_as: '', sees_self: '', apps,
     companion: {
       relationship: 'friendship', starting_closeness: 1, history_together: '', routine: '', schedule: [], life_themes: [],
       texting: { bursts: false, lowercase: false, typos: false, quick: false }, emotional_traits: [], absence_reaction: '',

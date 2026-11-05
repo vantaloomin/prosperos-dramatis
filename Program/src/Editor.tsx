@@ -20,6 +20,8 @@ const LIFESPANS: [string, string][] = [['', 'As long as their kind does'], ['0',
   ['150', 'About 150 years'], ['300', 'About 300 years'], ['600', 'About 600 years'], ['1000', 'About 1,000 years']]
 const LOOKS: [keyof Looks, string][] = [['build', 'Build'], ['skin', 'Skin'], ['face', 'Face'], ['jaw', 'Jaw'], ['nose', 'Nose'],
   ['eyes', 'Eyes'], ['eye_shape', 'Eye shape'], ['hair', 'Hair'], ['facial_hair', 'Facial hair'], ['feature', 'Something people notice']]
+/** Where a draft's Details came from, as the sliders say it (src/Sliders.tsx). */
+const LOOKS_FROM = { idea: 'From their words', rolled: 'Rolled' }
 const STAGES = ['Just met', 'Getting to know each other', 'Friends', 'Close', 'Very close']
 
 /** Where a card can go: `prospero` keeps everything for Companion, Adventure and Dungeon; `chat` is the card for other
@@ -90,6 +92,12 @@ export function Editor({ saved, start, seed, filledIn, missing, note, portrait, 
   const [pendingPortrait, setPendingPortrait] = useState<string | null>(portrait ?? null)
   const [sample, setSample] = useState('')
   const set = (change: Partial<Character>) => setCharacter((current) => ({ ...current, ...change }))
+  // Setting a Details field makes it the user's own: its Rolled or From their words mark goes.
+  const setLook = <K extends keyof Looks>(key: K, value: Looks[K]) => setCharacter((current) => {
+    const { [key]: _gone, ...from } = current.looks_from ?? {}
+    return { ...current, looks: { ...current.looks, [key]: value }, looks_from: from }
+  })
+  const lookFrom = (key: keyof Looks) => { const from = character.looks_from?.[key]; return from && LOOKS_FROM[from] }
   const setLife = (change: Partial<Character['companion']>) => setCharacter((current) => ({ ...current, companion: { ...current.companion, ...change } }))
   const current = () => cleaned(character)
   const has = (app: App) => character.apps.includes(app)
@@ -297,11 +305,11 @@ export function Editor({ saved, start, seed, filledIn, missing, note, portrait, 
         <div className="folds">
           <Fold title="Details" filled={Object.values(character.looks).some((value) => value !== null && value !== '')}>
             <div className="grid three">
-              <Field label="Height (cm)">{(id) => <input id={id} type="number" min={120} max={230} value={character.looks.height_cm ?? ''} onChange={(event) => set({ looks: { ...character.looks, height_cm: event.target.value ? Number(event.target.value) : null } })} />}</Field>
-              <Field label="Weight (kg)">{(id) => <input id={id} type="number" min={35} max={250} value={character.looks.weight_kg ?? ''} onChange={(event) => set({ looks: { ...character.looks, weight_kg: event.target.value ? Number(event.target.value) : null } })} />}</Field>
+              <Field label="Height (cm)" from={lookFrom('height_cm')}>{(id) => <input id={id} type="number" min={120} max={230} value={character.looks.height_cm ?? ''} onChange={(event) => setLook('height_cm', event.target.value ? Number(event.target.value) : null)} />}</Field>
+              <Field label="Weight (kg)" from={lookFrom('weight_kg')}>{(id) => <input id={id} type="number" min={35} max={250} value={character.looks.weight_kg ?? ''} onChange={(event) => setLook('weight_kg', event.target.value ? Number(event.target.value) : null)} />}</Field>
               {LOOKS.map(([key, label]) => (
                 <TextInput key={key} label={label} value={String(character.looks[key] ?? '')} maxLength={key === 'hair' || key === 'feature' ? 200 : 120}
-                  onChange={(value) => set({ looks: { ...character.looks, [key]: value } })} />
+                  from={lookFrom(key)} onChange={(value) => setLook(key, value)} />
               ))}
             </div>
           </Fold>

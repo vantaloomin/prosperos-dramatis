@@ -19,6 +19,10 @@ character creator.
   `casts/<id>.json` beside the library and pointing at characters by id. Resonance candidates and checks are computed
   there with no model; only structure is a hard error. Genres, group types, axes and tags are data
   (`dramatis/data/cast_*.json`), so a new template is a JSON entry. Routes are in `cast_routes.py`.
+- The Details of how they look are settled before the model writes their Appearance (`dramatis/looks.py`): what the
+  user's words speak of the model reads into the fields, the rest are rolled first with Companion's own looks banks
+  (vendored `formats/companion/looks.py` and `dating.py`), and `Character.looks_from` marks each as From their words or
+  Rolled, as the sliders are marked, until the user edits it.
 - A character's depth (`interview`, `arc`, `secret`, `psyche`) is optional and no app has a field for it: the app
   shapes fold it into fields they read. The secret goes everywhere the character does, so they can keep it. The interview's routes live in
   `dramatis/interview.py`, its own router; Help me write reaches nested fields by dotted keys (`arc.lie`,
