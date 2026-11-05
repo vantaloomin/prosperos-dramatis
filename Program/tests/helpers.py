@@ -6,7 +6,7 @@ WORK = {'label': 'Ward shifts', 'kind': 'work', 'days': [2, 4, 6], 'start': '07:
 
 
 def reply(**changes) -> str:
-    """A model's whole-character reply, as JSON text."""
+    """A model's whole-character reply, as JSON text: every field a draft asks for, filled."""
     found = {
         'name': 'Dana Okafor', 'gender': 'woman', 'age': 38, 'kind': '',
         'about': 'Dana is 38 and works night shifts as an ER nurse in Baltimore. She lives with her brother.',
@@ -25,5 +25,11 @@ def reply(**changes) -> str:
         'life_themes': ['hospital', 'bowling league', 'her brother'],
         'schedule': [SLEEP, WORK], 'emotional_traits': [{'name': 'Jealousy', 'intensity': 'strong'}],
         'absence_reaction': 'Sulks a little.',
+        'arc': {'lie': 'That asking for help gets you left.', 'truth': 'People stay when they are let in.',
+                'catalyst': 'A colleague who covers for her without being asked.'},
+        'psyche': {'was': 'The kid who held the family together.', 'expected': 'The one who never needs anything.',
+                   'wants_to_be': 'Someone who gets to rest.', 'fears_becoming': 'Her mother, bitter and alone.'},
+        'secret': {'truth': 'She failed her licensing exam twice.', 'cover_story': 'She passed first time.',
+                   'known_by': 'Her brother.'},
     }
     return json.dumps(found | changes)

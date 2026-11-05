@@ -60,13 +60,17 @@ def test_psyche_lines_drop_from_last_to_first_and_their_own_text_is_never_cut():
     assert problems(full) == {} and problems(made(background='b' * 12000)) == {}
 
 
-def test_a_thin_idea_leaves_the_psyche_empty(model):
+def test_a_draft_always_writes_the_psyche_and_a_paste_only_from_its_text(model):
     picks = {'idea': 'a night nurse', 'apps': ['adventure']}
     psyche = {'was': 'a lifeguard', 'expected': 'x', 'wants_to_be': 'y', 'fears_becoming': 'z'}
     model.replies = [reply(psyche=psyche)]
-    assert drafting.draft(picks)['character']['psyche'] is None and '"psyche"' not in model.asked[0][0]
-    model.replies = [reply(psyche=psyche | {'expected': ''})]
-    found = drafting.draft(picks | {'idea': 'a night nurse who used to be a lifeguard'})['character']['psyche']
+    found = drafting.draft(picks)['character']['psyche']
+    assert found['was'] == {'text': 'a lifeguard', 'pressed_by': []} and '"psyche": {"was"' in model.asked[0][0]
+    model.replies = [reply(psyche=psyche, filled_in=[])]
+    assert drafting.split(picks | {'text': 'Dana is a night nurse.'})['character']['psyche'] is None
+    assert '"psyche"' not in model.asked[1][0]
+    model.replies = [reply(psyche=psyche | {'expected': ''}, filled_in=[])]
+    found = drafting.split(picks | {'text': 'Dana is a night nurse who used to be a lifeguard.'})['character']['psyche']
     assert found['was'] == {'text': 'a lifeguard', 'pressed_by': []} and found['expected']['text'] == ''
 
 
