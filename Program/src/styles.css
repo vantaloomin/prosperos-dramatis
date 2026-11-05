@@ -140,6 +140,10 @@ details.section > :not(summary) + :not(summary) { margin-top: 0.75rem; }
 .works-in { display: flex; gap: 0.4rem 1rem; flex-wrap: wrap; align-items: center; }
 .audit details ul { margin: 0.2rem 0; padding-left: 1.2rem; display: grid; gap: 0.15rem; }
 .audit p { margin: 0.2rem 0; }
+.audit ul.picks { list-style: none; padding-left: 0; }
+.picks label { display: flex; gap: 0.5rem; align-items: flex-start; cursor: pointer; }
+.picks input { margin-top: 0.2rem; }
+.audit .row { margin: 0.3rem 0 0.4rem; }
 .works-in details ul { margin: 0.2rem 0; padding-left: 1.2rem; }
 .portrait-row { display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap; }
 .portrait { display: grid; gap: 0.4rem; justify-items: center; flex: none; max-width: 100%; }

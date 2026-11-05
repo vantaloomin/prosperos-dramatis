@@ -12,6 +12,7 @@ import { isEmpty, pathOf, proposals, useOpenCount, useWritten, valueAt, withValu
 import { Psyche } from './Psyche'
 import { Portrait } from './Portrait'
 import { AppPicks, listed, type Begun } from './Start'
+import { FormAudit } from './Audit'
 import { Schedule, scheduleProblems } from './Schedule'
 import { Sliders } from './Sliders'
 import { draftStore } from './drafts'
@@ -210,7 +211,7 @@ export function Editor({ saved, start, seed, filledIn, missing, note, portrait, 
       </div>
       {result && <p className={result.tone} role="status">{result.text}</p>}
       <WorksIn apps={character.apps} problems={problems} error={checkError} saved={!!saved} />
-      <Audit hits={audit} />
+      <FormAudit hits={audit} ignored={character.ignored_flags ?? []} allowed={allowed ?? ''} onIgnored={(ignored_flags) => set({ ignored_flags })} />
 
       <section>
         <h3>Who they are</h3>
@@ -353,28 +354,11 @@ export function Editor({ saved, start, seed, filledIn, missing, note, portrait, 
                 <label key={key} className="check"><input type="checkbox" checked={character.companion.texting[key]} onChange={(event) => setLife({ texting: { ...character.companion.texting, [key]: event.target.checked } })} /> {label}</label>
               ))}
             </fieldset>
-            <TextArea label="When you are away" value={character.companion.absence_reaction} onChange={(absence_reaction) => setLife({ absence_reaction })} maxLength={2000} rows={2} />
+            <TextArea name="absence_reaction" label="When you are away" value={character.companion.absence_reaction} onChange={(absence_reaction) => setLife({ absence_reaction })} maxLength={2000} rows={2} />
           </>}
         </section>
       )}
     </form>
-  )
-}
-
-/** The AI-slop audit of the form as it stands: hard hits (stock names, dashes, the assistant's voice) to fix, and flags
- * worth a look. Nothing here stops a save: a name the user chose is theirs. */
-export function Audit({ hits }: { hits: AuditHit[] }) {
-  if (!hits.length) return null
-  const hard = hits.filter((hit) => hit.severity === 'hard')
-  const flags = hits.filter((hit) => hit.severity === 'flag')
-  const line = (hit: AuditHit, index: number) => <li key={index}><strong>{hit.label}:</strong> “{hit.match.trim() || hit.match}” <span className="muted">({hit.rule}) …{hit.context}…</span></li>
-  return (
-    <div className="audit">
-      {hard.length > 0 && <details open className="error small"><summary><TriangleAlert size={14} aria-hidden /> {hard.length} {hard.length === 1 ? 'thing reads' : 'things read'} as model-written</summary>
-        <p className="muted">Stock names, dashes and the assistant's voice. Change them unless you chose them.</p><ul>{hard.map(line)}</ul></details>}
-      {flags.length > 0 && <details className="small"><summary>Worth a look ({flags.length})</summary>
-        <p className="muted">Words and phrases models lean on. One means little; keep them where they fit.</p><ul>{flags.map(line)}</ul></details>}
-    </div>
   )
 }
 

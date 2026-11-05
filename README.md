@@ -90,9 +90,11 @@ sees what people believe instead, so the truth doesn't slip into a field other c
 Voss), words and patterns that mark text as model-written, plus the signs from Wikipedia's
 [Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing) that fit a character. A hard hit,
 such as a stock name, an em dash, the chatbot's voice or an unfilled "[Insert name]", sends the draft back to the
-model once. Anything left shows on the form, with flagged words under **Worth a look**. Names and words you typed or
-pasted yourself are never held against the draft, and the list stays out of the prompts, so the model never sees
-those words.
+model once. Anything left shows on the form, with flagged words under **Worth a look**. Tick the ones you want gone
+and **Fix selected** (or **Fix all**): your model rewrites only those words, and each changed field shows the result
+with Keep / Put back. **Ignore** keeps a word on that character for good (an "Irish" for someone from Belfast), and
+**Ignored** lists them to take back. Names and words you typed or pasted yourself are never held against the draft,
+and the list stays out of the prompts, so the model never sees those words.
 
 **Works in.** While you edit, each app checks the character with its own rules, and the form shows **Works in
 Companion**, or what that app would refuse.
