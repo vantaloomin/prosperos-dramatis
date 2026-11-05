@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { ChevronRight, Square, TriangleAlert, X, Zap } from 'lucide-react'
+import { ChevronRight, Dices, Square, TriangleAlert, X, Zap } from 'lucide-react'
 import { cleaned, sendJson, type AuditHit } from './api'
 import { useModelCall } from './modelCall'
 import { profileFor, useModels } from './models/ModelSettings'
@@ -109,10 +109,12 @@ interface FieldProps {
   label: string; name?: string; write?: string; filled?: boolean; group?: boolean
   /** Where the value came from, after the label: "(Rolled)". */
   from?: string
+  /** Rolls a value with no model (the dice inside the box), when there is one to roll. */
+  roll?: () => void
   children: (id: string) => ReactNode
 }
 
-export function Field({ label, name, write, filled = true, group, from, children }: FieldProps) {
+export function Field({ label, name, write, filled = true, group, from, roll, children }: FieldProps) {
   const id = useId()
   const proposal = useProposal(name)
   const ready = useModelReady()
@@ -134,9 +136,11 @@ export function Field({ label, name, write, filled = true, group, from, children
         {from && <em className="from">({from})</em>}
         {filled && button}
       </div>
-      <div className={bolt && !filled ? 'field-box has-bolt' : 'field-box'}>
+      <div className={(bolt && !filled) || roll ? 'field-box has-bolt' : 'field-box'}>
         {children(id)}
         {!filled && button}
+        {roll && <button type="button" className="bolt roll" aria-label={`Roll ${write ?? label.toLowerCase()}`} title={`Roll ${write ?? label.toLowerCase()}`}
+          onClick={roll}><Dices size={16} aria-hidden /></button>}
       </div>
       {asking && name && write && <Ask field={name} label={label} write={write} onDone={() => setAsking(false)} />}
       {proposal && <ProposalBar proposal={proposal} write={write} />}
@@ -146,8 +150,8 @@ export function Field({ label, name, write, filled = true, group, from, children
 
 interface TextProps { label: string; value: string; onChange: (value: string) => void; maxLength: number; placeholder?: string; name?: string; write?: string; from?: string }
 
-export function TextInput({ label, value, onChange, maxLength, placeholder, name, write, from }: TextProps) {
-  return <Field label={label} name={name} write={write} filled={!!value.trim()} from={from}>{(id) => (
+export function TextInput({ label, value, onChange, maxLength, placeholder, name, write, from, roll }: TextProps & { roll?: () => void }) {
+  return <Field label={label} name={name} write={write} filled={!!value.trim()} from={from} roll={roll}>{(id) => (
     <input id={id} value={value} maxLength={maxLength} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />
   )}</Field>
 }

@@ -24,6 +24,7 @@ from dramatis import (
     interview,
     library,
     model_routes,
+    names,
     portraits,
     slop,
 )
@@ -250,6 +251,7 @@ def create_app(dist: Path = DIST) -> FastAPI:
     app.include_router(api())
     app.include_router(cast_routes.router())
     app.include_router(interview.router)
+    app.include_router(names.router)
     app.include_router(fixes.router)
     app.include_router(portraits.router())
     app.include_router(cast_ai.router)

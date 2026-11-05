@@ -73,6 +73,7 @@ button[aria-pressed='true'], button[aria-checked='true'] { border-color: var(--a
 button.bolt { border: none; background: none; padding: 0.2rem; color: var(--accent); border-radius: 6px; }
 button.bolt:hover, button.bolt[aria-expanded='true'] { background: color-mix(in srgb, var(--accent) 14%, transparent); }
 .field-box > button.bolt { position: absolute; top: 0.3rem; right: 0.3rem; }
+.field-box > button.bolt.roll { color: var(--muted); }
 .field-box.has-bolt > .list ~ button.bolt { top: auto; bottom: 0.3rem; }
 /* A model's text standing in its field, until it is kept or put back (src/proposals.ts). */
 .field.proposed .field-top > label, .field.proposed .field-top > .label { color: var(--accent); font-weight: 600; }

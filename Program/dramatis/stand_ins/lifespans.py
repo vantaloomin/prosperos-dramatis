@@ -1,6 +1,8 @@
 """Stands in for companion/world/lifespans.py, which the vendored dating.py and looks.py ask how far through life
-someone is. Dramatis hands them an age already in human terms (dramatis/looks.py `life_age`), so everyone here lives a
-human lifespan and an age is the age it says."""
+someone is, and generators.name asks which kind of being a name group belongs to. Dramatis hands them an age already in
+human terms (dramatis/looks.py `life_age`), so everyone here lives a human lifespan and an age is the age it says; and
+it has no world with kinds of its own, so everyone is named as a human."""
+HUMAN = 'human'
 HUMAN_LIFESPAN = 80
 LONG_LIVED = 150
 
@@ -15,3 +17,20 @@ def life_age(real: int | None, lifespan: int | None) -> int | None:
 
 def sheet_lifespan(definition: dict, data: dict | None = None) -> int | None:
     return HUMAN_LIFESPAN
+
+
+def of_group(data: dict | None, group: str | None) -> str:
+    return HUMAN
+
+
+def shares(data: dict | None) -> dict[str, float]:
+    return {}
+
+
+def groups_for(data: dict, kind: str) -> dict[str, float]:
+    from dramatis.formats.companion import catalog
+    return catalog.name_groups(data)[1]
+
+
+def pronoun_weights(data: dict | None, kind: str) -> list[float] | None:
+    return None

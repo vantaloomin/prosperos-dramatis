@@ -17,8 +17,8 @@ import functools
 import json
 import re
 
-from dramatis.stand_ins import catalog, generators, intimacy
-from dramatis.formats.companion import dating
+from dramatis.formats.companion import catalog, dating, generators
+from dramatis.stand_ins import intimacy
 
 NUMBERS = ('age', 'height_cm', 'weight_kg')
 WORDS = ('build', 'skin', 'face', 'jaw', 'nose', 'eyes', 'eye_shape', 'hair', 'facial_hair', 'feature')

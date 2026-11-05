@@ -23,7 +23,7 @@ import json
 import re
 from functools import cache
 
-from dramatis.stand_ins import catalog, generators
+from dramatis.formats.companion import catalog, generators
 
 LEVELS = (0, 1, 2)
 MIDDLE = 1

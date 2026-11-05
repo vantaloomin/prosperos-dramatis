@@ -10,6 +10,9 @@ than", "no X, no Y, just Z", emoji), read the same way:
 - **hard** entries are defects: stock names (Elara, Kael, Voss), em dashes, the assistant's voice. A draft with a
   hard hit the user didn't write themselves is sent back once, naming the hits (dramatis/drafting.py), and any still
   there after that are shown on the form.
+- **Made-up names** are Companion's own check (vendored formats/companion/naming.py): a word on its list of names a
+  model invents, or shaped like one (Kael-, Vael-, -ithra; Ravencrest, Duskwhisper) and in none of its real name lists.
+  They are hard hits too.
 - **flag** entries are for review: one hit means nothing, so the form lists them under "Worth a look" and never
   refuses a draft for them.
 
@@ -21,6 +24,8 @@ import json
 import re
 from functools import cache
 from pathlib import Path
+
+from dramatis.formats.companion import naming
 
 DATA = Path(__file__).parent / 'data'
 LISTS = (DATA / 'ai-slop.json', DATA / 'ai-slop-wikipedia.json')
@@ -44,6 +49,7 @@ DEPTH = {'arc.lie': ('Lie they believe', ('arc', 'lie')), 'arc.truth': ('Truth t
          'psyche.fears_becoming': ('Who they fear becoming', ('psyche', 'fears_becoming', 'text'))}
 # Real words that only count as names mid-sentence, and that never match a longer word.
 NO_DERIVATIVES = ('names_word', 'surnames_overdrawn', 'places_overdrawn')
+MADE_UP = 'Made-up names'
 PAD = 30
 
 
@@ -93,11 +99,19 @@ def scan_at(text: str) -> list[dict]:
                     continue
                 if rule.get('id') in NO_DERIVATIVES and len(match[0]) > len(item):
                     continue
-                hits.append({'severity': rule['severity'], 'rule': rule['title'], 'match': match[0],
-                             'context': text[max(0, match.start() - PAD):match.end() + PAD].replace('\n', ' ').strip(),
-                             'at': match.start(), 'end': match.end()})
+                hits.append(hit(rule['severity'], rule['title'], text, match))
+    for match in naming.WORD.finditer(text):
+        if naming.coined(match[0]) and not any(found['at'] <= match.start() < found['end'] for found in hits
+                                               if found['severity'] == 'hard'):
+            hits.append(hit('hard', MADE_UP, text, match))
     hits.sort(key=lambda hit: (hit['severity'] != 'hard', hit['at']))
     return hits
+
+
+def hit(severity: str, rule: str, text: str, match: re.Match) -> dict:
+    return {'severity': severity, 'rule': rule, 'match': match[0],
+            'context': text[max(0, match.start() - PAD):match.end() + PAD].replace('\n', ' ').strip(),
+            'at': match.start(), 'end': match.end()}
 
 
 def at(source, path: tuple[str, ...]):

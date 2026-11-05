@@ -9,6 +9,8 @@ The user's idea and picks:
 
 {{looks}}
 
+{{names}}
+
 {{emotional}}
 
 {{depth}}

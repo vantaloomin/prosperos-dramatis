@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -11,15 +12,31 @@ sync = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(sync)
 
 
+def unvendored(text: str, app: str) -> str:
+    """A vendored module as the app has it: its header off and its imports pointed back at the app's own modules."""
+    text = re.sub(r'\A(?:# (?:Vendored from|Edit it there).*\n)+', '', text)
+    back = {place: module for module, place in sync.APPS[app]['modules'].items()}
+
+    def line(match: re.Match) -> str:
+        module, names, indent = match['module'], match['names'], match['indent']
+        if module in back:
+            return f'{indent}from {back[module]} import {names}'
+        places: dict[str, list[str]] = {}
+        for name in (item.strip() for item in names.strip('()').split(',')):
+            places.setdefault(back[f"{module}.{name.split(' as ')[0]}"].rpartition('.')[0], []).append(name)
+        return '\n'.join(f"{indent}from {place} import {', '.join(found)}" for place, found in places.items())
+
+    return re.sub(r'^(?P<indent>[ \t]*)from (?P<module>dramatis\.(?:formats|stand_ins)[\w.]*) import (?P<names>.+)$', line,
+                  text, flags=re.M)
+
+
 def checkout(root: Path, app: str) -> Path:
-    """A checkout of one app holding its vendored files as they are vendored now, without the header."""
-    for source, name in {**sync.APPS[app]['files'], **sync.APPS[app]['data']}.items():
+    """A checkout of one app holding its vendored files as they are vendored now, as the app has them."""
+    parts = {source: target for source, (target, _names) in sync.APPS[app]['parts'].items()}
+    for source, name in {**sync.APPS[app]['files'], **parts, **sync.APPS[app]['data']}.items():
         text = (FORMATS / app / name).read_text(encoding='utf-8')
         if name.endswith('.py'):
-            text = text.split('\n', 1)[1]
-            text = text.replace('from dramatis.formats.companion import dating', 'from companion.world import dating')
-            text = text.replace('dramatis.formats.companion', 'companion')
-            text = text.replace('from dramatis.stand_ins import', 'from companion.world import')
+            text = unvendored(text, app)
         (root / source).parent.mkdir(parents=True, exist_ok=True)
         (root / source).write_text(text, encoding='utf-8')
     return root
@@ -59,7 +76,54 @@ def test_an_import_that_is_not_vendored_stops_the_sync(tmp_path):
 
 
 def test_one_import_of_modules_from_two_places_becomes_a_line_for_each():
-    line = '    from companion.world import catalog, dating, generators\n'
+    line = '    from companion.world import catalog, dating, intimacy\n'
     found = sync.IMPORT.sub(lambda match: sync.swap(match, sync.APPS['companion']['modules'], 'x.py'), line)
-    assert found == ('    from dramatis.stand_ins import catalog, generators\n'
-                     '    from dramatis.formats.companion import dating\n')
+    assert found == ('    from dramatis.formats.companion import catalog, dating\n'
+                     '    from dramatis.stand_ins import intimacy\n')
+
+
+SOURCE = """import hashlib
+import json
+from functools import cache
+
+from companion.world import catalog, naming
+
+
+def unused():
+    return json.dumps({})
+
+
+# Seeded, so the same seed draws the same.
+@cache
+def drawn(seed: str) -> str:
+    return hashlib.sha256(seed.encode()).hexdigest() + catalog.DATA.name
+
+
+LIMIT = 3
+"""
+
+
+def test_a_part_is_the_named_definitions_as_written_with_the_imports_they_use():
+    assert sync.part(SOURCE, ('drawn', 'LIMIT'), 'x.py') == """import hashlib
+from functools import cache
+from companion.world import catalog
+
+
+# Seeded, so the same seed draws the same.
+@cache
+def drawn(seed: str) -> str:
+    return hashlib.sha256(seed.encode()).hexdigest() + catalog.DATA.name
+
+
+LIMIT = 3
+"""
+    with pytest.raises(SystemExit, match='no longer defines gone'):
+        sync.part(SOURCE, ('drawn', 'gone'), 'x.py')
+
+
+def test_a_part_that_moved_on_is_drift(tmp_path, capsys):
+    root = checkout(tmp_path / 'companion', 'companion')
+    generators = root / 'Program/companion/world/generators.py'
+    generators.write_text(generators.read_text(encoding='utf-8').replace('2 ** 64', '2 ** 63'), encoding='utf-8')
+    assert sync.main(['--companion', str(root), '--check'], target=FORMATS) == 1
+    assert 'companion/generators.py' in capsys.readouterr().err

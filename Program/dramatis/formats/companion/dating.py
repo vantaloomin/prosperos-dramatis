@@ -12,7 +12,8 @@ one in fifty), and the chance of having a partner rises with age until widowhood
 """
 from datetime import date
 
-from dramatis.stand_ins import generators, lifespans, mix, townsfolk
+from dramatis.formats.companion import generators
+from dramatis.stand_ins import lifespans, mix, townsfolk
 
 GENDERS = ('woman', 'man', 'nonbinary')
 GENDER_OF = {'she/her': 'woman', 'he/him': 'man', 'they/them': 'nonbinary'}
