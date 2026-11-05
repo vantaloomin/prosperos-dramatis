@@ -6,10 +6,11 @@ import { useModelCall } from './modelCall'
 import { profileFor, useModels } from './models/ModelSettings'
 
 /** How the form opens: the character, and a portrait (base64 PNG) to save with them, such as an imported file's picture. */
-/** `filledIn` are the fields a split wrote that the user's text said nothing about; `brought` says no model wrote any
- * of it (a file used as written), and `allowed` is the user's own text it came from, for the AI-slop audit. */
+/** `filledIn` are the fields a split wrote that the user's text said nothing about; `missing` the ones a draft left
+ * empty; `brought` says no model wrote any of it (a file used as written), and `allowed` is the user's own text it came
+ * from, for the AI-slop audit. */
 export interface Begun {
-  character: Character; seed?: string; filledIn?: string[]; note?: string; portrait?: string; brought?: boolean; allowed?: string
+  character: Character; seed?: string; filledIn?: string[]; missing?: string[]; note?: string; portrait?: string; brought?: boolean; allowed?: string
 }
 /** Picks the quick start opens with, such as the idea the Cast board writes for a corner. */
 export interface Picks { idea?: string; setting?: string }
@@ -55,7 +56,7 @@ function QuickStart({ initial, onBegin }: { initial?: Picks; onBegin: (begun: Be
     event?.preventDefault()
     void call.run((signal) => sendJson<Drafted>('/api/draft', 'POST', {
       ...picks, age: picks.age ? Number(picks.age) : null, apps: APPS, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? '',
-    }, signal), (found) => onBegin({ character: found.character, seed: found.seed, note: 'Your model drafted them. Read it through, change anything, then save.' }),
+    }, signal), (found) => onBegin({ character: found.character, seed: found.seed, missing: found.missing, note: 'Your model drafted them. Read it through, change anything, then save.' }),
     'The draft could not be written.')
   }
   const vibes = picks.vibe.split(',').map((item) => item.trim().toLowerCase()).filter(Boolean)

@@ -7,6 +7,8 @@ The user's idea and picks:
 
 {{personality}}
 
+{{looks}}
+
 {{emotional}}
 
 {{depth}}

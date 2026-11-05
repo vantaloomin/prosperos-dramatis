@@ -29,6 +29,8 @@ DATES = ('2026-11-04T03:00:00+00:00', '2026-11-04T04:00:00+00:00')
 def dana() -> Character:
     found = json.loads(reply())
     life = {key: found.pop(key) for key in ('routine', 'life_themes', 'schedule', 'emotional_traits', 'absence_reaction')}
+    for key in ('arc', 'psyche', 'secret'):
+        found.pop(key)
     return Character.model_validate(found | {
         'setting': 'Baltimore, today', 'birthday': '03-04', 'looks': {'height_cm': 180, 'eyes': 'brown'},
         'companion': life | {'history_together': 'You met in the ER waiting room.', 'texting': {'lowercase': True}}})

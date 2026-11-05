@@ -105,9 +105,14 @@ function Ask({ field, label, write, onDone }: { field: string; label: string; wr
  * it): the assistant knows which field the user is in by it, and proposals stand in the field it names. `write` gives
  * the field its Help me write bolt ("Help me write <write>"), inside the box while it is empty (`filled` false) and
  * beside the label once it has something. `group` labels a set of controls rather than one. */
-interface FieldProps { label: string; name?: string; write?: string; filled?: boolean; group?: boolean; children: (id: string) => ReactNode }
+interface FieldProps {
+  label: string; name?: string; write?: string; filled?: boolean; group?: boolean
+  /** Where the value came from, after the label: "(Rolled)". */
+  from?: string
+  children: (id: string) => ReactNode
+}
 
-export function Field({ label, name, write, filled = true, group, children }: FieldProps) {
+export function Field({ label, name, write, filled = true, group, from, children }: FieldProps) {
   const id = useId()
   const proposal = useProposal(name)
   const ready = useModelReady()
@@ -126,6 +131,7 @@ export function Field({ label, name, write, filled = true, group, children }: Fi
     <div className={proposal ? 'field proposed' : 'field'} data-field={name} ref={box}>
       <div className="field-top">
         {group ? <span className="label" id={`${id}-label`}>{label}</span> : <label htmlFor={id}>{label}</label>}
+        {from && <em className="from">({from})</em>}
         {filled && button}
       </div>
       <div className={bolt && !filled ? 'field-box has-bolt' : 'field-box'}>
@@ -138,10 +144,10 @@ export function Field({ label, name, write, filled = true, group, children }: Fi
   )
 }
 
-interface TextProps { label: string; value: string; onChange: (value: string) => void; maxLength: number; placeholder?: string; name?: string; write?: string }
+interface TextProps { label: string; value: string; onChange: (value: string) => void; maxLength: number; placeholder?: string; name?: string; write?: string; from?: string }
 
-export function TextInput({ label, value, onChange, maxLength, placeholder, name, write }: TextProps) {
-  return <Field label={label} name={name} write={write} filled={!!value.trim()}>{(id) => (
+export function TextInput({ label, value, onChange, maxLength, placeholder, name, write, from }: TextProps) {
+  return <Field label={label} name={name} write={write} filled={!!value.trim()} from={from}>{(id) => (
     <input id={id} value={value} maxLength={maxLength} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />
   )}</Field>
 }

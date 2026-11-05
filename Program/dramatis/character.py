@@ -1,8 +1,8 @@
 """A Dramatis character: one person, written once, that each Prospero app can take in its own shape.
 
 The shared part is who they are, which every app reads: name, gender, age and kind, About them, personality, voice,
-look, background, wants and fears, skills, flaws and interests, the five personality sliders, Looks, and how they
-come across, and how their voice sounds for text to speech. `companion` holds what only Prospero's Companion uses: how
+look, background, wants and fears, skills, flaws and interests, the five personality sliders, Looks (with where a
+draft's came from), and how they come across, and how their voice sounds for text to speech. `companion` holds what only Prospero's Companion uses: how
 they know the user and the everyday life its simulation runs (routine, weekly schedule, life themes, texting habits,
 emotional edges).
 
@@ -72,6 +72,10 @@ class Looks(Input):
     hair: str = Field(default='', max_length=200)
     facial_hair: str = Field(default='', max_length=120)
     feature: str = Field(default='', max_length=200)
+
+
+LooksField = Literal['height_cm', 'weight_kg', 'build', 'skin', 'face', 'jaw', 'nose', 'eyes', 'eye_shape', 'hair',
+                     'facial_hair', 'feature']
 
 
 class EmotionalTrait(Input):
@@ -204,6 +208,9 @@ class Character(Input):
     flaws: list[ListItem] = Field(default_factory=list, max_length=20)
     interests: list[Annotated[str, Field(max_length=120)]] = Field(default_factory=list, max_length=50)
     looks: Looks = Field(default_factory=Looks)
+    # Where a draft's Details came from (dramatis/looks.py): `idea` for the user's own words, `rolled` for the roll. A
+    # field the user sets on the form has no mark. No app and no prompt reads it.
+    looks_from: dict[LooksField, Literal['idea', 'rolled']] = Field(default_factory=dict)
     personality_sliders: dict[Trait, Slider] | None = None
     seen_as: str = Field(default='', max_length=400)
     sees_self: str = Field(default='', max_length=1200)

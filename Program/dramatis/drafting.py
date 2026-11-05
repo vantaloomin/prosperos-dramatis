@@ -4,6 +4,9 @@ companion/character_helper.py at ae9b0ab) and Adventure (adventure/making.py at 
 
 - The personality sliders are rolled before the model writes, from the user's own words where they settle one
   (Companion's personality.py, vendored), and the model gets them as behaviour, never as trait names.
+- So are the Details of how they look (dramatis/looks.py): the ones the user's words speak of the model reads into the
+  fields from those words, the rest are rolled first with Companion's own banks, and the model writes their Appearance
+  from both, so the paragraph never disagrees with the fields.
 - The model replies with one JSON object; a reasoning block, a Markdown fence or a sentence around it is ignored.
   The reply is shaped here: text trimmed to each field's limit, lists de-duplicated and capped, weekly blocks
   checked one by one with Companion's own RoutineBlock. A reply that cannot be used is asked for once more with the
@@ -22,9 +25,12 @@ companion/character_helper.py at ae9b0ab) and Adventure (adventure/making.py at 
 - The user's picks win over the model: name, gender, age, where and when, the relationship, and emotional edges,
   which stay off unless the user turns them on or their words ask for them. A user persona (the user themself, to
   play as) gets no everyday life in Companion and no relationship to the user: Companion takes them as a persona.
-- Their depth is asked for only when the user's words give the model something to go on: an arc when they ask for
-  one, a psyche when they say who the character was, is expected to be, wants to be or fears becoming. A psyche's
-  `pressed_by` is never the model's.
+- A draft from the quick start fills every section the form has: their arc, their psyche and an ordinary secret too.
+  A field the first reply leaves empty sends it back once; one still empty after that comes back named in `missing`,
+  for the form to say, rather than as a quietly blank section.
+- A pasted character's depth is asked for only when their text gives the model something to go on (an arc when it
+  asks for one, a psyche when it says who they were, are expected to be, want to be or fear becoming), and its secret
+  only when the text has one. A psyche's `pressed_by` is never the model's.
 
 Nothing is saved: a draft goes back to the form for review. The prompts are files in dramatis/prompts.
 """
@@ -35,7 +41,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from dramatis import ai, slop
+from dramatis import ai, looks, slop
 from dramatis.character import APPS, PERSONA, Character
 from dramatis.formats.companion import personality
 from dramatis.formats.companion.errors import DomainError
@@ -145,6 +151,13 @@ LIFE_SHAPE = ''',
 SECRET_SHAPE = ''',
   "secret": {"truth": "what is really true that they hide, only if their text gives one", "cover_story": "what people believe instead", "known_by": "who knows"}'''
 SECRET_LIMITS = {'truth': 600, 'cover_story': 400, 'known_by': 200}
+# A draft's secret: the model writes one, as ordinary as the rest of them.
+DRAFT_SECRET_SHAPE = ''',
+  "secret": {"truth": "one ordinary thing that is really true and that they keep from most people", "cover_story": "what people believe instead", "known_by": "who knows, or \\"no one\\""}'''
+DRAFT_SECRET = ('Give them one secret: something ordinary and true that they keep from most people, such as a debt, a '
+                'lie on a CV, a parent they still support or a habit they hide, not a dark or mysterious past unless '
+                'the user asked for one. Put it in "secret" and nowhere else: every other field, the background and '
+                'how others see them included, says only what people believe instead.')
 SCHEDULE_RULES = ('Schedule rules: 4 to 8 blocks in 24-hour time, in their local time. Days are numbers, 0 is Monday '
                   'and 6 is Sunday. Always include a sleep block every day; a block that ends earlier than it starts '
                   'runs past midnight. Work matches their real hours. Blocks on the same day must not overlap. Add at '
@@ -164,6 +177,13 @@ DEPTH_ASKS = {
     'psyche': ('Fill "psyche" only where the user\'s words say something about it, one plain sentence each about an '
                'ordinary adult\'s pulls: who they were, who they are expected to be, who they want to be, who they '
                'fear becoming. Leave the rest as "".')}
+# A draft asks for all of it, whatever the user's words gave.
+DRAFT_DEPTH = ('arc', 'psyche')
+DRAFT_ASKS = {
+    'arc': ('Fill "arc" with one plain sentence each: the lie they believe that holds them back, the truth they would '
+            'need to learn, and the kind of event or person that could force it.'),
+    'psyche': ('Fill "psyche" with one plain sentence each about an ordinary adult\'s pulls: who they were, who they '
+               'are expected to be, who they want to be, who they fear becoming.')}
 # What in the user's words asks for an arc, or gives the psyche something to work with.
 DEPTH_WORDS = {
     'arc': re.compile(r"\b(?:arc|redemption|character development|learns? to|believes? a lie|comes? to terms)\b",
@@ -191,10 +211,11 @@ def field_guides() -> dict[str, dict]:
     return json.loads(template('fields.json'))
 
 
-def shape_text(apps: list[str], split: bool = False, depth: tuple[str, ...] = (), persona: bool = False) -> str:
+def shape_text(apps: list[str], split: bool = False, depth: tuple[str, ...] = (), persona: bool = False,
+               secret: bool = False, looks_shape: str = '') -> str:
     life = 'companion' in apps and not persona
-    body = CORE_SHAPE + (LIFE_SHAPE if life else '') + ''.join(DEPTH_SHAPES[part] for part in depth) + \
-        (SECRET_SHAPE + FILLED_IN if split else '')
+    body = CORE_SHAPE + looks_shape + (LIFE_SHAPE if life else '') + ''.join(DEPTH_SHAPES[part] for part in depth) + \
+        (SECRET_SHAPE + FILLED_IN if split else DRAFT_SECRET_SHAPE if secret else '')
     return '{\n' + body + '\n}' + (f'\n\n{SCHEDULE_RULES}' if life else '')
 
 
@@ -208,13 +229,17 @@ def depth_text(depth: tuple[str, ...]) -> str:
     return '\n\n'.join(DEPTH_ASKS[part] for part in depth)
 
 
+def draft_depth_text() -> str:
+    return '\n\n'.join([*(DRAFT_ASKS[part] for part in DRAFT_DEPTH), DRAFT_SECRET])
+
+
 def for_model(character: dict, interview: bool = False, secret: bool = False) -> dict:
     """The character as a prompt shows it: no sliders (the brief says them as behaviour), no app list, no library ids,
     no parts kept from a card they were imported from (its greetings and system prompt are another app's, and talk to
     a model), and the long interview only when the request is about it. Their secret only when the request is about them as
     they are inside (`secret`); otherwise only what people believe instead, which is what everyone else knows."""
     shown = {key: value for key, value in character.items()
-             if key not in ('personality_sliders', 'apps', 'card', 'ignored_flags') and (interview or key != 'interview')}
+             if key not in ('personality_sliders', 'looks_from', 'apps', 'card', 'ignored_flags') and (interview or key != 'interview')}
     if isinstance(shown.get('psyche'), dict):
         shown['psyche'] = {key: value.get('text', '') for key, value in shown['psyche'].items() if isinstance(value, dict)}
     if not secret and 'secret' in shown:
@@ -393,12 +418,14 @@ def kind_value(value) -> str:
 
 
 class Shape:
-    """Turns a model's reply into a character the form can show, with the user's picks winning."""
+    """Turns a model's reply into a character the form can show, with the user's picks winning. A `whole` draft (the
+    quick start's) is asked for every field: one left empty sends the first reply back, and after the retry it is
+    named in `missing` rather than left quietly blank."""
 
-    def __init__(self, picks: dict, sliders: dict, split: bool = False):
-        self.picks, self.sliders, self.split = picks, sliders, split
+    def __init__(self, picks: dict, sliders: dict, plan: looks.Plan, split: bool = False, whole: bool = False):
+        self.picks, self.sliders, self.plan, self.split, self.whole = picks, sliders, plan, split, whole
         self.apps = picks.get('apps') or list(APPS)
-        self.depth = depth_asked(picks)
+        self.depth = DRAFT_DEPTH if whole else depth_asked(picks)
 
     def __call__(self, raw: dict, final: bool) -> dict:
         if raw.get('under_18') is True:
@@ -413,6 +440,8 @@ class Shape:
         age = self.picks.get('age') or age_value(raw.get('age'))
         adults_only(age, made['about'])
         looks_adult(made['appearance'])
+        made['looks'], made['looks_from'] = self.plan.settle(raw.get('looks'), made['appearance'])
+        looks_adult(' '.join(str(value) for value in made['looks'].values() if value))
         made |= {'age': age if age and age <= 5000 else None, 'kind': kind_value(raw.get('kind')),
                  'gender': self.picks.get('gender') or (raw.get('gender') if raw.get('gender') in GENDERS else ''),
                  'setting': (self.picks.get('setting') or '').strip()[:200], 'apps': self.apps,
@@ -421,10 +450,15 @@ class Shape:
             character = Character.model_validate(made).model_dump()
         except ValidationError as error:
             raise Unusable(f"it did not fit the character format ({error.errors()[0]['msg']}).") from error
+        missing = self.missing(character) if self.whole else []
+        if missing and not final:
+            raise Unusable(f"it left {', '.join(missing)} empty. Write every key.")
         hits = slop.audit(character, self.allowed())
         if slop.hard(hits) and not final:
             raise Unusable(slop.problem(slop.hard(hits)))
         result = {'character': character, 'audit': hits}
+        if self.whole:
+            result['missing'] = missing
         if self.split:
             filled = raw.get('filled_in') if isinstance(raw.get('filled_in'), list) else []
             result['filled_in'] = [key for key in dict.fromkeys(filled)
@@ -435,7 +469,7 @@ class Shape:
         """The arc and psyche, when the user's words asked for them, and a pasted character's secret, kept in its own
         field so no other field carries it; anything else the model sent is dropped."""
         found = {}
-        if self.split:
+        if self.split or self.whole:
             secret = raw.get('secret') if isinstance(raw.get('secret'), dict) else {}
             found['secret'] = {key: text_value(secret.get(key), limit) for key, limit in SECRET_LIMITS.items()}
         if 'arc' in self.depth:
@@ -445,6 +479,15 @@ class Shape:
             psyche = raw.get('psyche') if isinstance(raw.get('psyche'), dict) else {}
             found['psyche'] = {key: {'text': text_value(psyche.get(key), 300)} for key in PSYCHE_KEYS}
         return found
+
+    def missing(self, character: dict) -> list[str]:
+        """The fields a whole draft asked for that came back empty, by the keys the form and Help me write use.
+        Emotional edges are left out: they stay empty unless the user asked for them."""
+        keys = [*TEXT_LIMITS, *LIST_LIMITS, *(f'arc.{key}' for key in ARC_KEYS),
+                *(f'psyche.{key}' for key in PSYCHE_KEYS), *(f'secret.{key}' for key in SECRET_LIMITS)]
+        if 'companion' in self.apps and not is_persona(self.picks):
+            keys += ['routine', 'life_themes', 'schedule']
+        return [key for key in keys if not filled_at(character, key)]
 
     def allowed(self) -> str:
         """What the user typed or pasted: names and words from it are theirs, whatever the audit list says."""
@@ -470,6 +513,18 @@ class Shape:
         return life
 
 
+def filled_at(character: dict, key: str) -> bool:
+    """Whether a character has something in a field named the form's way: `arc.lie`, `psyche.was`, `routine`."""
+    if key.startswith('psyche.'):
+        value = ((character.get('psyche') or {}).get(key[7:]) or {}).get('text')
+    elif '.' in key:
+        part, inner = key.split('.', 1)
+        value = (character.get(part) or {}).get(inner)
+    else:
+        value = character[key] if key in character else character['companion'].get(key)
+    return bool(value.strip() if isinstance(value, str) else value)
+
+
 # The three requests -----------------------------------------------------------------------------------------------
 
 def new_seed() -> str:
@@ -479,6 +534,16 @@ def new_seed() -> str:
 def rolled(words: str, seed: str) -> dict:
     """The sliders the app decides before the model writes: what the user's words say, the rest rolled by seed."""
     return personality.settle({}, seed, personality.from_words(words))
+
+
+def looks_plan(seed: str, picks: dict, words: str) -> looks.Plan:
+    """Their Details, settled before the model writes: what `words` speak of is the model's to read, the rest rolled."""
+    return looks.Plan(seed, words=words, gender=picks.get('gender') or '', age=age_value(picks.get('age')),
+                      setting=(picks.get('setting') or '').strip())
+
+
+def looks_text(plan: looks.Plan) -> str:
+    return '\n\n'.join(part for part in (plan.brief(), plan.ask()) if part)
 
 
 def personality_brief(sliders: dict) -> str:
@@ -502,12 +567,15 @@ def draft(picks: dict) -> dict:
     adults_only(picks.get('age'))
     adult_text(picks.get('idea') or '', picks.get('vibe') or '')
     seed = new_seed()
-    sliders = rolled(f"{picks.get('idea', '')} {picks.get('vibe', '')}", seed)
-    depth = depth_asked(picks)
+    words = f"{picks.get('idea', '')} {picks.get('vibe', '')}"
+    sliders = rolled(words, seed)
+    plan = looks_plan(seed, picks, words)
     system = fill(template('draft.md'), rules=template('rules.md'), picks=picks_text(picks),
-                  personality=personality_brief(sliders), emotional=emotional_text(picks), depth=depth_text(depth),
-                  shape=shape_text(picks.get('apps') or list(APPS), depth=depth, persona=is_persona(picks)))
-    return ask(system, Shape(picks, sliders)) | {'seed': seed}
+                  personality=personality_brief(sliders), looks=looks_text(plan), emotional=emotional_text(picks),
+                  depth=draft_depth_text(),
+                  shape=shape_text(picks.get('apps') or list(APPS), depth=DRAFT_DEPTH, persona=is_persona(picks),
+                                   secret=True, looks_shape=plan.shape()))
+    return ask(system, Shape(picks, sliders, plan, whole=True)) | {'seed': seed}
 
 
 def split(picks: dict) -> dict:
@@ -516,13 +584,14 @@ def split(picks: dict) -> dict:
     adult_text(text)
     seed = new_seed()
     sliders = rolled(text, seed)
+    plan = looks_plan(seed, picks, text)
     depth = depth_asked(picks)
     system = fill(template('split.md'), rules=template('rules.md'), shape=shape_text(picks.get('apps') or list(APPS),
-                  split=True, depth=depth, persona=is_persona(picks)), emotional=emotional_text(picks),
-                  depth=depth_text(depth))
+                  split=True, depth=depth, persona=is_persona(picks), looks_shape=plan.shape()),
+                  looks=looks_text(plan), emotional=emotional_text(picks), depth=depth_text(depth))
     # In the message, not the instructions, and inside markers it cannot close.
     pasted = f'The character I pasted:\n[[pasted]]\n{fenced(text)}\n[[end of pasted]]\n\nWrite the JSON now.'
-    found = ask(system, Shape({key: value for key, value in picks.items() if key != 'name'}, sliders, split=True),
+    found = ask(system, Shape({key: value for key, value in picks.items() if key != 'name'}, sliders, plan, split=True),
                 pasted)
     return found | {'seed': seed, 'instructions': instructions_in(text)}
 

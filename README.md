@@ -60,8 +60,9 @@ named back to you.
 character, and **Put back what was there** undoes it. **How they talk** (their words, rhythm and humour) and **How
 they sound** (the voice itself, for text to speech) are separate fields, so neither you nor a model mixes them up.
 **Outward appearance** is how others see them, reputation included, and can disagree with **How they see
-themselves**. There are also the five personality sliders (roll again, or start from a four-letter type), looks
-field by field, kind and lifespan, and Companion's own part: relationship, closeness, routine, weekly schedule and
+themselves**. There are also the five personality sliders (roll again, or start from a four-letter type), the
+Details of their looks field by field (a draft reads what your words say into them and rolls the rest before it writes
+the Appearance, so the two always agree, and marks each From their words or Rolled), kind and lifespan, and Companion's own part: relationship, closeness, routine, weekly schedule and
 texting habits.
 
 **The Sidebar Assistant.** **Assistant** beside Save opens a chat next to the form, like Adventure's Sidebar
@@ -79,8 +80,9 @@ a few fields, each with a reason, which you **Apply**, **Dismiss** or **Undo**. 
 
 **Inner life, inner square and a secret.** Optional, folded sections for the lie they believe, the truth they need and
 what could force it; who they were, are expected to be, want to be and fear becoming, each pressed by other characters
-in your library; and a secret, with what people believe instead and who knows. Each app gets them folded into fields
-it already reads, the secret included, so the character knows what they are keeping. **Help me write** shows the
+in your library; and a secret, with what people believe instead and who knows. A draft from **Write them** fills all
+three, with an ordinary secret; anything the model still leaves empty is named at the top of the form. A pasted
+character gets them only where its text gives them. Each app gets them folded into fields it already reads, the secret included, so the character knows what they are keeping. **Help me write** shows the
 secret only when it writes the secret itself, their inner life or how they see themselves; for every other field it
 sees what people believe instead, so the truth doesn't slip into a field other characters read.
 

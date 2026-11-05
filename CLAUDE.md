@@ -19,10 +19,15 @@ character creator.
   `casts/<id>.json` beside the library and pointing at characters by id. Resonance candidates and checks are computed
   there with no model; only structure is a hard error. Genres, group types, axes and tags are data
   (`dramatis/data/cast_*.json`), so a new template is a JSON entry. Routes are in `cast_routes.py`.
+- The Details of how they look are settled before the model writes their Appearance (`dramatis/looks.py`): what the
+  user's words speak of the model reads into the fields, the rest are rolled first with Companion's own looks banks
+  (vendored `formats/companion/looks.py` and `dating.py`), and `Character.looks_from` marks each as From their words or
+  Rolled, as the sliders are marked, until the user edits it.
 - A character's depth (`interview`, `arc`, `secret`, `psyche`) is optional and no app has a field for it: the app
   shapes fold it into fields they read. The secret goes everywhere the character does, so they can keep it. The interview's routes live in
   `dramatis/interview.py`, its own router; Help me write reaches nested fields by dotted keys (`arc.lie`,
-  `psyche.was`), listed in `slop.DEPTH`.
+  `psyche.was`), listed in `slop.DEPTH`. A quick-start draft writes every section, depth and an ordinary secret
+  included (`Shape(whole=True)`): a field still empty after the one retry comes back in `missing`, and the form names it.
 - Another app's character file is `dramatis/imports.py`: Companion's own importer (vendored `formats/companion/imports/`)
   reads it, then it opens in the form with no model (headed lines to their fields) or goes to the paste box for the
   split, both behind the Paste path's checks. What the card has that Dramatis doesn't make is `Character.card`

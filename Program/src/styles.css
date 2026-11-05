@@ -63,6 +63,7 @@ button[aria-pressed='true'], button[aria-checked='true'] { border-color: var(--a
 .field { display: grid; gap: 0.25rem; align-content: start; }
 .field-top { display: flex; align-items: center; gap: 0.3rem; min-height: 1.5rem; }
 .field-top > label, .field-top > .label { font-size: 0.85rem; color: var(--muted); }
+.field-top > .from { font-size: 0.75rem; color: var(--muted); }
 .field-box { position: relative; display: grid; }
 /* Side by side, a row's text boxes end level: the shorter one stretches to its neighbour. */
 .grid > .field:has(> .field-box > textarea), .grid > .stack > .field:first-child:has(> .field-box > textarea) { grid-template-rows: auto 1fr; }

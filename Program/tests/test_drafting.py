@@ -116,10 +116,32 @@ def test_a_pasted_secret_gets_its_own_field(model):
     assert found['filled_in'] == ['fears']
     system = system_of(model)
     assert '"secret": {"truth"' in system and 'put it in "secret" and nowhere else' in system
-    # A draft from the quick start invents no secret, so its shape has none.
+    # A paste with no secret gets none made up.
+    assert 'never invent one' in system
+
+
+def test_a_draft_fills_every_section_and_names_what_it_could_not(model):
+    """The quick start writes the whole form: the arc, the psyche and an ordinary secret, whatever the idea says."""
     model.replies = [reply()]
-    drafting.draft(PICKS)
-    assert '"secret"' not in model.asked[-1][0]
+    found = drafting.draft(PICKS)
+    character = found['character']
+    assert character['arc']['lie'] and character['psyche']['was']['text'] and character['secret']['truth']
+    assert found['missing'] == []
+    system = system_of(model)
+    assert '"arc": {"lie"' in system and '"psyche": {"was"' in system and '"secret": {"truth"' in system
+    assert 'Give them one secret: something ordinary' in system and 'only where the user' not in system
+    # A section left empty sends the reply back once, naming it ...
+    model.replies = [reply(arc={'lie': 'x', 'truth': '', 'catalyst': ''}, secret={}), reply()]
+    assert drafting.draft(PICKS)['missing'] == []
+    assert 'it left arc.truth, arc.catalyst, secret.truth, secret.cover_story, secret.known_by empty' in model.asked[-1][1]
+    # ... and one still empty after that comes back named for the form, not quietly blank.
+    model.replies = [reply(psyche={}, wants=''), reply(psyche={}, wants='')]
+    found = drafting.draft(PICKS)
+    assert found['missing'] == ['wants', 'psyche.was', 'psyche.expected', 'psyche.wants_to_be', 'psyche.fears_becoming']
+    assert found['character']['psyche'] is None
+    # Emotional edges stay optional, and without Companion its everyday life is not missed.
+    model.replies = [reply(schedule=[], routine='', life_themes=[], emotional_traits=[], absence_reaction='')]
+    assert drafting.draft(PICKS | {'apps': ['adventure']})['missing'] == []
 
 
 @pytest.mark.parametrize('text', [

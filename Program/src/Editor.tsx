@@ -11,7 +11,7 @@ import { Interview, sampleLine } from './Interview'
 import { isEmpty, pathOf, proposals, useOpenCount, useWritten, valueAt, withValue } from './proposals'
 import { Psyche } from './Psyche'
 import { Portrait } from './Portrait'
-import { AppPicks, type Begun } from './Start'
+import { AppPicks, listed, type Begun } from './Start'
 import { FormAudit } from './Audit'
 import { Schedule, scheduleProblems } from './Schedule'
 import { Sliders } from './Sliders'
@@ -21,6 +21,8 @@ const LIFESPANS: [string, string][] = [['', 'As long as their kind does'], ['0',
   ['150', 'About 150 years'], ['300', 'About 300 years'], ['600', 'About 600 years'], ['1000', 'About 1,000 years']]
 const LOOKS: [keyof Looks, string][] = [['build', 'Build'], ['skin', 'Skin'], ['face', 'Face'], ['jaw', 'Jaw'], ['nose', 'Nose'],
   ['eyes', 'Eyes'], ['eye_shape', 'Eye shape'], ['hair', 'Hair'], ['facial_hair', 'Facial hair'], ['feature', 'Something people notice']]
+/** Where a draft's Details came from, as the sliders say it (src/Sliders.tsx). */
+const LOOKS_FROM = { idea: 'From their words', rolled: 'Rolled' }
 const STAGES = ['Just met', 'Getting to know each other', 'Friends', 'Close', 'Very close']
 
 /** Where a card can go: `prospero` keeps everything for Companion, Adventure and Dungeon; `chat` is the card for other
@@ -56,6 +58,8 @@ function ExportCard({ id }: { id: string }) {
 
 interface Props {
   saved: Saved | null; start: Character; seed: string; filledIn?: string[]; note?: string
+  /** Fields the model's draft left empty, said at the top so a blank section is never a quiet failure. */
+  missing?: string[]
   /** No model wrote them (brought from another app as written): the audit reads only what a model writes from here,
    * and their sliders stay In between where their words don't say. `allowed` is the user's own text they came from. */
   brought?: boolean; allowed?: string
@@ -77,7 +81,7 @@ const ZONES: string[] = (() => { try { return Intl.supportedValuesOf('timeZone')
 
 /** One character, every field, for whichever apps they are made for. What a model writes goes into its field as a
  * proposal to keep or put back (src/proposals.ts); nothing is saved until Save. */
-export function Editor({ saved, start, seed, filledIn, note, portrait, brought, allowed, draftKey, begun, onSaved, onDeleted, onDiscard }: Props) {
+export function Editor({ saved, start, seed, filledIn, missing, note, portrait, brought, allowed, draftKey, begun, onSaved, onDeleted, onDiscard }: Props) {
   const client = useQueryClient()
   const ready = useModelReady()
   const [character, setCharacter] = useState<Character>(start)
@@ -89,6 +93,12 @@ export function Editor({ saved, start, seed, filledIn, note, portrait, brought, 
   const [pendingPortrait, setPendingPortrait] = useState<string | null>(portrait ?? null)
   const [sample, setSample] = useState('')
   const set = (change: Partial<Character>) => setCharacter((current) => ({ ...current, ...change }))
+  // Setting a Details field makes it the user's own: its Rolled or From their words mark goes.
+  const setLook = <K extends keyof Looks>(key: K, value: Looks[K]) => setCharacter((current) => {
+    const { [key]: _gone, ...from } = current.looks_from ?? {}
+    return { ...current, looks: { ...current.looks, [key]: value }, looks_from: from }
+  })
+  const lookFrom = (key: keyof Looks) => { const from = character.looks_from?.[key]; return from && LOOKS_FROM[from] }
   const setLife = (change: Partial<Character['companion']>) => setCharacter((current) => ({ ...current, companion: { ...current.companion, ...change } }))
   const current = () => cleaned(character)
   const has = (app: App) => character.apps.includes(app)
@@ -102,7 +112,7 @@ export function Editor({ saved, start, seed, filledIn, note, portrait, brought, 
   const [key, setKey] = useState(draftKey)
   const changed = baseline.current === null ? begunOn(character) : asSaved(character) !== baseline.current
   useEffect(() => {
-    draftStore.put({ key, saved, begun: { ...begun, character, filledIn: undefined, note: undefined }, changed })
+    draftStore.put({ key, saved, begun: { ...begun, character, filledIn: undefined, missing: undefined, note: undefined }, changed })
   }, [character, saved, key, changed]) // eslint-disable-line react-hooks/exhaustive-deps
   const written = useWritten()
   // A split's fields that the user's text said nothing about go onto the form as proposals, from empty.
@@ -117,6 +127,18 @@ export function Editor({ saved, start, seed, filledIn, note, portrait, brought, 
       const label = document.querySelector(`.editor [data-field="${CSS.escape(field)}"] .field-top > :is(label, .label)`)?.textContent ?? field
       proposals.propose({ field, label, value, source: 'split', hits: [] })
     }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // What a draft left empty, by the form's own words: a whole section by its title, else each field's label.
+  useEffect(() => {
+    if (!missing?.length) return
+    const named = missing.map((field) => {
+      const box = document.querySelector(`.editor [data-field="${CSS.escape(field)}"]`)
+      const fold = box?.closest('details.fold')
+      const all = [...fold?.querySelectorAll('[data-field]') ?? []].map((item) => item.getAttribute('data-field') ?? '')
+      if (fold && all.every((item) => missing.includes(item))) return fold.querySelector('summary')?.textContent?.trim() ?? field
+      return box?.querySelector('.field-top > :is(label, .label)')?.textContent ?? field
+    })
+    setResult({ tone: 'error', text: `Your model left ${listed([...new Set(named)])} empty.` })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // What each app's own models make of the form, a moment after the last change.
@@ -284,11 +306,11 @@ export function Editor({ saved, start, seed, filledIn, note, portrait, brought, 
         <div className="folds">
           <Fold title="Details" filled={Object.values(character.looks).some((value) => value !== null && value !== '')}>
             <div className="grid three">
-              <Field label="Height (cm)">{(id) => <input id={id} type="number" min={120} max={230} value={character.looks.height_cm ?? ''} onChange={(event) => set({ looks: { ...character.looks, height_cm: event.target.value ? Number(event.target.value) : null } })} />}</Field>
-              <Field label="Weight (kg)">{(id) => <input id={id} type="number" min={35} max={250} value={character.looks.weight_kg ?? ''} onChange={(event) => set({ looks: { ...character.looks, weight_kg: event.target.value ? Number(event.target.value) : null } })} />}</Field>
+              <Field label="Height (cm)" from={lookFrom('height_cm')}>{(id) => <input id={id} type="number" min={120} max={230} value={character.looks.height_cm ?? ''} onChange={(event) => setLook('height_cm', event.target.value ? Number(event.target.value) : null)} />}</Field>
+              <Field label="Weight (kg)" from={lookFrom('weight_kg')}>{(id) => <input id={id} type="number" min={35} max={250} value={character.looks.weight_kg ?? ''} onChange={(event) => setLook('weight_kg', event.target.value ? Number(event.target.value) : null)} />}</Field>
               {LOOKS.map(([key, label]) => (
                 <TextInput key={key} label={label} value={String(character.looks[key] ?? '')} maxLength={key === 'hair' || key === 'feature' ? 200 : 120}
-                  onChange={(value) => set({ looks: { ...character.looks, [key]: value } })} />
+                  from={lookFrom(key)} onChange={(value) => setLook(key, value)} />
               ))}
             </div>
           </Fold>
