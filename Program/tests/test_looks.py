@@ -76,3 +76,22 @@ def test_the_hair_their_words_give_steers_the_colouring_rolled_around_it():
     assert looks.heritage('a Nigerian nurse with red hair') == 'nigeria' and looks.heritage('a nurse') == ''
     skins = {looks.Plan(f'seed-{n}', words='red hair', gender='woman').rolled['skin'] for n in range(30)}
     assert skins <= {'very fair', 'fair', 'light', 'light olive'}
+
+
+def test_the_everyday_detail_is_rolled_and_no_mark_is_left_to_the_model():
+    plan = looks.Plan('seed-5', gender='woman', age=30)
+    assert f'An everyday detail: {plan.everyday}' in plan.brief() and 'Give them no scar' in plan.brief()
+    details = {looks.Plan(f'seed-{n}', gender='woman').everyday for n in range(40)}
+    assert len(details) > 15
+    period = {looks.Plan(f'seed-{n}', setting='a frontier town in 1870').everyday for n in range(60)}
+    assert not period & set(looks.everyday_bank()['modern'])
+
+
+def test_the_stock_eyebrow_scar_is_worth_a_look():
+    from dramatis import slop
+    text = 'Her knuckles are scraped, and she has a faint chickenpox scar above her left eyebrow.'
+    rules = {hit['rule'] for hit in slop.scan(text)}
+    assert rules == {'Stock looks'} and all(hit['severity'] == 'flag' for hit in slop.scan(text))
+    assert slop.scan('a small scar breaking through his right eyebrow')
+    # Companion's own rolled detail is not the stock one.
+    assert not slop.scan('a scar through one eyebrow')

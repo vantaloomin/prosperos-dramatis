@@ -5,7 +5,8 @@ The list is Wren Halloway's (data/ai-slop.json, 2026-11-03, with its own notes i
 slop_check.py); `scan` is that checker's matching, kept as it works there. Beside it, data/ai-slop-wikipedia.json adds
 the signs from Wikipedia's "Signs of AI writing" that can turn up in a character (puffed-up significance, its AI
 vocabulary, the chatbot talking to its user, unfilled placeholders, "-ing" analyses, "not just X but Y", "rather
-than", "no X, no Y, just Z", emoji), read the same way:
+than", "no X, no Y, just Z", emoji), and data/ai-slop-dramatis.json what Dramatis's own drafts kept repeating (a
+chickenpox scar above the left eyebrow, draft after draft). All of them are read the same way:
 
 - **hard** entries are defects: stock names (Elara, Kael, Voss), em dashes, the assistant's voice. A draft with a
   hard hit the user didn't write themselves is sent back once, naming the hits (dramatis/drafting.py), and any still
@@ -23,7 +24,7 @@ from functools import cache
 from pathlib import Path
 
 DATA = Path(__file__).parent / 'data'
-LISTS = (DATA / 'ai-slop.json', DATA / 'ai-slop-wikipedia.json')
+LISTS = (DATA / 'ai-slop.json', DATA / 'ai-slop-wikipedia.json', DATA / 'ai-slop-dramatis.json')
 # The character's fields the audit reads, with the names the form shows them by.
 FIELDS = {'name': 'Name', 'about': 'About them', 'personality': 'Personality', 'voice': 'How they talk',
           'sound': 'How they sound', 'appearance': 'Appearance', 'seen_as': 'Outward appearance',
