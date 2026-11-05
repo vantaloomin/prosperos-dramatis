@@ -130,9 +130,9 @@ CORE_SHAPE = '''  "name": "first and last name, or the one name they go by",
   "background": "1 or 2 paragraphs of ordinary history",
   "wants": "one sentence: what they are after",
   "fears": "one sentence: what they are afraid of",
-  "skills": ["4 to 7 concrete skills, one short phrase each"],
-  "flaws": ["3 to 5 real flaws, one short sentence each"],
-  "interests": ["4 to 8 specific interests, a few words each"]'''
+  "skills": ["4 to 7 concrete skills, each a phrase of 3 to 8 words, such as \\"counts cash fast\\""],
+  "flaws": ["3 to 5 real flaws, each a phrase of 3 to 8 words, such as \\"runs late to anything optional\\""],
+  "interests": ["4 to 8 specific interests, each a phrase of 3 to 8 words, such as \\"monthly poker with the neighbours\\""]'''
 LIFE_SHAPE = ''',
   "routine": "3 to 5 sentences in their own words describing a normal weekday and weekend",
   "life_themes": ["5 to 10 short themes their everyday life tends to involve, such as people, places by type, hobbies"],

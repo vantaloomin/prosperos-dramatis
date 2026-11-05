@@ -210,3 +210,15 @@ def test_a_user_persona_gets_no_everyday_life_or_relationship_to_the_user(model)
     system = system_of(model)
     assert "the user's own persona" in system and 'Relationship to the user' not in system
     assert '"schedule"' not in system and 'emotional_traits' not in system
+
+
+def test_skills_flaws_and_interests_are_asked_for_as_short_phrases():
+    """Every prompt that writes these lists asks for the same short shape: drafting, Help me write and the assistant
+    (field guides), and the split."""
+    guides = drafting.field_guides()
+    for key in ('skills', 'flaws', 'interests'):
+        assert '3 to 8 words' in guides[key]['guide']
+        assert 'sentence' not in guides[key]['guide']
+    assert drafting.CORE_SHAPE.count('a phrase of 3 to 8 words') == 3
+    assert 'short phrases of 3 to 8 words' in drafting.template('rules.md')
+    assert 'short phrases of 3 to 8 words' in drafting.template('split.md')
