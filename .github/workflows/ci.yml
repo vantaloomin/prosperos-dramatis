@@ -80,8 +80,14 @@ jobs:
             Program/companion/world/personality.py
             Program/companion/world/looks.py
             Program/companion/world/dating.py
+            Program/companion/world/naming.py
+            Program/companion/world/schema.py
+            Program/companion/world/generators.py
+            Program/companion/world/catalog.py
             Program/companion/world/data/personality.json
             Program/companion/world/data/looks.json
+            Program/companion/world/data/names.json
+            Program/companion/world/data/given_names.json
             Program/companion/providers/
             Program/companion/images/tags.py
             Program/companion/images/node_packs.py

@@ -19,9 +19,13 @@ companion/character_helper.py at ae9b0ab) and Adventure (adventure/making.py at 
   truth never ends up in a Background other characters read.
 - A pasted character is data: it goes in the user's message between markers it cannot close, and lines in it that
   talk to the app or the model are named back to the user, who reviews the fields before anything is saved.
+- Names come from Companion's banks (dramatis/names.py): with Name left blank the model chooses from names people of
+  their age and background are really given, and it gets ordinary given and family names for everyone their story
+  mentions. Nothing the AI-slop audit lists is ever offered.
 - The AI-slop audit (dramatis/slop.py) reads every drafted field: a hard hit the user didn't write themselves (a stock
   name such as Elara Voss, an em dash, the assistant's voice) sends the reply back once, and what is left comes back
-  with the draft for the form to show. The list itself never goes into a prompt.
+  with the draft for the form to show. A stock or made-up name still there after the retry is swapped for a drawn one
+  instead, wherever it appears. The list itself never goes into a prompt.
 - The user's picks win over the model: name, gender, age, where and when, the relationship, and emotional edges,
   which stay off unless the user turns them on or their words ask for them. A user persona (the user themself, to
   play as) gets no everyday life in Companion and no relationship to the user: Companion takes them as a persona.
@@ -41,7 +45,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from dramatis import ai, looks, slop
+from dramatis import ai, looks, names, slop
 from dramatis.character import APPS, PERSONA, Character
 from dramatis.formats.companion import personality
 from dramatis.formats.companion.errors import DomainError
@@ -53,6 +57,8 @@ TEXT_LIMITS = {'name': 80, 'about': 2000, 'personality': 8000, 'voice': 600, 'so
 LIST_LIMITS = {'skills': (20, 300), 'flaws': (20, 300), 'interests': (50, 120)}
 LIFE_TEXT = {'routine': 8000, 'absence_reaction': 2000}
 REQUIRED = ('name', 'about', 'personality')
+# Fields that never name anyone else, so Help me write needs no names for the people in them.
+NO_PEOPLE = {'sound', 'appearance', 'voice', 'personality', 'skills', 'flaws', 'interests', 'life_themes', 'schedule'}
 GENDERS = ('woman', 'man', 'nonbinary')
 APP_NAMES = {'companion': "Prospero's Companion (an everyday life and chats)",
              'adventure': "Prospero's Adventure (a tabletop story, with a mind of their own)",
@@ -422,8 +428,9 @@ class Shape:
     quick start's) is asked for every field: one left empty sends the first reply back, and after the retry it is
     named in `missing` rather than left quietly blank."""
 
-    def __init__(self, picks: dict, sliders: dict, plan: looks.Plan, split: bool = False, whole: bool = False):
-        self.picks, self.sliders, self.plan, self.split, self.whole = picks, sliders, plan, split, whole
+    def __init__(self, picks: dict, sliders: dict, plan: looks.Plan, roll: names.Roll, split: bool = False,
+                 whole: bool = False):
+        self.picks, self.sliders, self.plan, self.roll, self.split, self.whole = picks, sliders, plan, roll, split, whole
         self.apps = picks.get('apps') or list(APPS)
         self.depth = DRAFT_DEPTH if whole else depth_asked(picks)
 
@@ -456,6 +463,7 @@ class Shape:
         hits = slop.audit(character, self.allowed())
         if slop.hard(hits) and not final:
             raise Unusable(slop.problem(slop.hard(hits)))
+        character, hits = self.renamed(character, hits)
         result = {'character': character, 'audit': hits}
         if self.whole:
             result['missing'] = missing
@@ -464,6 +472,17 @@ class Shape:
             result['filled_in'] = [key for key in dict.fromkeys(filled)
                                    if key in made and key not in ('name', 'arc', 'psyche', 'secret')]
         return result
+
+    def renamed(self, character: dict, hits: list[dict]) -> tuple[dict, list[dict]]:
+        """After the retry: the stock and made-up names the model kept, swapped for drawn ones (names.Roll.swaps)."""
+        swaps = self.roll.swaps(slop.hard(hits), character.get('name') or '')
+        if not swaps:
+            return character, hits
+        try:
+            swapped = Character.model_validate(names.replaced(character, swaps)).model_dump()
+        except ValidationError:
+            return character, hits
+        return swapped, slop.audit(swapped, self.allowed())
 
     def inner(self, raw: dict) -> dict:
         """The arc and psyche, when the user's words asked for them, and a pasted character's secret, kept in its own
@@ -542,6 +561,12 @@ def looks_plan(seed: str, picks: dict, words: str) -> looks.Plan:
                       setting=(picks.get('setting') or '').strip())
 
 
+def names_roll(seed: str, picks: dict, words: str) -> names.Roll:
+    """The names a draft is offered, drawn for their gender, age and where and when they come from."""
+    return names.Roll(seed, gender=picks.get('gender') or '', age=age_value(picks.get('age')),
+                      setting=(picks.get('setting') or '').strip(), words=words)
+
+
 def looks_text(plan: looks.Plan) -> str:
     return '\n\n'.join(part for part in (plan.brief(), plan.ask()) if part)
 
@@ -570,12 +595,14 @@ def draft(picks: dict) -> dict:
     words = f"{picks.get('idea', '')} {picks.get('vibe', '')}"
     sliders = rolled(words, seed)
     plan = looks_plan(seed, picks, words)
+    roll = names_roll(seed, picks, words)
     system = fill(template('draft.md'), rules=template('rules.md'), picks=picks_text(picks),
-                  personality=personality_brief(sliders), looks=looks_text(plan), emotional=emotional_text(picks),
+                  personality=personality_brief(sliders), looks=looks_text(plan),
+                  names=roll.brief(named=bool((picks.get('name') or '').strip())), emotional=emotional_text(picks),
                   depth=draft_depth_text(),
                   shape=shape_text(picks.get('apps') or list(APPS), depth=DRAFT_DEPTH, persona=is_persona(picks),
                                    secret=True, looks_shape=plan.shape()))
-    return ask(system, Shape(picks, sliders, plan, whole=True)) | {'seed': seed}
+    return ask(system, Shape(picks, sliders, plan, roll, whole=True)) | {'seed': seed}
 
 
 def split(picks: dict) -> dict:
@@ -585,14 +612,16 @@ def split(picks: dict) -> dict:
     seed = new_seed()
     sliders = rolled(text, seed)
     plan = looks_plan(seed, picks, text)
+    roll = names_roll(seed, picks, text)
     depth = depth_asked(picks)
     system = fill(template('split.md'), rules=template('rules.md'), shape=shape_text(picks.get('apps') or list(APPS),
                   split=True, depth=depth, persona=is_persona(picks), looks_shape=plan.shape()),
-                  looks=looks_text(plan), emotional=emotional_text(picks), depth=depth_text(depth))
+                  looks=looks_text(plan), names=roll.brief(named=False, pasted=True), emotional=emotional_text(picks),
+                  depth=depth_text(depth))
     # In the message, not the instructions, and inside markers it cannot close.
     pasted = f'The character I pasted:\n[[pasted]]\n{fenced(text)}\n[[end of pasted]]\n\nWrite the JSON now.'
-    found = ask(system, Shape({key: value for key, value in picks.items() if key != 'name'}, sliders, plan, split=True),
-                pasted)
+    found = ask(system, Shape({key: value for key, value in picks.items() if key != 'name'}, sliders, plan, roll,
+                              split=True), pasted)
     return found | {'seed': seed, 'instructions': instructions_in(text)}
 
 
@@ -603,19 +632,28 @@ def rewrite(character: dict, field: str, request: str = '') -> dict:
         raise DomainError(f'{field} cannot be rewritten.', 422)
     guide = guides[field]
     current = for_model(character, secret=sees_secret(field))
+    roll = names.Roll(new_seed(), gender=character.get('gender') or '', age=age_value(character.get('age')),
+                      setting=character.get('setting') or '', words=character.get('about') or '')
     system = fill(template('field.md'), rules=template('rules.md'), field=field, field_guide=guide['guide'],
                   field_shape=guide['shape'], emotional=FIELD_EDGES,
+                  names='' if field in NO_PEOPLE else roll.others_brief(),
                   request=f'What the user wants changed: {request.strip()}' if request.strip() else '',
                   character=json.dumps(current, ensure_ascii=False, indent=1))
     allowed = f"{json.dumps(character, ensure_ascii=False)} {request}"
-    return ask(system, lambda raw, final: audited(field, field_value(field, guide, raw, final), allowed, final))
+    own = character.get('name') or ''
+    return ask(system, lambda raw, final: audited(field, field_value(field, guide, raw, final), allowed, final,
+                                                 roll, own))
 
 
-def audited(field: str, value, allowed: str, final: bool) -> dict:
-    """A rewritten field through the audit: hard hits the character didn't already have go back once."""
+def audited(field: str, value, allowed: str, final: bool, roll: names.Roll | None = None, own: str = '') -> dict:
+    """A rewritten field through the audit: hard hits the character didn't already have go back once, and a stock or
+    made-up name still there after that is swapped for a drawn one."""
     hits = slop.audit(placed(field, value), allowed)
     if slop.hard(hits) and not final:
         raise Unusable(slop.problem(slop.hard(hits)))
+    if roll and (swaps := roll.swaps(slop.hard(hits), own)):
+        value = names.replaced(value, swaps)
+        hits = slop.audit(placed(field, value), allowed)
     return {'field': field, 'value': value, 'audit': hits}
 
 

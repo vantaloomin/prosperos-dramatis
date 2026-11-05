@@ -14,6 +14,8 @@ Their character comes first:
 
 {{looks}}
 
+{{names}}
+
 {{emotional}}
 
 {{depth}}

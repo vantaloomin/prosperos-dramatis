@@ -38,7 +38,10 @@ Dramatis puts in it is the next step for each of them. Windows is the only platf
 **A few things to start.** Pick a name, gender, age and where and when they come from (all optional), plus which apps
 they're for. Your model writes the rest: who they are, their personality, how they talk and how they sound, how others
 see them and how they see themselves, background, wants and fears, skills, flaws and interests, and for Companion,
-their week, routine and life themes. Under **More options** you can add an idea, a vibe, how they know you in
+their week, routine and life themes. Names come from Companion's own name banks: leave Name empty and your model picks
+one of several that people their age were really given where and when they come from (Victorian London, Osaka, the
+frontier, a storybook kingdom), and the people in their story get ordinary names too, their family sharing theirs. The
+dice in an empty Name field rolls one with no model. Under **More options** you can add an idea, a vibe, how they know you in
 Companion, and emotional edges, which are off unless you turn them on. Characters are always adults.
 
 **Bring a character you already have.** Paste notes, a bio or a scene, or open a character file from another app:
@@ -87,10 +90,11 @@ secret only when it writes the secret itself, their inner life or how they see t
 sees what people believe instead, so the truth doesn't slip into a field other characters read.
 
 **An audit for AI slop.** Everything the model writes is checked against Wren Halloway's list of stock names (Elara
-Voss), words and patterns that mark text as model-written, plus the signs from Wikipedia's
+Voss), Companion's own check for names that read as made up (Vaelith Duskwhisper), words and patterns that mark text as model-written, plus the signs from Wikipedia's
 [Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing) that fit a character. A hard hit,
 such as a stock name, an em dash, the chatbot's voice or an unfilled "[Insert name]", sends the draft back to the
-model once. Anything left shows on the form, with flagged words under **Worth a look**. Tick the ones you want gone
+model once. A stock or made-up name the model keeps after that is swapped for one from Companion's name banks,
+the same wherever it appears. Anything else left shows on the form, with flagged words under **Worth a look**. Tick the ones you want gone
 and **Fix selected** (or **Fix all**): your model rewrites only those words, and each changed field shows the result
 with Keep / Put back. **Ignore** keeps a word on that character for good (an "Irish" for someone from Belfast), and
 **Ignored** lists them to take back. Names and words you typed or pasted yourself are never held against the draft,

@@ -9,6 +9,8 @@ The character so far, as JSON:
 
 {{emotional}}
 
+{{names}}
+
 Write a new version of "{{field}}": {{field_guide}}
 
 {{request}}

@@ -10,6 +10,7 @@ import { InnerLife, SecretSection } from './InnerLife'
 import { Interview, sampleLine } from './Interview'
 import { isEmpty, pathOf, proposals, useOpenCount, useWritten, valueAt, withValue } from './proposals'
 import { Psyche } from './Psyche'
+import { useNameRoll } from './rollName'
 import { Portrait } from './Portrait'
 import { AppPicks, listed, type Begun } from './Start'
 import { FormAudit } from './Audit'
@@ -93,6 +94,9 @@ export function Editor({ saved, start, seed, filledIn, missing, note, portrait, 
   const [pendingPortrait, setPendingPortrait] = useState<string | null>(portrait ?? null)
   const [sample, setSample] = useState('')
   const set = (change: Partial<Character>) => setCharacter((current) => ({ ...current, ...change }))
+  const rollName = useNameRoll(character.name, (name) => set({ name }), () => ({
+    gender: character.gender, age: character.age, setting: character.setting, about: character.about,
+  }))
   // Setting a Details field makes it the user's own: its Rolled or From their words mark goes.
   const setLook = <K extends keyof Looks>(key: K, value: Looks[K]) => setCharacter((current) => {
     const { [key]: _gone, ...from } = current.looks_from ?? {}
@@ -220,7 +224,7 @@ export function Editor({ saved, start, seed, filledIn, missing, note, portrait, 
             onSaved={(next) => onSaved({ ...next, problems })} />
           <div className="stack grow">
             <div className="grid three">
-              <TextInput name="name" label="Name" value={character.name} onChange={(name) => set({ name })} maxLength={80} />
+              <TextInput name="name" label="Name" value={character.name} onChange={(name) => set({ name })} maxLength={80} roll={rollName} />
               <Field name="gender" label="Gender">{(id) => (
                 <select id={id} value={character.gender} onChange={(event) => set({ gender: event.target.value as Gender })}>
                   <option value="">Not said</option><option value="woman">Woman</option><option value="man">Man</option><option value="nonbinary">Nonbinary</option>

@@ -39,9 +39,28 @@ def test_a_draft_with_stock_names_is_sent_back_once(model):
 
 
 def test_what_survives_the_retry_comes_back_for_the_form(model):
-    model.replies = [reply(name='Elara Voss'), reply(name='Elara Voss')]
+    model.replies = [reply(background='Grew up by the sea — mostly.')] * 2
     found = drafting.draft(PICKS)
-    assert {hit['match'] for hit in slop.hard(found['audit'])} == {'Elara', 'Elara Voss', 'Voss'}
+    assert {hit['match'] for hit in slop.hard(found['audit'])} == {'—'}
+
+
+def test_a_stock_name_kept_after_the_retry_is_swapped_for_a_drawn_one_everywhere(model):
+    kept = reply(name='Elara Voss', about='Elara is 38 and works nights.', background='The Voss family ran a bakery. '
+                 'Her friend Kaelith Duskwhisper moved away.')
+    model.replies = [kept, kept]
+    found = drafting.draft(PICKS | {'gender': 'woman'})
+    character = found['character']
+    given = character['about'].removesuffix(' is 38 and works nights.')
+    family = character['background'].split(' family ran')[0].removeprefix('The ')
+    assert character['name'].startswith(f'{given} ') and character['name'].endswith(f' {family}')
+    assert not {'Elara', 'Voss', 'Kaelith', 'Duskwhisper'} & set(json.dumps(character).replace('"', ' ').split())
+    assert not slop.hard(found['audit'])
+
+
+def test_made_up_names_are_hard_hits():
+    found = slop.scan('Raised by Vaelith Ravencrest in a village of farmers. Mary Smith taught her to read.')
+    assert [(hit['rule'], hit['match']) for hit in slop.hard(found)] == [
+        (slop.MADE_UP, 'Vaelith'), (slop.MADE_UP, 'Ravencrest')]
 
 
 def test_a_name_the_user_asked_for_is_theirs(model):

@@ -3,6 +3,7 @@ import { ClipboardPaste, FileUp, Square, UserPlus } from 'lucide-react'
 import { APPS, APP_NAMES, RELATIONSHIPS, emptyCharacter, fileData, sendJson, type App, type Character, type Drafted, type Gender, type Opened, type OpenedFile, type Relationship } from './api'
 import { Bolt, Field, Fold, TextArea, TextInput, useModelReady } from './Fields'
 import { useModelCall } from './modelCall'
+import { useNameRoll } from './rollName'
 import { profileFor, useModels } from './models/ModelSettings'
 
 /** How the form opens: the character, and a portrait (base64 PNG) to save with them, such as an imported file's picture. */
@@ -52,6 +53,9 @@ function QuickStart({ initial, onBegin }: { initial?: Picks; onBegin: (begun: Be
   const call = useModelCall()
   const [picks, setPicks] = useState({ name: '', gender: '' as Gender, age: '', setting: '', idea: '', vibe: '', relationship: 'friendship' as Relationship, emotional_edges: false, ...initial })
   const set = (change: Partial<typeof picks>) => setPicks((current) => ({ ...current, ...change }))
+  const rollName = useNameRoll(picks.name, (name) => set({ name }), () => ({
+    gender: picks.gender, age: picks.age ? Number(picks.age) : null, setting: picks.setting, about: `${picks.idea} ${picks.vibe}`,
+  }))
   const submit = (event?: FormEvent) => {
     event?.preventDefault()
     void call.run((signal) => sendJson<Drafted>('/api/draft', 'POST', {
@@ -70,7 +74,7 @@ function QuickStart({ initial, onBegin }: { initial?: Picks; onBegin: (begun: Be
       {!ready && <p className="note">Set up a model at the top to draft with it, or fill in the form yourself.</p>}
       <form className="stack" onSubmit={submit}>
         <div className="grid three">
-          <TextInput label="Name" value={picks.name} onChange={(name) => set({ name })} maxLength={80} />
+          <TextInput label="Name" value={picks.name} onChange={(name) => set({ name })} maxLength={80} roll={rollName} />
           <Field label="Gender">{(id) => (
             <select id={id} value={picks.gender} onChange={(event) => set({ gender: event.target.value as Gender })}>
               <option value="">Any</option><option value="woman">Woman</option><option value="man">Man</option><option value="nonbinary">Nonbinary</option>

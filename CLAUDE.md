@@ -23,6 +23,11 @@ character creator.
   user's words speak of the model reads into the fields, the rest are rolled first with Companion's own looks banks
   (vendored `formats/companion/looks.py` and `dating.py`), and `Character.looks_from` marks each as From their words or
   Rolled, as the sliders are marked, until the user edits it.
+- Names are Companion's (`dramatis/names.py`): its name banks and birth-year lists (vendored `formats/companion/
+  naming.py`, `data/names.json`, `data/given_names.json`) and its own `generators.name`, vendored as a part (sync_format's
+  `parts`: only the named definitions of a file too tied to Companion to vendor whole). `Place` reads a Companion city
+  from the setting. A draft with Name empty chooses among drawn names; nothing the slop audit lists is offered; a stock
+  or made-up name kept after the retry is swapped (`Roll.swaps`); a name the user typed is never touched.
 - A character's depth (`interview`, `arc`, `secret`, `psyche`) is optional and no app has a field for it: the app
   shapes fold it into fields they read. The secret goes everywhere the character does, so they can keep it. The interview's routes live in
   `dramatis/interview.py`, its own router; Help me write reaches nested fields by dotted keys (`arc.lie`,
