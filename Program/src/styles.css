@@ -39,7 +39,10 @@ input[type='checkbox'], input[type='radio'], input[type='range'] { accent-color:
 .ok { color: var(--ok); display: inline-flex; gap: 0.3rem; align-items: center; }
 input, select, textarea { font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 0.4rem 0.55rem; min-width: 0; width: 100%; }
 input[type='checkbox'] { width: auto; flex: none; }
-textarea { resize: vertical; }
+/* A text box is as tall as its text, from a floor of its `rows` (TextArea sets --rows) to a ceiling past which it
+ * scrolls. Browsers without field-sizing keep the rows height and the drag handle. */
+textarea { resize: vertical; field-sizing: content; min-height: calc(var(--rows, 2) * 1lh + 0.8rem + 2px); max-height: 70vh; }
+@media (max-width: 720px) { textarea { max-height: 45vh; } }
 button, a.button, summary.button { font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 0.4rem 0.7rem; cursor: pointer; display: inline-flex; gap: 0.3rem; align-items: center; text-decoration: none; }
 button:disabled { opacity: 0.55; cursor: default; }
 button.primary { background: var(--accent); border-color: var(--accent); color: var(--panel); }
@@ -61,8 +64,11 @@ button[aria-pressed='true'], button[aria-checked='true'] { border-color: var(--a
 .field-top { display: flex; align-items: center; gap: 0.3rem; min-height: 1.5rem; }
 .field-top > label, .field-top > .label { font-size: 0.85rem; color: var(--muted); }
 .field-box { position: relative; display: grid; }
+/* Side by side, a row's text boxes end level: the shorter one stretches to its neighbour. */
+.grid > .field:has(> .field-box > textarea), .grid > .stack > .field:first-child:has(> .field-box > textarea) { grid-template-rows: auto 1fr; }
+.grid > .stack:has(> .field:first-child > .field-box > textarea) { grid-template-rows: 1fr; }
 .field-box.has-bolt > input, .field-box.has-bolt > textarea { padding-right: 2.2rem; }
-.field-box.has-bolt > .list > input.add { padding-right: 2.2rem; }
+.field-box.has-bolt > .list > .add { padding-right: 2.2rem; }
 button.bolt { border: none; background: none; padding: 0.2rem; color: var(--accent); border-radius: 6px; }
 button.bolt:hover, button.bolt[aria-expanded='true'] { background: color-mix(in srgb, var(--accent) 14%, transparent); }
 .field-box > button.bolt { position: absolute; top: 0.3rem; right: 0.3rem; }
@@ -81,10 +87,12 @@ button.quiet:hover { border-color: var(--line); }
 /* Add/remove lists: one row per item, and an empty row to add the next. */
 .list { display: grid; gap: 0.3rem; }
 .list .item { display: flex; gap: 0.2rem; align-items: center; }
-.list .item input { flex: 1; width: auto; }
+/* List items are one-line text boxes that wrap a long item onto more lines; Enter never makes a new line. */
+.list textarea { --rows: 1; resize: none; }
+.list .item textarea { flex: 1; width: auto; }
 .list .item button.icon { color: var(--muted); }
 .list .item button.icon:hover { color: var(--error); }
-.list input.add { border-style: dashed; margin-right: 1.65rem; width: auto; }
+.list .add { border-style: dashed; margin-right: 1.65rem; width: auto; }
 /* Folds: a chevron and a name, the body indented under it. */
 .folds { display: grid; border-top: 1px solid var(--line); }
 .folds > .fold { border-bottom: 1px solid var(--line); }
@@ -307,6 +315,7 @@ button.side-toggle { width: 100%; justify-content: flex-start; background: var(-
 .assistant-edit .error { display: flex; gap: 0.3rem; align-items: center; }
 .assistant-value { white-space: pre-wrap; max-height: 12rem; overflow: auto; font-size: 0.85rem; padding: 0.3rem 0.45rem; border-radius: 4px; background: var(--bg); }
 .assistant-composer { display: grid; gap: 0.4rem; }
+.assistant-composer textarea { max-height: 12rem; }
 .assistant-composer p { margin: 0; }
 .assistant-composer .row { justify-content: space-between; }
 .assistant-focus { display: flex; align-items: center; gap: 0.2rem; }
