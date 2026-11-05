@@ -1,56 +1,532 @@
 {
-  "_about": "One everyday detail of how a drafted character looks, rolled by dramatis/looks.py so the Appearance never falls back on the model's own favourite (three drafts in a row came back with a chickenpox scar above the left eyebrow). Habits, wear and what they carry, not marks on their body: a mark people notice is the Something people notice field. A roll picks a group, then a detail in it, so drafts spread across kinds of detail. In each group 'any' fits every era, 'modern' only the present day and the future, 'period' only the past and fantasy settings.",
-  "groups": {
-    "hands": {
-      "any": ["callused fingertips", "short, practical nails", "nails bitten to the quick", "a ring they turn when they are thinking",
-              "dry, cracked knuckles in winter", "a thumbnail they pick at when bored", "hands that are never quite still",
-              "a pale band where a ring used to be", "fingers that drum on whatever is nearest", "a plaster on one finger more often than not",
-              "a grip on cups with both hands", "chalk or flour worked into the creases of their palms"],
-      "modern": ["chipped nail polish they never get round to removing", "a smartwatch they check without meaning to",
-                 "a pen-click habit", "a hair tie always on one wrist", "a fading festival wristband"],
-      "period": ["ink-dark fingertips from letters", "a signet ring worn smooth", "fingerless gloves in all weather",
-                 "a needle and thread pinned inside a cuff"]
+ "_about": "The one extra detail of how a drafted character looks, rolled by dramatis/looks.py so the Appearance never falls back on the model's own favourite (three drafts in a row came back with a chickenpox scar above the left eyebrow). Mostly the body (face, eyes and brows, mouth and teeth, skin, frame, signs of age), then habits, wear and what they carry, and rarely a mark (scars, moles, birthmarks, tattoos). A roll picks a group by its weight, then a detail in it. In each group 'any' fits every era, 'modern' the present day and the future, 'period' the past and fantasy. A detail can say who it fits: 'skin' (a set below), 'build' (Companion's slender, middle or heavier, dating.BUILD_GROUPS), 'min_age' and 'max_age', and 'who' (woman, man, nonbinary); one whose condition is not known for them is not rolled.",
+ "skin_sets": {
+  "light": [
+   "very fair",
+   "fair",
+   "light",
+   "light olive"
+  ],
+  "olive": [
+   "light olive",
+   "olive",
+   "tan",
+   "warm tan",
+   "warm beige",
+   "light brown"
+  ],
+  "brown": [
+   "light brown",
+   "medium brown",
+   "brown",
+   "deep brown",
+   "dark brown"
+  ]
+ },
+ "groups": {
+  "hands": {
+   "weight": 1,
+   "any": [
+    "callused fingertips",
+    "short, practical nails",
+    "nails bitten to the quick",
+    "a ring they turn when they are thinking",
+    "dry, cracked knuckles in winter",
+    "a thumbnail they pick at when bored",
+    "hands that are never quite still",
+    "a pale band where a ring used to be",
+    "fingers that drum on whatever is nearest",
+    "a plaster on one finger more often than not",
+    "a grip on cups with both hands",
+    "chalk or flour worked into the creases of their palms"
+   ],
+   "modern": [
+    "chipped nail polish they never get round to removing",
+    "a smartwatch they check without meaning to",
+    "a pen-click habit",
+    "a hair tie always on one wrist",
+    "a fading festival wristband"
+   ],
+   "period": [
+    "ink-dark fingertips from letters",
+    "a signet ring worn smooth",
+    "fingerless gloves in all weather",
+    "a needle and thread pinned inside a cuff"
+   ]
+  },
+  "clothes": {
+   "weight": 1,
+   "any": [
+    "sleeves always pushed up to the elbow",
+    "a coat a size too big",
+    "a collar that never sits flat",
+    "a button sewn back on in the wrong colour",
+    "shoes resoled more than once",
+    "boots with the laces wrapped twice",
+    "a scarf in every season",
+    "clothes chosen for their pockets",
+    "one good jacket worn with everything",
+    "a hem let down and the old crease still showing",
+    "socks that never match",
+    "everything in shades of one colour",
+    "a hat pulled low whatever the weather",
+    "a faded patch where a bag strap rubs",
+    "dust or flour on their cuffs more often than not",
+    "a shirt tucked in on one side only"
+   ],
+   "modern": [
+    "trainers worn down at the heels",
+    "a hoodie with the drawstrings chewed",
+    "a jacket with a pin from a band nobody else knows",
+    "a work fleece with the logo picked off",
+    "jeans with a phone-shaped fade in the back pocket",
+    "a lanyard they forget to take off",
+    "a puffer jacket with tape over a tear",
+    "a T-shirt from a 5K they never ran"
+   ],
+   "period": [
+    "a waistcoat with one button missing",
+    "a cloak mended at the shoulder",
+    "boots blacked every morning",
+    "an apron they forget to take off",
+    "a shawl pinned with a tin brooch",
+    "sleeves rolled and tied with string"
+   ]
+  },
+  "carried": {
+   "weight": 1,
+   "any": [
+    "keys clipped to a belt loop",
+    "a pencil tucked behind one ear",
+    "a handkerchief always in one pocket",
+    "a pocket that always holds something to eat",
+    "a battered notebook with a rubber band round it",
+    "a bag that weighs more than it should",
+    "reading glasses on a cord",
+    "a knife or tool on their belt",
+    "a folded list in a back pocket",
+    "a flask that goes everywhere with them"
+   ],
+   "modern": [
+    "phone in a cracked case with a card wedged behind it",
+    "earbuds that live around their neck",
+    "a tote bag from a shop that closed years ago",
+    "a reusable cup with a chipped lid",
+    "a backpack with one strap broken",
+    "a car key with too many loyalty tags on it",
+    "a lip balm in every pocket",
+    "a charging cable in every bag"
+   ],
+   "period": [
+    "a pocket watch on a chain",
+    "a pipe they rarely light",
+    "a coin purse on a cord round the neck",
+    "a sprig of something tucked in a buttonhole",
+    "a whetstone in a coat pocket"
+   ]
+  },
+  "hair_and_grooming": {
+   "weight": 1,
+   "any": [
+    "hair that escapes whatever holds it by noon",
+    "a parting that wanders",
+    "eyebrows that need a trim",
+    "a fringe they keep pushing out of their eyes",
+    "hair still damp from the morning more days than not",
+    "a cowlick that will not lie flat",
+    "a faint smell of woodsmoke or soap about them",
+    "chapped lips in winter"
+   ],
+   "modern": [
+    "sunglasses pushed up on their head indoors",
+    "roots growing out under an old dye",
+    "a fresh haircut that is not quite even",
+    "a claw clip that does most of the work",
+    "a cap with a curved brim and a sweat line"
+   ],
+   "period": [
+    "hair braided tight for work",
+    "a beard or braid kept with a bit of twine",
+    "a hat that leaves a line across the forehead"
+   ]
+  },
+  "posture_and_habit": {
+   "weight": 1,
+   "any": [
+    "a habit of standing with their weight on one hip",
+    "a slight squint when they read",
+    "a posture that straightens when someone looks at them",
+    "a watch worn face-in on the wrist",
+    "shoulders that ride up when they are listening",
+    "a walk that is always slightly too fast",
+    "a habit of leaning on doorframes",
+    "arms folded whenever they are thinking",
+    "a head tilt when they disagree",
+    "a way of sitting on the edge of chairs",
+    "a quick glance at exits when they come into a room",
+    "a laugh they cover with one hand",
+    "a slouch that comes back as soon as they stop thinking about it",
+    "a habit of humming under their breath"
+   ],
+   "modern": [
+    "a thumb hovering over a phone screen",
+    "a habit of checking their reflection in shop windows",
+    "posture bent from years at a desk"
+   ],
+   "period": [
+    "a bow of the head to anyone who looks important",
+    "the careful stride of someone who has carried loads"
+   ]
+  },
+  "face": {
+   "weight": 3,
+   "any": [
+    "a face that goes blotchy when they laugh hard",
+    "one cheek that dimples and the other that does not",
+    "a slightly lopsided face, one side a touch fuller",
+    "a forehead that creases even when they are relaxed",
+    "cheeks that flush with the smallest effort",
+    "a heavy brow that makes them look stern at rest",
+    "a long upper lip",
+    "ears that stick out a little",
+    "one ear set slightly higher than the other",
+    "a faint double chin when they look down",
+    "hollow cheeks",
+    "full, round cheeks",
+    "a widow's peak",
+    "a high, broad forehead",
+    "a short forehead under a low hairline",
+    "a nose that reddens in the cold",
+    "a nose that wrinkles when they laugh",
+    "flared nostrils when they are annoyed",
+    "a soft, rounded chin",
+    "a jaw that juts when they are being stubborn",
+    "a face that looks tired even after a full night",
+    "deep nasolabial folds for their age",
+    "a face that is all angles when they are thin and all softness when they are not",
+    "earlobes attached at the jaw",
+    "small ears close to the head",
+    "a resting face people read as cross",
+    "a face that looks younger when they smile and older when they don't",
+    "a slightly crooked nose bridge",
+    "a nose with a small bump they got from somewhere",
+    "a broad, flat nose bridge"
+   ],
+   "modern": [
+    "a nose that peels every summer"
+   ],
+   "period": [
+    "a face weathered from working outdoors"
+   ]
+  },
+  "eyes_and_brows": {
+   "weight": 2,
+   "any": [
+    "eyebrows that sit at different heights",
+    "thick, straight eyebrows that nearly meet",
+    "thin, pale eyebrows that vanish in photos",
+    "one eye that narrows more than the other when they smile",
+    "heavy upper lids that make them look sleepy",
+    "dark circles that never quite go",
+    "pale eyelashes",
+    "short, sparse eyelashes",
+    "eyes that water in the wind",
+    "a lazy eye that drifts when they are tired",
+    "deep-set eyes in shadow under the brow",
+    "puffy lower lids in the morning",
+    "a slight squint from not wearing their glasses enough",
+    "eyebrows that do most of the talking",
+    "eyes set a little far apart",
+    "bloodshot eyes after a long day",
+    "one eyebrow with a natural gap in it",
+    "eyebrows grown in thick and wild"
+   ]
+  },
+  "mouth_and_teeth": {
+   "weight": 2,
+   "any": [
+    "a gap between the front teeth",
+    "one front tooth that overlaps the other",
+    "small, even teeth",
+    "large front teeth",
+    "a smile that shows a lot of gum",
+    "a smile that only lifts one side",
+    "thin lips that disappear when they concentrate",
+    "a full lower lip they chew",
+    "a chipped corner on one front tooth",
+    "pointed canines",
+    "a slight overbite",
+    "a slight underbite",
+    "lips that crack in winter",
+    "a mouth that turns down at rest",
+    "a grey back tooth that shows when they laugh",
+    "a wide mouth",
+    "a small mouth that looks pursed at rest"
+   ],
+   "modern": [
+    "teeth very straight from childhood braces",
+    "a retainer case in their bag and very straight teeth"
+   ]
+  },
+  "skin": {
+   "weight": 2,
+   "any": [
+    {
+     "text": "freckles across the backs of their hands",
+     "skin": "light"
     },
-    "clothes": {
-      "any": ["sleeves always pushed up to the elbow", "a coat a size too big", "a collar that never sits flat",
-              "a button sewn back on in the wrong colour", "shoes resoled more than once", "boots with the laces wrapped twice",
-              "a scarf in every season", "clothes chosen for their pockets", "one good jacket worn with everything",
-              "a hem let down and the old crease still showing", "socks that never match", "everything in shades of one colour",
-              "a hat pulled low whatever the weather", "a faded patch where a bag strap rubs", "dust or flour on their cuffs more often than not",
-              "a shirt tucked in on one side only"],
-      "modern": ["trainers worn down at the heels", "a hoodie with the drawstrings chewed", "a jacket with a pin from a band nobody else knows",
-                 "a work fleece with the logo picked off", "jeans with a phone-shaped fade in the back pocket", "a lanyard they forget to take off",
-                 "a puffer jacket with tape over a tear", "a T-shirt from a 5K they never ran"],
-      "period": ["a waistcoat with one button missing", "a cloak mended at the shoulder", "boots blacked every morning",
-                 "an apron they forget to take off", "a shawl pinned with a tin brooch", "sleeves rolled and tied with string"]
+    {
+     "text": "freckles on the shoulders that darken every summer",
+     "skin": "light"
     },
-    "carried": {
-      "any": ["keys clipped to a belt loop", "a pencil tucked behind one ear", "a handkerchief always in one pocket",
-              "a pocket that always holds something to eat", "a battered notebook with a rubber band round it",
-              "a bag that weighs more than it should", "reading glasses on a cord", "a knife or tool on their belt",
-              "a folded list in a back pocket", "a flask that goes everywhere with them"],
-      "modern": ["phone in a cracked case with a card wedged behind it", "earbuds that live around their neck",
-                 "a tote bag from a shop that closed years ago", "a reusable cup with a chipped lid", "a backpack with one strap broken",
-                 "a car key with too many loyalty tags on it", "a lip balm in every pocket", "a charging cable in every bag"],
-      "period": ["a pocket watch on a chain", "a pipe they rarely light", "a coin purse on a cord round the neck",
-                 "a sprig of something tucked in a buttonhole", "a whetstone in a coat pocket"]
+    {
+     "text": "skin that burns pink in twenty minutes",
+     "skin": "light"
     },
-    "hair_and_grooming": {
-      "any": ["hair that escapes whatever holds it by noon", "a parting that wanders", "eyebrows that need a trim",
-              "a fringe they keep pushing out of their eyes", "hair still damp from the morning more days than not",
-              "a cowlick that will not lie flat", "a faint smell of woodsmoke or soap about them", "chapped lips in winter"],
-      "modern": ["sunglasses pushed up on their head indoors", "roots growing out under an old dye", "a fresh haircut that is not quite even",
-                 "a claw clip that does most of the work", "a cap with a curved brim and a sweat line"],
-      "period": ["hair braided tight for work", "a beard or braid kept with a bit of twine", "a hat that leaves a line across the forehead"]
+    {
+     "text": "a flush that climbs the neck when they are embarrassed",
+     "skin": "light"
     },
-    "posture_and_habit": {
-      "any": ["a habit of standing with their weight on one hip", "a slight squint when they read", "a posture that straightens when someone looks at them",
-              "a watch worn face-in on the wrist", "shoulders that ride up when they are listening", "a walk that is always slightly too fast",
-              "a habit of leaning on doorframes", "arms folded whenever they are thinking", "a head tilt when they disagree",
-              "a way of sitting on the edge of chairs", "a quick glance at exits when they come into a room", "a laugh they cover with one hand",
-              "a slouch that comes back as soon as they stop thinking about it", "a habit of humming under their breath"],
-      "modern": ["a thumb hovering over a phone screen", "a habit of checking their reflection in shop windows", "posture bent from years at a desk"],
-      "period": ["a bow of the head to anyone who looks important", "the careful stride of someone who has carried loads"]
+    {
+     "text": "visible blue veins at the wrists",
+     "skin": "light"
+    },
+    {
+     "text": "pale skin that shows every bruise",
+     "skin": "light"
+    },
+    {
+     "text": "skin that tans deep in a day of sun",
+     "skin": "olive"
+    },
+    {
+     "text": "a darker tan line where a watch sits",
+     "skin": "olive"
+    },
+    {
+     "text": "darker skin over the knuckles and elbows",
+     "skin": "brown"
+    },
+    {
+     "text": "a sheen of oil on the forehead by afternoon",
+     "skin": "brown"
+    },
+    "dry patches on the elbows",
+    "eczema in the creases of the elbows that flares in winter",
+    "goosebumps at the smallest draught",
+    "a few stray dark hairs on the forearms",
+    "downy hair on the forearms",
+    "sweaty palms they wipe on their trousers",
+    "a rash of small bumps on the upper arms",
+    "skin that marks red where anything presses",
+    "clear skin they do nothing to keep",
+    "skin that breaks out along the jaw when they are stressed",
+    "cold hands whatever the weather",
+    "a ruddy outdoor complexion",
+    "pores visible on the nose",
+    "faint stretch marks on the hips",
+    "a sallow look in winter"
+   ],
+   "modern": [
+    "a farmer's tan from a summer job",
+    "pale stripes where sandal straps go"
+   ]
+  },
+  "frame": {
+   "weight": 3,
+   "any": [
+    {
+     "text": "prominent collarbones",
+     "build": "slender"
+    },
+    {
+     "text": "wrists so thin a watch slides around",
+     "build": "slender"
+    },
+    {
+     "text": "knobbly knees",
+     "build": "slender"
+    },
+    {
+     "text": "long, narrow feet",
+     "build": "slender"
+    },
+    {
+     "text": "sharp shoulder blades",
+     "build": "slender"
+    },
+    {
+     "text": "a soft stomach they are not bothered about",
+     "build": "heavier"
+    },
+    {
+     "text": "round, soft shoulders",
+     "build": "heavier"
+    },
+    {
+     "text": "thick wrists and broad hands",
+     "build": "heavier"
+    },
+    {
+     "text": "a heavy, rolling walk",
+     "build": "heavier"
+    },
+    {
+     "text": "strong forearms from work",
+     "build": "middle"
+    },
+    {
+     "text": "wide hips and a long stride",
+     "build": "middle"
+    },
+    {
+     "text": "a solid neck and thick shoulders",
+     "build": "middle"
+    },
+    "long arms that never fit a sleeve",
+    "short legs and a long torso",
+    "long legs and a short torso",
+    "big hands for their size",
+    "small, neat hands",
+    "long, bony fingers",
+    "short, blunt fingers",
+    "a thumb that bends back further than it should",
+    "flat feet that make them walk heavily",
+    "very small feet",
+    "very large feet",
+    "broad, square shoulders",
+    "narrow, sloping shoulders",
+    "a slight stoop",
+    "a very straight back",
+    "a long neck",
+    "a short neck",
+    "one shoulder carried higher than the other",
+    "a slight limp on cold days",
+    "knees that crack on stairs",
+    "double-jointed elbows",
+    "a barrel chest",
+    "a sway in the lower back",
+    "pigeon toes",
+    "calves like a cyclist's",
+    "a high waist",
+    "hands that shake slightly when they are tired",
+    "a hitch in their walk from an old ankle injury",
+    "a body that looks heavier sitting down than standing"
+   ],
+   "period": [
+    "shoulders built by years of hauling",
+    "a back bent a little from the plough or the desk"
+   ]
+  },
+  "signs_of_age": {
+   "weight": 2,
+   "any": [
+    {
+     "text": "grey coming in at the temples first",
+     "min_age": 36
+    },
+    {
+     "text": "crow's feet that show when they smile",
+     "min_age": 32
+    },
+    {
+     "text": "reading glasses they keep losing",
+     "min_age": 42
+    },
+    {
+     "text": "a softening along the jaw",
+     "min_age": 40
+    },
+    {
+     "text": "liver spots on the backs of the hands",
+     "min_age": 55
+    },
+    {
+     "text": "a few coarse grey hairs in the eyebrows",
+     "min_age": 45
+    },
+    {
+     "text": "deep lines across the forehead",
+     "min_age": 45
+    },
+    {
+     "text": "knuckles thickened with age",
+     "min_age": 55
+    },
+    {
+     "text": "a neck beginning to loosen",
+     "min_age": 50
+    },
+    {
+     "text": "thinning at the crown",
+     "min_age": 38,
+     "who": [
+      "man"
+     ]
+    },
+    {
+     "text": "a few grey hairs they pull out",
+     "min_age": 28,
+     "max_age": 40
+    },
+    {
+     "text": "the first fine lines under the eyes",
+     "min_age": 28,
+     "max_age": 38
+    },
+    {
+     "text": "still a few spots along the jaw at their age",
+     "max_age": 30
+    },
+    {
+     "text": "hands older than the rest of them",
+     "min_age": 35
+    },
+    {
+     "text": "a stiff first few steps after sitting",
+     "min_age": 50
     }
+   ]
+  },
+  "marks": {
+   "weight": 1,
+   "any": [
+    "a mole on the side of the neck",
+    "a small mole just under one eye",
+    "a cluster of moles on one shoulder",
+    "a coffee-coloured birthmark on one forearm",
+    "a pale birthmark at the hairline",
+    "a faint pink birthmark on the back of the neck",
+    "a vaccination scar on the upper arm",
+    "a thin white scar along one knuckle",
+    "a burn mark on the inside of one wrist from an oven",
+    "a scar on the chin from a fall as a kid",
+    "a small scar through the lip",
+    "a long scar on one knee from surgery",
+    "a pale line across one palm",
+    "a nick out of one ear",
+    "a dent in one shin from an old break",
+    "a raised scar on the back of one hand",
+    "stitches scars at the hairline, mostly hidden",
+    "a crooked little finger that set badly",
+    "a missing fingertip from an accident",
+    "a small skin tag by one eye"
+   ],
+   "modern": [
+    "a small tattoo on the inside of one ankle",
+    "a faded tattoo they regret on one shoulder",
+    "stretched lobes from old piercings",
+    "a closed-up eyebrow piercing",
+    "a tattoo of a date on one forearm",
+    "a line of small stud piercings up one ear",
+    "a patchy home-done tattoo on one finger",
+    "a nose piercing hole without the stud"
+   ],
+   "period": [
+    "a brand of a guild or regiment on one forearm",
+    "a pockmark or two from an old fever",
+    "a blacksmith's burn on one forearm"
+   ]
   }
+ }
 }
