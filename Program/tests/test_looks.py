@@ -78,17 +78,50 @@ def test_the_hair_their_words_give_steers_the_colouring_rolled_around_it():
     assert skins <= {'very fair', 'fair', 'light', 'light olive'}
 
 
-def test_the_everyday_detail_is_rolled_and_no_mark_is_left_to_the_model():
+def texts(era: str) -> set[str]:
+    return {item if isinstance(item, str) else item['text'] for group in looks.everyday_bank()['groups'].values()
+            for item in group.get(era, [])}
+
+
+def test_one_more_detail_is_rolled_and_no_mark_is_left_to_the_model():
     plan = looks.Plan('seed-5', gender='woman', age=30)
-    assert f'An everyday detail: {plan.everyday}' in plan.brief() and 'Give them no scar' in plan.brief()
-    details = [looks.Plan(f'seed-{n}', gender='woman').everyday for n in range(100)]
-    assert len(set(details)) > 45
-    groups = looks.everyday_bank()['groups'].values()
-    modern = {item for group in groups for item in group.get('modern', [])}
-    period = {item for group in groups for item in group.get('period', [])}
-    rolled = {looks.Plan(f'seed-{n}', setting='a frontier town in 1870').everyday for n in range(100)}
-    assert not rolled & modern and rolled & period
-    assert not {looks.Plan(f'seed-{n}', setting='Baltimore, today').everyday for n in range(100)} & period
+    assert f'Another detail of how they look: {plan.everyday}' in plan.brief() and 'Give them no scar' in plan.brief()
+    details = [looks.Plan(f'seed-{n}', gender='woman', age=30).everyday for n in range(200)]
+    assert len(set(details)) > 120
+    # Mostly the body: habits, wear and what they carry are the smaller part.
+    habits = texts('any') & {text for name in ('hands', 'clothes', 'carried', 'hair_and_grooming', 'posture_and_habit')
+                             for group in [looks.everyday_bank()['groups'][name]] for text in group['any']}
+    assert sum(detail in habits for detail in details) < 80
+    rolled = {looks.Plan(f'seed-{n}', setting='a frontier town in 1870').everyday for n in range(200)}
+    assert not rolled & texts('modern') and rolled & texts('period')
+    assert not {looks.Plan(f'seed-{n}', setting='Baltimore, today').everyday for n in range(200)} & texts('period')
+
+
+def test_a_detail_fits_their_skin_build_age_and_gender():
+    who = {'skin': 'deep brown', 'build': 'heavier', 'age': 26, 'gender': 'woman'}
+    choices = {text for _, items in looks.everyday_choices('modern', who).values() for text in items}
+    assert 'freckles across the backs of their hands' not in choices and 'prominent collarbones' not in choices
+    assert 'liver spots on the backs of the hands' not in choices and 'thinning at the crown' not in choices
+    assert 'a soft stomach they are not bothered about' in choices and 'darker skin over the knuckles and elbows' in choices
+    older = {text for _, items in looks.everyday_choices('modern', who | {'age': 60, 'gender': 'man'}).values()
+             for text in items}
+    assert 'liver spots on the backs of the hands' in older and 'thinning at the crown' in older
+    # Nothing with a condition is rolled for what is not known about them.
+    unknown = {text for _, items in looks.everyday_choices('modern', {}).values() for text in items}
+    assert 'prominent collarbones' not in unknown and 'a gap between the front teeth' in unknown
+
+
+def test_the_detail_is_never_of_the_part_people_already_notice():
+    for n in range(100):
+        found = looks.everyday(f'seed-{n}', 'modern', {'age': 30}, feature='freckles')
+        assert 'freckle' not in found
+
+
+def test_nothing_in_the_bank_reads_as_model_written_or_young():
+    from dramatis import drafting, slop
+    every = texts('any') | texts('modern') | texts('period')
+    assert len(every) > 250
+    assert not [text for text in every if slop.scan(text) or drafting.youthful(text)]
 
 
 def test_the_stock_eyebrow_scar_is_worth_a_look():

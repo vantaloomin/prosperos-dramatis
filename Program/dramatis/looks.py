@@ -9,8 +9,8 @@ looks sheet), so a Dramatis roll is the roll Companion would make for them. The 
 facts and writes the Appearance from them. Each field remembers where it came from (`Character.looks_from`):
 `idea` for their words, `rolled` for the roll; a field the user edits on the form drops its mark.
 
-The one ordinary detail an Appearance has (a habit, wear, what they carry) is rolled too (data/looks-everyday.json),
-and the model is told to give them no scar or mark the fields or the user's words don't: left to choose, models give
+One more detail of how they look is rolled too (data/looks-everyday.json): mostly of the body, sometimes a habit,
+wear or what they carry, rarely a mark, always one that fits their rolled skin, build, age and gender. The model is told to give them no scar or mark the fields or the user's words don't: left to choose, models give
 every character the same one (a chickenpox scar above the left eyebrow, three drafts running).
 
 After the reply, a field still empty is rolled when the Appearance the model wrote says nothing of it, and a weight
@@ -47,7 +47,7 @@ LOOKS_BRIEF = ('Their looks, decided by the app. Their appearance agrees with ev
                'mention them all; never give them a different height, build, skin, eyes or hair:')
 # The one ordinary detail an Appearance gets, rolled like the rest: left to the model, it is the same scar every time.
 EVERYDAY = Path(__file__).parent / 'data' / 'looks-everyday.json'
-EVERYDAY_LINE = 'An everyday detail'
+EVERYDAY_LINE = 'Another detail of how they look'
 NO_MARKS = ('Give them no scar, mole, birthmark or other mark on their body unless these, or the user\'s own words, '
             'give one.')
 # A kind of being whose size and colouring a human roll would get wrong: their words decide those.
@@ -122,18 +122,49 @@ def everyday_bank() -> dict:
     return json.loads(EVERYDAY.read_text(encoding='utf-8'))
 
 
-def everyday_choices(era: str) -> dict[str, list[str]]:
-    """The details that fit their era, by group: every era's, then the present's or the past's."""
+def fits(item, who: dict) -> str:
+    """The detail's text when it fits them (their skin, build, age, gender), else ''. A condition about something
+    not known for them (skin their words describe, no age) is not met."""
+    if isinstance(item, str):
+        return item
+    sets = everyday_bank()['skin_sets']
+    checks = (('skin', lambda want: who.get('skin') in sets[want]),
+              ('build', lambda want: who.get('build') == want),
+              ('min_age', lambda want: (who.get('age') or 0) >= want),
+              ('max_age', lambda want: bool(who.get('age')) and who['age'] <= want),
+              ('who', lambda want: who.get('gender') in want))
+    return item['text'] if all(check(item[key]) for key, check in checks if key in item) else ''
+
+
+def everyday_choices(era: str, who: dict | None = None) -> dict[str, tuple[float, list[str]]]:
+    """The details that fit their era and them, by group, with each group's weight."""
     extra = 'period' if era == 'period' else 'modern'
-    return {name: group['any'] + group.get(extra, []) for name, group in everyday_bank()['groups'].items()}
+    found = {}
+    for name, group in everyday_bank()['groups'].items():
+        items = [text for item in group['any'] + group.get(extra, []) if (text := fits(item, who or {}))]
+        if items:
+            found[name] = (group['weight'], items)
+    return found
 
 
-def everyday(seed: str, era: str) -> str:
-    """One everyday detail for their Appearance (a habit, wear, what they carry), from the seed and their era: a group
-    first, then a detail in it, so drafts spread across kinds of detail and not only the biggest group."""
-    choices = everyday_choices(era)
-    group = generators.pick(seed, 'everyday-group', sorted(choices))
-    return generators.pick(seed, 'everyday', choices[group])
+def build_group(build: str) -> str:
+    """Companion's slender, middle or heavier for a build, '' when it names none of its builds."""
+    named = bank_build(build)
+    return next((group for group, builds in sheet.dating.BUILD_GROUPS.items() if named in builds), '')
+
+
+def everyday(seed: str, era: str, who: dict | None = None, feature: str = '') -> str:
+    """One extra detail for their Appearance, mostly of the body, from the seed: a group by its weight, then a
+    detail in it that fits them and is not of the same part as what people notice about them (`feature`)."""
+    choices = everyday_choices(era, who)
+    names = sorted(choices)
+    taken = sheet.parts_of(feature)
+    for attempt in range(8):
+        group = generators.pick(seed, f'everyday-group-{attempt}', names, [choices[name][0] for name in names])
+        found = generators.pick(seed, f'everyday-{attempt}', choices[group][1])
+        if not sheet.parts_of(found) & taken:
+            return found
+    return found
 
 
 def empty(value) -> bool:
@@ -187,10 +218,12 @@ class Plan:
         self.all = rolled(seed, gender=gender, age=age, lifespan=lifespan, words=words, setting=setting)
         self.rolled = {field: value for field, value in self.all.items()
                        if field not in self.words and field not in later and not empty(value)}
-        self.everyday = everyday(seed, era_of(f'{setting} {words}'))
+        who = {'skin': self.rolled.get('skin', ''), 'build': build_group(self.rolled.get('build', '')),
+               'age': life_age(age, lifespan, seed, words), 'gender': gender}
+        self.everyday = everyday(seed, era_of(f'{setting} {words}'), who, self.rolled.get('feature', ''))
 
     def brief(self) -> str:
-        """The rolled fields as facts for the prompt, with the everyday detail and no marks beyond them."""
+        """The rolled fields as facts for the prompt, with one more detail and no marks beyond them."""
         rows = [f'- {LABELS[field]}: {line(field, value)}' for field, value in self.rolled.items()]
         rows.append(f'- {EVERYDAY_LINE}: {self.everyday}')
         return '\n'.join([LOOKS_BRIEF, *rows, '', NO_MARKS])
