@@ -13,6 +13,8 @@ character creator.
   would pull in a whole app.
 - `dramatis/character.py` is the shared character and each app's shape of it, checked with that app's own models.
   A new field goes there first, with the tightest limit of the apps that read it.
+- A character whose Companion relationship is `persona` is the user themself: Companion's shape of them is its
+  `PersonaInput` (`{'persona': …}`), and drafting, the form and the assistant leave Companion's everyday life out.
 - `dramatis/casts.py` is the Cast layer: a story's people as a two-layer four-corner opposition, saved in
   `casts/<id>.json` beside the library and pointing at characters by id. Resonance candidates and checks are computed
   there with no model; only structure is a hard error. Genres, group types, axes and tags are data

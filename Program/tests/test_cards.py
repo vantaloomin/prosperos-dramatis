@@ -79,6 +79,12 @@ def test_each_app_reads_the_same_person_from_either_card():
         assert len({data['description'] for data in read}) == 1
 
 
+def test_a_user_persona_has_no_scenario_with_the_user():
+    persona = dana().model_copy(update={'companion': dana().companion.model_copy(update={'relationship': 'persona'})})
+    assert card(persona, *DATES)['data']['scenario'] == ''
+    assert set(card(persona, *DATES)['data']['extensions']['prospero']['apps']['companion']) == {'persona'}
+
+
 def test_the_description_holds_everything_that_describes_them():
     text = card(dana(), *DATES, 'chat')['data']['description']
     for part in ('Gender: woman', 'Age: 38', 'From: Baltimore, today', 'Birthday: March 4',

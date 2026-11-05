@@ -6,6 +6,10 @@ come across, and how their voice sounds for text to speech. `companion` holds wh
 they know the user and the everyday life its simulation runs (routine, weekly schedule, life themes, texting habits,
 emotional edges).
 
+A character whose relationship is `persona` is the user themself, someone to play as rather than someone to talk to.
+Companion takes them as a persona (its PersonaInput, companion/worlds.py) instead of a companion, so none of its
+everyday life applies; Adventure and Dungeon already take every character as the player's persona.
+
 Their depth is optional and no app has a field for it yet: an in-voice `interview`, an inner `arc` (the lie they
 believe, the truth they need, what could force it), a `secret`, and a `psyche` (who they were, are expected to be,
 want to be and fear becoming, each with the characters who press on it). The whole character rides in a card's
@@ -83,9 +87,15 @@ class Texting(Input):
     quick: bool = False
 
 
+Relationship = Literal['friendship', 'romance', 'mentor', 'family', 'other', 'persona']
+# They are the user: Companion's own Relationship has no such value, because there a persona is not a companion.
+PERSONA = 'persona'
+
+
 class CompanionLife(Input):
-    """What only Prospero's Companion reads: how they know the user and the everyday life it simulates."""
-    relationship: Literal['friendship', 'romance', 'mentor', 'family', 'other'] = 'friendship'
+    """What only Prospero's Companion reads: how they know the user and the everyday life it simulates. A persona has
+    neither, so for one only the relationship counts."""
+    relationship: Relationship = 'friendship'
     starting_closeness: int = Field(default=1, ge=1, le=5)
     history_together: str = Field(default='', max_length=2000)
     routine: str = Field(default='', max_length=8000)
@@ -229,6 +239,9 @@ class Character(Input):
     def no_empty_card(cls, value: CardParts | None) -> CardParts | None:
         return None if value is None or value.empty() else value
 
+    def is_persona(self) -> bool:
+        return self.companion.relationship == PERSONA
+
 
 # Each app's own shape ---------------------------------------------------------------------------------------------
 
@@ -302,8 +315,11 @@ def looks_with_age(character: Character, oldest: int) -> dict:
 
 
 def for_companion(character: Character) -> dict:
-    """A Companion CharacterDefinition. Where they live is left to the world they move into: Companion gives them a
-    city, a job, a home and a routine of its own when the routine here is empty."""
+    """A Companion CharacterDefinition, or `{'persona': PersonaInput}` for the user's own persona. Where a companion
+    lives is left to the world they move into: Companion gives them a city, a job, a home and a routine of its own when
+    the routine here is empty."""
+    if character.is_persona():
+        return {'persona': persona(character, companion, looks=character.appearance or None)}
     life = character.companion
     definition = {
         'name': character.name, 'identity': character.about, 'personality': character.personality,
@@ -322,12 +338,13 @@ def for_companion(character: Character) -> dict:
     return companion.CharacterDefinition.model_validate(definition).model_dump(exclude_none=True)
 
 
-def persona(character: Character, models) -> dict:
-    """Who they are in Adventure or Dungeon: the persona's name, gender, age, About you, birthday and kind."""
+def persona(character: Character, models, **more) -> dict:
+    """Who they are as an app's persona: name, gender, age, About you, birthday and kind, and whatever else that app's
+    PersonaInput takes (`more`, such as Companion's How you look)."""
     return models.PersonaInput.model_validate({
         'name': character.name or None, 'gender': character.gender or None, 'age': character.age,
         'about': character.about or None, 'birthday': character.birthday or None, 'kind': character.kind or None,
-        'lifespan': character.lifespan}).model_dump()
+        'lifespan': character.lifespan, **more}).model_dump()
 
 
 def for_adventure(character: Character) -> dict:

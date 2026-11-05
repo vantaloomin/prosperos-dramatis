@@ -58,3 +58,13 @@ def test_the_shared_limits_are_the_tightest_apps():
         made(lifespan=90)
     with pytest.raises(ValidationError):
         made(companion={'schedule': [{'label': 'Nap', 'start': '10:00', 'end': '10:00'}]})
+
+
+def test_a_user_persona_goes_to_companion_as_a_persona_not_a_companion():
+    character = made(appearance='Tall, freckled, red hair.', companion={'schedule': [SLEEP], 'relationship': 'persona'})
+    assert character.is_persona() and problems(character) == {}
+    shaped = for_companion(character)
+    assert set(shaped) == {'persona'}
+    assert shaped['persona']['name'] == 'Dana Okafor' and shaped['persona']['about'] == 'An ER nurse.'
+    assert shaped['persona']['looks'] == 'Tall, freckled, red hair.' and shaped['persona']['age'] == 38
+    assert for_dungeon(character)['persona'] == for_dungeon(made())['persona']

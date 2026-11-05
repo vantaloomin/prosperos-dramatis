@@ -31,7 +31,11 @@ export type App = 'companion' | 'adventure' | 'dungeon'
 export const APPS: App[] = ['companion', 'adventure', 'dungeon']
 export const APP_NAMES: Record<App, string> = { companion: 'Companion', adventure: 'Adventure', dungeon: 'Dungeon' }
 export type Gender = 'woman' | 'man' | 'nonbinary' | ''
-export type Relationship = 'friendship' | 'romance' | 'mentor' | 'family' | 'other'
+export type Relationship = 'friendship' | 'romance' | 'mentor' | 'family' | 'other' | 'persona'
+/** How they know the user in Companion. A user persona is the user themself (dramatis/character.py): Companion takes
+ * them as a persona, so its everyday life is not theirs. */
+export const RELATIONSHIPS: [Relationship, string][] = [['friendship', 'Friendship'], ['romance', 'Romance, only with your yes'],
+  ['mentor', 'Mentor'], ['family', 'Family'], ['other', 'Something else'], ['persona', 'User persona']]
 export type BlockKind = 'work' | 'study' | 'errand' | 'leisure' | 'social' | 'rest' | 'sleep'
 
 export interface Slider { level: number; source: 'rolled' | 'idea' | 'you' }

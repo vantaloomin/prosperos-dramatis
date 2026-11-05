@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { CheckCircle2, Download, MessageSquareText, Trash2, TriangleAlert } from 'lucide-react'
-import { APPS, APP_NAMES, cleaned, type AuditHit, sendJson, type App, type Character, type Gender, type Looks, type Problems, type Relationship, type Saved } from './api'
+import { APPS, APP_NAMES, RELATIONSHIPS, cleaned, type AuditHit, sendJson, type App, type Character, type Gender, type Looks, type Problems, type Relationship, type Saved } from './api'
 import { assistant, useAssistantShown } from './assistant/store'
 import { trackFocus, useProposalForm } from './assistant/useForm'
 import { Field, Fold, ListField, TextArea, TextInput, useModelReady } from './Fields'
@@ -91,6 +91,7 @@ export function Editor({ saved, start, seed, filledIn, note, portrait, brought, 
   const setLife = (change: Partial<Character['companion']>) => setCharacter((current) => ({ ...current, companion: { ...current.companion, ...change } }))
   const current = () => cleaned(character)
   const has = (app: App) => character.apps.includes(app)
+  const persona = character.companion.relationship === 'persona'
   const assisting = useAssistantShown()
   const waiting = useOpenCount()
   useProposalForm(character, setCharacter, draftKey)
@@ -300,36 +301,38 @@ export function Editor({ saved, start, seed, filledIn, note, portrait, brought, 
           <div className="grid two">
             <Field label="Relationship">{(id) => (
               <select id={id} value={character.companion.relationship} onChange={(event) => setLife({ relationship: event.target.value as Relationship })}>
-                <option value="friendship">Friendship</option><option value="romance">Romance, only with your yes</option><option value="mentor">Mentor</option><option value="family">Family</option><option value="other">Something else</option>
+                {RELATIONSHIPS.map(([value, name]) => <option key={value} value={value}>{name}</option>)}
               </select>
             )}</Field>
-            <Field label="How close you start">{(id) => (
+            {!persona && <Field label="How close you start">{(id) => (
               <select id={id} value={character.companion.starting_closeness} onChange={(event) => setLife({ starting_closeness: Number(event.target.value) })}>
                 {STAGES.map((stage, index) => <option key={stage} value={index + 1}>{stage}</option>)}
               </select>
-            )}</Field>
+            )}</Field>}
           </div>
-          <TextArea name="history_together" label="How you know each other" value={character.companion.history_together} onChange={(history_together) => setLife({ history_together })} maxLength={2000} rows={2} />
-          <TextArea name="routine" label="Their routine, in their words" write="their routine" value={character.companion.routine} onChange={(routine) => setLife({ routine })} maxLength={8000} rows={3} />
-          <Field name="schedule" label="Their week" write="their week" filled={character.companion.schedule.length > 0} group>{() => (
-            <Schedule blocks={character.companion.schedule} onChange={(schedule) => setLife({ schedule })} />
-          )}</Field>
-          <ListField name="life_themes" label="Life themes" write="life themes" add="Add a life theme" value={character.companion.life_themes} onChange={(life_themes) => setLife({ life_themes })} />
-          <div className="grid two">
-            <Field label="Time zone">{(id) => (
-              <select id={id} value={character.companion.timezone} onChange={(event) => setLife({ timezone: event.target.value })}>
-                <option value="">Not set</option>
-                {zones.map((zone) => <option key={zone} value={zone}>{zone.replace(/_/g, ' ')}</option>)}
-              </select>
+          {!persona && <>
+            <TextArea name="history_together" label="How you know each other" value={character.companion.history_together} onChange={(history_together) => setLife({ history_together })} maxLength={2000} rows={2} />
+            <TextArea name="routine" label="Their routine, in their words" write="their routine" value={character.companion.routine} onChange={(routine) => setLife({ routine })} maxLength={8000} rows={3} />
+            <Field name="schedule" label="Their week" write="their week" filled={character.companion.schedule.length > 0} group>{() => (
+              <Schedule blocks={character.companion.schedule} onChange={(schedule) => setLife({ schedule })} />
             )}</Field>
-          </div>
-          <fieldset className="ticks">
-            <legend>How they text</legend>
-            {([['bursts', 'In bursts of short texts'], ['lowercase', 'All lowercase'], ['typos', 'With typos'], ['quick', 'Quick to reply']] as const).map(([key, label]) => (
-              <label key={key} className="check"><input type="checkbox" checked={character.companion.texting[key]} onChange={(event) => setLife({ texting: { ...character.companion.texting, [key]: event.target.checked } })} /> {label}</label>
-            ))}
-          </fieldset>
-          <TextArea label="When you are away" value={character.companion.absence_reaction} onChange={(absence_reaction) => setLife({ absence_reaction })} maxLength={2000} rows={2} />
+            <ListField name="life_themes" label="Life themes" write="life themes" add="Add a life theme" value={character.companion.life_themes} onChange={(life_themes) => setLife({ life_themes })} />
+            <div className="grid two">
+              <Field label="Time zone">{(id) => (
+                <select id={id} value={character.companion.timezone} onChange={(event) => setLife({ timezone: event.target.value })}>
+                  <option value="">Not set</option>
+                  {zones.map((zone) => <option key={zone} value={zone}>{zone.replace(/_/g, ' ')}</option>)}
+                </select>
+              )}</Field>
+            </div>
+            <fieldset className="ticks">
+              <legend>How they text</legend>
+              {([['bursts', 'In bursts of short texts'], ['lowercase', 'All lowercase'], ['typos', 'With typos'], ['quick', 'Quick to reply']] as const).map(([key, label]) => (
+                <label key={key} className="check"><input type="checkbox" checked={character.companion.texting[key]} onChange={(event) => setLife({ texting: { ...character.companion.texting, [key]: event.target.checked } })} /> {label}</label>
+              ))}
+            </fieldset>
+            <TextArea label="When you are away" value={character.companion.absence_reaction} onChange={(absence_reaction) => setLife({ absence_reaction })} maxLength={2000} rows={2} />
+          </>}
         </section>
       )}
     </form>
