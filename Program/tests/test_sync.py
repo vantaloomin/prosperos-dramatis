@@ -17,6 +17,7 @@ def checkout(root: Path, app: str) -> Path:
         text = (FORMATS / app / name).read_text(encoding='utf-8')
         if name.endswith('.py'):
             text = text.split('\n', 1)[1]
+            text = text.replace('from dramatis.formats.companion import dating', 'from companion.world import dating')
             text = text.replace('dramatis.formats.companion', 'companion')
             text = text.replace('from dramatis.stand_ins import', 'from companion.world import')
         (root / source).parent.mkdir(parents=True, exist_ok=True)
@@ -55,3 +56,10 @@ def test_an_import_that_is_not_vendored_stops_the_sync(tmp_path):
     errors.write_text('from companion.database import optional\n', encoding='utf-8')
     with pytest.raises(SystemExit, match='not vendored'):
         sync.main(['--companion', str(root)], target=tmp_path / 'formats')
+
+
+def test_one_import_of_modules_from_two_places_becomes_a_line_for_each():
+    line = '    from companion.world import catalog, dating, generators\n'
+    found = sync.IMPORT.sub(lambda match: sync.swap(match, sync.APPS['companion']['modules'], 'x.py'), line)
+    assert found == ('    from dramatis.stand_ins import catalog, generators\n'
+                     '    from dramatis.formats.companion import dating\n')

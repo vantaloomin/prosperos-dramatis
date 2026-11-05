@@ -60,8 +60,9 @@ named back to you.
 character, and **Put back what was there** undoes it. **How they talk** (their words, rhythm and humour) and **How
 they sound** (the voice itself, for text to speech) are separate fields, so neither you nor a model mixes them up.
 **Outward appearance** is how others see them, reputation included, and can disagree with **How they see
-themselves**. There are also the five personality sliders (roll again, or start from a four-letter type), looks
-field by field, kind and lifespan, and Companion's own part: relationship, closeness, routine, weekly schedule and
+themselves**. There are also the five personality sliders (roll again, or start from a four-letter type), the
+Details of their looks field by field (a draft reads what your words say into them and rolls the rest before it writes
+the Appearance, so the two always agree, and marks each From their words or Rolled), kind and lifespan, and Companion's own part: relationship, closeness, routine, weekly schedule and
 texting habits.
 
 **The Sidebar Assistant.** **Assistant** beside Save opens a chat next to the form, like Adventure's Sidebar

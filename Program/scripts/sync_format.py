@@ -47,6 +47,10 @@ APPS = {
             'Program/companion/imports/formats.py': 'imports/formats.py',
             'Program/companion/imports/lorebooks.py': 'imports/lorebooks.py',
             'Program/companion/world/personality.py': 'personality.py',
+            # Companion's looks sheet and the Matchlight looks it draws from, so the Details fields a draft rolls are
+            # the ones Companion would roll for them (dramatis/looks.py).
+            'Program/companion/world/looks.py': 'looks.py',
+            'Program/companion/world/dating.py': 'dating.py',
             # Companion's text model providers, for every draft (dramatis/ai.py).
             **{f'Program/companion/providers/{name}.py': f'providers/{name}.py' for name in PROVIDER_MODULES},
             # Companion's image makers, for portraits (dramatis/images.py): kept at the same paths under images/,
@@ -54,6 +58,7 @@ APPS = {
             **{f'Program/companion/images/{name}.py': f'images/{name}.py' for name in IMAGE_MODULES},
         },
         'data': {'Program/companion/world/data/personality.json': 'data/personality.json',
+                 'Program/companion/world/data/looks.json': 'data/looks.json',
                  **{f'Program/companion/images/workflows/{name}.json': f'images/workflows/{name}.json'
                     for name in WORKFLOWS}},
         'modules': {
@@ -65,6 +70,12 @@ APPS = {
             'companion.world.catalog': 'dramatis.stand_ins.catalog',
             'companion.world.generators': 'dramatis.stand_ins.generators',
             'companion.world.intimacy': 'dramatis.stand_ins.intimacy',
+            'companion.world.dating': 'dramatis.formats.companion.dating',
+            # dating.py reads the world's mix of heights and builds, the town's eras and how long each kind lives;
+            # Dramatis has no world, so these give Companion's built-in ones.
+            'companion.world.lifespans': 'dramatis.stand_ins.lifespans',
+            'companion.world.mix': 'dramatis.stand_ins.mix',
+            'companion.world.townsfolk': 'dramatis.stand_ins.townsfolk',
             'companion.models': 'dramatis.formats.companion.models',
             **{f'companion.providers.{name}': f'dramatis.formats.companion.providers.{name}' for name in PROVIDER_MODULES},
             # chat.py asks the built-in model's server where it runs (Companion downloads and runs one), and the
@@ -97,15 +108,20 @@ def swap(match: re.Match, modules: dict[str, str], path: str) -> str:
     """One `from <app module> import ...` line pointed at Dramatis' copy or stand-in.
 
     `from companion.errors import DomainError` takes the module's own place; `from companion.world import catalog,
-    generators` takes the package of the modules it names, which must all live in one place in Dramatis."""
+    dating` takes the package of each module it names, one line for each place they live in Dramatis."""
     module, names, indent = match['module'], match['names'], match['indent']
     if module in modules:
         return f'{indent}from {modules[module]} import {names}'
-    wanted = [name.split(' as ')[0].strip() for name in names.strip('()').split(',') if name.strip()]
-    targets = {modules.get(f'{module}.{name}', '').rpartition('.')[0] for name in wanted}
-    if '' in targets or len(targets) != 1:
-        raise SystemExit(f'{path} imports {names.strip()} from {module}, which is not vendored. Add it to APPS.')
-    return f'{indent}from {targets.pop()} import {names}'
+    wanted = [name.strip() for name in names.strip('()').split(',') if name.strip()]
+    places: dict[str, list[str]] = {}
+    for name in wanted:
+        target = modules.get(f"{module}.{name.split(' as ')[0].strip()}", '').rpartition('.')[0]
+        if not target:
+            raise SystemExit(f'{path} imports {name} from {module}, which is not vendored. Add it to APPS.')
+        places.setdefault(target, []).append(name)
+    if len(places) == 1:
+        return f'{indent}from {next(iter(places))} import {names}'
+    return '\n'.join(f"{indent}from {target} import {', '.join(found)}" for target, found in places.items())
 
 
 def vendored(text: str, path: str, app: dict) -> str:
