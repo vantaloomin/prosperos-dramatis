@@ -1,19 +1,56 @@
 {
-  "_about": "One everyday detail of how a drafted character looks, rolled by dramatis/looks.py so the Appearance never falls back on the model's own favourite (three drafts in a row came back with a chickenpox scar above the left eyebrow). Habits, wear and what they carry, not marks on their body: a mark people notice is the Something people notice field. 'any' fits every era; 'modern' only the present day and the future.",
-  "any": [
-    "sleeves always pushed up to the elbow", "a pencil tucked behind one ear", "keys clipped to a belt loop",
-    "a ring they turn when they are thinking", "shoes resoled more than once", "a coat a size too big",
-    "a collar that never sits flat", "hair that escapes whatever holds it by noon", "callused fingertips",
-    "short, practical nails", "a habit of standing with their weight on one hip", "reading glasses on a cord",
-    "a scarf in every season", "a faded patch where a bag strap rubs", "a button sewn back on in the wrong colour",
-    "a handkerchief always in one pocket", "flour or dust on their cuffs more often than not",
-    "a slight squint when they read", "a posture that straightens when someone looks at them",
-    "a watch worn face-in on the wrist", "boots with the laces wrapped twice", "chapped lips in winter", "a pocket that always holds something to eat", "clothes chosen for pockets"
-  ],
-  "modern": [
-    "phone in a cracked case with a card wedged behind it", "earbuds that live around their neck", "a lanyard they forget to take off",
-    "a hair tie always on one wrist", "a tote bag from a shop that closed years ago", "a fitness watch they never charge",
-    "sunglasses pushed up on their head indoors", "a backpack with one strap broken", "a reusable cup with a chipped lid",
-    "trainers worn down at the heels", "a tote full of receipts", "a jacket with a pin from a band nobody else knows"
-  ]
+  "_about": "One everyday detail of how a drafted character looks, rolled by dramatis/looks.py so the Appearance never falls back on the model's own favourite (three drafts in a row came back with a chickenpox scar above the left eyebrow). Habits, wear and what they carry, not marks on their body: a mark people notice is the Something people notice field. A roll picks a group, then a detail in it, so drafts spread across kinds of detail. In each group 'any' fits every era, 'modern' only the present day and the future, 'period' only the past and fantasy settings.",
+  "groups": {
+    "hands": {
+      "any": ["callused fingertips", "short, practical nails", "nails bitten to the quick", "a ring they turn when they are thinking",
+              "dry, cracked knuckles in winter", "a thumbnail they pick at when bored", "hands that are never quite still",
+              "a pale band where a ring used to be", "fingers that drum on whatever is nearest", "a plaster on one finger more often than not",
+              "a grip on cups with both hands", "chalk or flour worked into the creases of their palms"],
+      "modern": ["chipped nail polish they never get round to removing", "a smartwatch they check without meaning to",
+                 "a pen-click habit", "a hair tie always on one wrist", "a fading festival wristband"],
+      "period": ["ink-dark fingertips from letters", "a signet ring worn smooth", "fingerless gloves in all weather",
+                 "a needle and thread pinned inside a cuff"]
+    },
+    "clothes": {
+      "any": ["sleeves always pushed up to the elbow", "a coat a size too big", "a collar that never sits flat",
+              "a button sewn back on in the wrong colour", "shoes resoled more than once", "boots with the laces wrapped twice",
+              "a scarf in every season", "clothes chosen for their pockets", "one good jacket worn with everything",
+              "a hem let down and the old crease still showing", "socks that never match", "everything in shades of one colour",
+              "a hat pulled low whatever the weather", "a faded patch where a bag strap rubs", "dust or flour on their cuffs more often than not",
+              "a shirt tucked in on one side only"],
+      "modern": ["trainers worn down at the heels", "a hoodie with the drawstrings chewed", "a jacket with a pin from a band nobody else knows",
+                 "a work fleece with the logo picked off", "jeans with a phone-shaped fade in the back pocket", "a lanyard they forget to take off",
+                 "a puffer jacket with tape over a tear", "a T-shirt from a 5K they never ran"],
+      "period": ["a waistcoat with one button missing", "a cloak mended at the shoulder", "boots blacked every morning",
+                 "an apron they forget to take off", "a shawl pinned with a tin brooch", "sleeves rolled and tied with string"]
+    },
+    "carried": {
+      "any": ["keys clipped to a belt loop", "a pencil tucked behind one ear", "a handkerchief always in one pocket",
+              "a pocket that always holds something to eat", "a battered notebook with a rubber band round it",
+              "a bag that weighs more than it should", "reading glasses on a cord", "a knife or tool on their belt",
+              "a folded list in a back pocket", "a flask that goes everywhere with them"],
+      "modern": ["phone in a cracked case with a card wedged behind it", "earbuds that live around their neck",
+                 "a tote bag from a shop that closed years ago", "a reusable cup with a chipped lid", "a backpack with one strap broken",
+                 "a car key with too many loyalty tags on it", "a lip balm in every pocket", "a charging cable in every bag"],
+      "period": ["a pocket watch on a chain", "a pipe they rarely light", "a coin purse on a cord round the neck",
+                 "a sprig of something tucked in a buttonhole", "a whetstone in a coat pocket"]
+    },
+    "hair_and_grooming": {
+      "any": ["hair that escapes whatever holds it by noon", "a parting that wanders", "eyebrows that need a trim",
+              "a fringe they keep pushing out of their eyes", "hair still damp from the morning more days than not",
+              "a cowlick that will not lie flat", "a faint smell of woodsmoke or soap about them", "chapped lips in winter"],
+      "modern": ["sunglasses pushed up on their head indoors", "roots growing out under an old dye", "a fresh haircut that is not quite even",
+                 "a claw clip that does most of the work", "a cap with a curved brim and a sweat line"],
+      "period": ["hair braided tight for work", "a beard or braid kept with a bit of twine", "a hat that leaves a line across the forehead"]
+    },
+    "posture_and_habit": {
+      "any": ["a habit of standing with their weight on one hip", "a slight squint when they read", "a posture that straightens when someone looks at them",
+              "a watch worn face-in on the wrist", "shoulders that ride up when they are listening", "a walk that is always slightly too fast",
+              "a habit of leaning on doorframes", "arms folded whenever they are thinking", "a head tilt when they disagree",
+              "a way of sitting on the edge of chairs", "a quick glance at exits when they come into a room", "a laugh they cover with one hand",
+              "a slouch that comes back as soon as they stop thinking about it", "a habit of humming under their breath"],
+      "modern": ["a thumb hovering over a phone screen", "a habit of checking their reflection in shop windows", "posture bent from years at a desk"],
+      "period": ["a bow of the head to anyone who looks important", "the careful stride of someone who has carried loads"]
+    }
+  }
 }

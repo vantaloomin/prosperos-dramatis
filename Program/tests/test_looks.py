@@ -81,10 +81,14 @@ def test_the_hair_their_words_give_steers_the_colouring_rolled_around_it():
 def test_the_everyday_detail_is_rolled_and_no_mark_is_left_to_the_model():
     plan = looks.Plan('seed-5', gender='woman', age=30)
     assert f'An everyday detail: {plan.everyday}' in plan.brief() and 'Give them no scar' in plan.brief()
-    details = {looks.Plan(f'seed-{n}', gender='woman').everyday for n in range(40)}
-    assert len(details) > 15
-    period = {looks.Plan(f'seed-{n}', setting='a frontier town in 1870').everyday for n in range(60)}
-    assert not period & set(looks.everyday_bank()['modern'])
+    details = [looks.Plan(f'seed-{n}', gender='woman').everyday for n in range(100)]
+    assert len(set(details)) > 45
+    groups = looks.everyday_bank()['groups'].values()
+    modern = {item for group in groups for item in group.get('modern', [])}
+    period = {item for group in groups for item in group.get('period', [])}
+    rolled = {looks.Plan(f'seed-{n}', setting='a frontier town in 1870').everyday for n in range(100)}
+    assert not rolled & modern and rolled & period
+    assert not {looks.Plan(f'seed-{n}', setting='Baltimore, today').everyday for n in range(100)} & period
 
 
 def test_the_stock_eyebrow_scar_is_worth_a_look():
