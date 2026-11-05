@@ -96,15 +96,18 @@ def test_help_me_write_fills_one_part_of_the_arc_and_audits_it(model):
     assert found['value'] == 'only her brother and his wife'
 
 
-def test_the_draft_writes_an_arc_only_when_asked(model):
+def test_the_draft_always_writes_an_arc_and_a_paste_only_when_asked(model):
     picks = {'idea': 'a night nurse', 'apps': ['dungeon']}
     model.replies = [reply(arc={'lie': 'x', 'truth': 'y', 'catalyst': 'z'})]
-    assert drafting.draft(picks)['character']['arc'] == {'lie': '', 'truth': '', 'catalyst': ''}
-    assert '"arc"' not in model.asked[0][0]
-    model.replies = [reply(arc={'lie': 'x', 'truth': 'y', 'catalyst': 'z'})]
-    found = drafting.draft(picks | {'idea': 'a night nurse with a redemption arc'})
+    assert drafting.draft(picks)['character']['arc'] == {'lie': 'x', 'truth': 'y', 'catalyst': 'z'}
+    assert '"arc": {"lie"' in model.asked[0][0]
+    model.replies = [reply(arc={'lie': 'x', 'truth': 'y', 'catalyst': 'z'}, filled_in=[])]
+    assert drafting.split(picks | {'text': 'Dana is a night nurse.'})['character']['arc']['lie'] == ''
+    assert '"arc"' not in model.asked[1][0]
+    model.replies = [reply(arc={'lie': 'x', 'truth': 'y', 'catalyst': 'z'}, filled_in=[])]
+    found = drafting.split(picks | {'text': 'Dana is a night nurse with a redemption arc.'})
     assert found['character']['arc'] == {'lie': 'x', 'truth': 'y', 'catalyst': 'z'}
-    assert 'The user asked for an arc' in model.asked[1][0]
+    assert 'The user asked for an arc' in model.asked[2][0]
 
 
 def test_the_rules_carry_the_new_lines():

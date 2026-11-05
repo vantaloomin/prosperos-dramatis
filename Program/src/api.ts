@@ -81,7 +81,8 @@ export interface AuditHit { field: string; label: string; severity: 'hard' | 'fl
 export type Problems = Partial<Record<App, string[]>>
 export interface Saved { id: string; created: string; updated: string; seed: string; character: Character; portrait: boolean; problems: Problems }
 export interface Summary { id: string; name: string; about: string; apps: App[]; updated: string; portrait: boolean }
-export interface Drafted { character: Character; seed: string; filled_in?: string[]; instructions?: string[] }
+/** `missing`: the fields a quick-start draft came back without, after its one retry (dramatis/drafting.py). */
+export interface Drafted { character: Character; seed: string; filled_in?: string[]; instructions?: string[]; missing?: string[] }
 export interface Opened { kind: 'character'; character: Character }
 /** Another app's character file, read: its text for the paste box, the form filled from it (or why not), and what it
  * keeps for their cards. */
