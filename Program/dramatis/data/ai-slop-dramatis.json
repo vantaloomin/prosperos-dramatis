@@ -1,0 +1,24 @@
+{
+  "name": "Dramatis's own drafts",
+  "version": "2026-11-05",
+  "how_to_use": "Read with ai-slop.json under the same rules: what Dramatis's drafts kept repeating from one character to the next. Add an entry when the same detail turns up in draft after draft.",
+  "categories": [
+    {
+      "id": "dramatis_stock_looks",
+      "title": "Stock looks",
+      "severity": "flag",
+      "match": "phrase",
+      "note": "Details models give every character.",
+      "items": ["chickenpox scar", "chicken pox scar", "chickenpox mark", "chicken pox mark", "a dusting of freckles",
+                "a smattering of freckles", "ink-stained fingers"]
+    }
+  ],
+  "patterns": [
+    {
+      "id": "dramatis_eyebrow_scar",
+      "title": "Stock looks",
+      "severity": "flag",
+      "regex": "(?i)\\bscar\\b[^.;]{0,40}?\\b(?:above|through|across|in|into|splitting|breaking through|cutting through|over)\\s+(?:her|his|their|the)\\s+(?:left|right)\\s+eyebrow\\b"
+    }
+  ]
+}

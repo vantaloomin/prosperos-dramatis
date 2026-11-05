@@ -9,10 +9,17 @@ looks sheet), so a Dramatis roll is the roll Companion would make for them. The 
 facts and writes the Appearance from them. Each field remembers where it came from (`Character.looks_from`):
 `idea` for their words, `rolled` for the roll; a field the user edits on the form drops its mark.
 
+The one ordinary detail an Appearance has (a habit, wear, what they carry) is rolled too (data/looks-everyday.json),
+and the model is told to give them no scar or mark the fields or the user's words don't: left to choose, models give
+every character the same one (a chickenpox scar above the left eyebrow, three drafts running).
+
 After the reply, a field still empty is rolled when the Appearance the model wrote says nothing of it, and a weight
 follows the height and build the words gave. Nothing here calls a model.
 """
+import json
 import re
+from functools import cache
+from pathlib import Path
 
 from dramatis.formats.companion import generators
 from dramatis.formats.companion import looks as sheet
@@ -38,6 +45,11 @@ LOOKS_ASK = ('Their words describe their {fields}. Fill "looks" with those, as t
              'settle it, and write their appearance to agree with "looks".')
 LOOKS_BRIEF = ('Their looks, decided by the app. Their appearance agrees with every one of these and need not '
                'mention them all; never give them a different height, build, skin, eyes or hair:')
+# The one ordinary detail an Appearance gets, rolled like the rest: left to the model, it is the same scar every time.
+EVERYDAY = Path(__file__).parent / 'data' / 'looks-everyday.json'
+EVERYDAY_LINE = 'An everyday detail'
+NO_MARKS = ('Give them no scar, mole, birthmark or other mark on their body unless these, or the user\'s own words, '
+            'give one.')
 # A kind of being whose size and colouring a human roll would get wrong: their words decide those.
 OTHER_KINDS = re.compile(r'\b(?:elf|elves|elven|dwar(?:f|ves|ven)|orcs?|orcish|half-orc|goblins?|hobgoblins?|halflings?'
                          r'|hobbits?|gnomes?|giants?|ogres?|trolls?|centaurs?|minotaurs?|fae|faer(?:ie|y)|fair(?:y|ies)'
@@ -105,6 +117,17 @@ def heritage(words: str) -> str:
     return named or next((key for pattern, key in HAIR_HERITAGE if pattern.search(words or '')), '')
 
 
+@cache
+def everyday_bank() -> dict:
+    return json.loads(EVERYDAY.read_text(encoding='utf-8'))
+
+
+def everyday(seed: str, era: str) -> str:
+    """One everyday detail for their Appearance (a habit, wear, what they carry), from the seed and their era."""
+    bank = everyday_bank()
+    return generators.pick(seed, 'everyday', bank['any'] + (bank['modern'] if era != 'period' else []))
+
+
 def empty(value) -> bool:
     return value in (None, '')
 
@@ -156,13 +179,13 @@ class Plan:
         self.all = rolled(seed, gender=gender, age=age, lifespan=lifespan, words=words, setting=setting)
         self.rolled = {field: value for field, value in self.all.items()
                        if field not in self.words and field not in later and not empty(value)}
+        self.everyday = everyday(seed, era_of(f'{setting} {words}'))
 
     def brief(self) -> str:
-        """The rolled fields as facts for the prompt."""
-        if not self.rolled:
-            return ''
-        rows = '\n'.join(f'- {LABELS[field]}: {line(field, value)}' for field, value in self.rolled.items())
-        return f'{LOOKS_BRIEF}\n{rows}'
+        """The rolled fields as facts for the prompt, with the everyday detail and no marks beyond them."""
+        rows = [f'- {LABELS[field]}: {line(field, value)}' for field, value in self.rolled.items()]
+        rows.append(f'- {EVERYDAY_LINE}: {self.everyday}')
+        return '\n'.join([LOOKS_BRIEF, *rows, '', NO_MARKS])
 
     def ask(self) -> str:
         if not self.words:

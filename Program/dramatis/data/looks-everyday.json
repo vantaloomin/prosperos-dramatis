@@ -1,0 +1,19 @@
+{
+  "_about": "One everyday detail of how a drafted character looks, rolled by dramatis/looks.py so the Appearance never falls back on the model's own favourite (three drafts in a row came back with a chickenpox scar above the left eyebrow). Habits, wear and what they carry, not marks on their body: a mark people notice is the Something people notice field. 'any' fits every era; 'modern' only the present day and the future.",
+  "any": [
+    "sleeves always pushed up to the elbow", "a pencil tucked behind one ear", "keys clipped to a belt loop",
+    "a ring they turn when they are thinking", "shoes resoled more than once", "a coat a size too big",
+    "a collar that never sits flat", "hair that escapes whatever holds it by noon", "callused fingertips",
+    "short, practical nails", "a habit of standing with their weight on one hip", "reading glasses on a cord",
+    "a scarf in every season", "a faded patch where a bag strap rubs", "a button sewn back on in the wrong colour",
+    "a handkerchief always in one pocket", "flour or dust on their cuffs more often than not",
+    "a slight squint when they read", "a posture that straightens when someone looks at them",
+    "a watch worn face-in on the wrist", "boots with the laces wrapped twice", "chapped lips in winter", "a pocket that always holds something to eat", "clothes chosen for pockets"
+  ],
+  "modern": [
+    "phone in a cracked case with a card wedged behind it", "earbuds that live around their neck", "a lanyard they forget to take off",
+    "a hair tie always on one wrist", "a tote bag from a shop that closed years ago", "a fitness watch they never charge",
+    "sunglasses pushed up on their head indoors", "a backpack with one strap broken", "a reusable cup with a chipped lid",
+    "trainers worn down at the heels", "a tote full of receipts", "a jacket with a pin from a band nobody else knows"
+  ]
+}
