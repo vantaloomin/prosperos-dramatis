@@ -122,10 +122,18 @@ def everyday_bank() -> dict:
     return json.loads(EVERYDAY.read_text(encoding='utf-8'))
 
 
+def everyday_choices(era: str) -> dict[str, list[str]]:
+    """The details that fit their era, by group: every era's, then the present's or the past's."""
+    extra = 'period' if era == 'period' else 'modern'
+    return {name: group['any'] + group.get(extra, []) for name, group in everyday_bank()['groups'].items()}
+
+
 def everyday(seed: str, era: str) -> str:
-    """One everyday detail for their Appearance (a habit, wear, what they carry), from the seed and their era."""
-    bank = everyday_bank()
-    return generators.pick(seed, 'everyday', bank['any'] + (bank['modern'] if era != 'period' else []))
+    """One everyday detail for their Appearance (a habit, wear, what they carry), from the seed and their era: a group
+    first, then a detail in it, so drafts spread across kinds of detail and not only the biggest group."""
+    choices = everyday_choices(era)
+    group = generators.pick(seed, 'everyday-group', sorted(choices))
+    return generators.pick(seed, 'everyday', choices[group])
 
 
 def empty(value) -> bool:
