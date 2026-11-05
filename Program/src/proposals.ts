@@ -14,7 +14,7 @@ import { emptyPsyche, type AuditHit, type Character } from './api'
  * another each build on the last. `key` names the form; another key is another character. */
 export interface Form { key: string; get: () => Character; set: (character: Character) => void }
 
-export type Source = 'help' | 'assistant' | 'interview' | 'split'
+export type Source = 'help' | 'assistant' | 'interview' | 'split' | 'fix'
 export interface Proposal {
   id: string; field: string; label: string; path: string[]; value: unknown; before: unknown; source: Source
   /** The AI-slop audit's hits on what the model wrote, and the model's reason, when it gave one. */

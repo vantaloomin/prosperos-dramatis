@@ -72,6 +72,8 @@ export interface Character {
   personality_sliders: Partial<Record<Trait, Slider>> | null; seen_as: string; sees_self: string
   apps: App[]; companion: CompanionLife
   interview: string; arc: Arc; secret: Secret; psyche: Psyche | null; card: CardParts | null
+  /** Words the audit flags that the user keeps on them (src/Audit.tsx); missing on characters made before it. */
+  ignored_flags?: string[]
 }
 /** What the interview suggests for one field, from POST /api/draft/from-interview. */
 export type ProposedField = 'voice' | 'appearance' | 'seen_as' | 'sees_self' | 'flaws' | 'interests'

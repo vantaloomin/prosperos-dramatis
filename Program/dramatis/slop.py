@@ -80,6 +80,11 @@ def sentence_start(text: str, position: int) -> bool:
 
 def scan(text: str) -> list[dict]:
     """Every hit in one text: its severity, the rule's title and what matched, in order."""
+    return [{key: value for key, value in hit.items() if key not in ('at', 'end')} for hit in scan_at(text)]
+
+
+def scan_at(text: str) -> list[dict]:
+    """`scan`'s hits, each with where it starts and ends in the text (`at`, `end`)."""
     hits = []
     for rule, expressions in rules():
         for item, expression in expressions:
@@ -90,9 +95,9 @@ def scan(text: str) -> list[dict]:
                     continue
                 hits.append({'severity': rule['severity'], 'rule': rule['title'], 'match': match[0],
                              'context': text[max(0, match.start() - PAD):match.end() + PAD].replace('\n', ' ').strip(),
-                             'at': match.start()})
+                             'at': match.start(), 'end': match.end()})
     hits.sort(key=lambda hit: (hit['severity'] != 'hard', hit['at']))
-    return [{key: value for key, value in hit.items() if key != 'at'} for hit in hits]
+    return hits
 
 
 def at(source, path: tuple[str, ...]):
@@ -103,24 +108,43 @@ def at(source, path: tuple[str, ...]):
 
 def texts(character: dict) -> list[tuple[str, str, str]]:
     """(key, label, text) for each field the audit reads; a list is read one item at a time."""
+    return [(key, label, text) for key, label, _, text in placed_texts(character)]
+
+
+def placed_texts(character: dict) -> list[tuple[str, str, int | None, str]]:
+    """`texts` with each list item's place in its list (None for a field that is one text)."""
     life = character.get('companion') or {}
     found = []
     for source, labels in ((character, FIELDS), (life, LIFE_FIELDS)):
         for key, label in labels.items():
             value = source.get(key)
-            items = value if isinstance(value, list) else [value]
-            found += [(key, label, item) for item in items if isinstance(item, str) and item.strip()]
+            items = enumerate(value) if isinstance(value, list) else [(None, value)]
+            found += [(key, label, index, item) for index, item in items if isinstance(item, str) and item.strip()]
     for key, (label, path) in DEPTH.items():
         value = at(character, path)
         if isinstance(value, str) and value.strip():
-            found.append((key, label, value))
+            found.append((key, label, None, value))
     return found
+
+
+def ignored(character: dict) -> str:
+    """The words the user chose to keep on this character (Ignore under the audit), as text for `allowed`."""
+    kept = character.get('ignored_flags')
+    return '\n'.join(item for item in kept if isinstance(item, str)) if isinstance(kept, list) else ''
 
 
 def audit(character: dict, allowed: str = '') -> list[dict]:
     """Every hit in the character's fields, by field. A hit whose text is in `allowed` (what the user typed or pasted)
-    is theirs, not the model's, and is left out: a user may want an Elara."""
-    return audit_texts(texts(character), allowed)
+    or among the words they chose to keep (`ignored_flags`) is theirs, not the model's, and is left out: a user may
+    want an Elara."""
+    return audit_texts(texts(character), f'{allowed}\n{ignored(character)}'.strip())
+
+
+def located(character: dict) -> list[dict]:
+    """Every hit in the character's fields as `audit` gives it, with where it is: the list item (`item`, None for one
+    text) and its span in that text (`at`, `end`). Nothing is left out, so a hit the form shows is always here."""
+    return [{'field': key, 'label': label, 'item': index, **hit} for key, label, index, text in placed_texts(character)
+            for hit in scan_at(text)]
 
 
 def audit_texts(found: list[tuple[str, str, str]], allowed: str = '') -> list[dict]:

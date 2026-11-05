@@ -214,7 +214,7 @@ def for_model(character: dict, interview: bool = False, secret: bool = False) ->
     a model), and the long interview only when the request is about it. Their secret only when the request is about them as
     they are inside (`secret`); otherwise only what people believe instead, which is what everyone else knows."""
     shown = {key: value for key, value in character.items()
-             if key not in ('personality_sliders', 'apps', 'card') and (interview or key != 'interview')}
+             if key not in ('personality_sliders', 'apps', 'card', 'ignored_flags') and (interview or key != 'interview')}
     if isinstance(shown.get('psyche'), dict):
         shown['psyche'] = {key: value.get('text', '') for key, value in shown['psyche'].items() if isinstance(value, dict)}
     if not secret and 'secret' in shown:

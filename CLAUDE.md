@@ -48,6 +48,9 @@ character creator.
   `formats/companion/providers`). Profiles and which one does each job (`writing`, `assistant`, `cast`) are
   `dramatis/profiles.py` (in settings.json, keys in the keyring), routes in `model_routes.py`; a caller names its job
   with `ai.doing(job)`. The Models screen is Companion's, ported to `src/models/`.
+- The AI-slop audit on the form is `src/Audit.tsx`: Fix selected / Fix all go to `dramatis/fixes.py` (`/api/draft/fix`,
+  `prompts/fix.md`), where the model answers only replacements for the marked spans and the server puts them in, so
+  the rest of a field never changes; Ignore saves the words in `Character.ignored_flags`, which `slop.audit` leaves out.
 - Browser autofill and password managers are off on every field: `src/noAutofill.ts` (started in `main.tsx`) marks each
   `input`, `textarea` and `select` as it appears, so a new field needs nothing.
 - The model never saves anything: drafts go to the form for review, and only Save writes to the library.

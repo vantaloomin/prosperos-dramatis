@@ -216,6 +216,9 @@ class Character(Input):
     secret: Secret = Field(default_factory=Secret)
     psyche: Psyche | None = None
     card: CardParts | None = None
+    # Words and phrases the AI-slop audit flags that the user keeps on this character ("Irish" for someone from
+    # Belfast): the audit leaves them out (dramatis/slop.py). Dramatis' own; no app reads it.
+    ignored_flags: list[Annotated[str, Field(max_length=200)]] = Field(default_factory=list, max_length=200)
 
     @field_validator('lifespan')
     @classmethod

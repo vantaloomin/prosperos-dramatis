@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Check, Cpu, Info, RefreshCw, TriangleAlert, X } from 'lucide-react'
 import type { AuditHit } from '../api'
-import { Audit } from '../Editor'
+import { Audit } from '../Audit'
 import { Bolt, ModelButton } from '../Fields'
 import { openModelSettings } from '../ModelSettings'
 import { useModelCall } from '../modelCall'
