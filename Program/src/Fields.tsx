@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { ChevronRight, Square, TriangleAlert, X, Zap } from 'lucide-react'
 import { cleaned, sendJson, type AuditHit } from './api'
 import { useModelCall } from './modelCall'
@@ -148,17 +148,21 @@ export function TextInput({ label, value, onChange, maxLength, placeholder, name
 
 export function TextArea({ label, value, onChange, maxLength, placeholder, name, write, rows = 3 }: TextProps & { rows?: number }) {
   return <Field label={label} name={name} write={write} filled={!!value.trim()}>{(id) => (
-    <textarea id={id} value={value} maxLength={maxLength} rows={rows} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />
+    <textarea id={id} value={value} maxLength={maxLength} rows={rows} style={{ '--rows': rows } as CSSProperties} placeholder={placeholder}
+      onChange={(event) => onChange(event.target.value)} />
   )}</Field>
 }
 
-/** A list, one row per item: Enter in the last box adds one, each has a remove button, and an emptied row goes when
- * the form is saved (`cleanList`). */
+/** A list item is one line however it is typed or pasted. */
+const oneLine = (text: string) => text.replace(/\s*\n\s*/g, ' ')
+
+/** A list, one row per item, each wrapping when it is long: Enter in the last box adds one, each has a remove button,
+ * and an emptied row goes when the form is saved (`cleanList`). */
 export function ListField({ label, value, onChange, add, name, write, itemLength = 120 }: {
   label: string; value: string[]; onChange: (value: string[]) => void; add: string; name?: string; write?: string; itemLength?: number
 }) {
   const [draft, setDraft] = useState('')
-  const adder = useRef<HTMLInputElement>(null)
+  const adder = useRef<HTMLTextAreaElement>(null)
   const put = () => {
     const text = draft.trim()
     if (text) onChange([...value.filter((item) => item.trim()), text])
@@ -169,8 +173,8 @@ export function ListField({ label, value, onChange, add, name, write, itemLength
     <div className="list" role="group" aria-labelledby={`${id}-label`}>
       {items.map((item, index) => (
         <div key={index} className="item">
-          <input aria-label={`${label}, ${index + 1}`} value={item} maxLength={itemLength}
-            onChange={(event) => onChange(items.map((each, at) => at === index ? event.target.value : each))}
+          <textarea rows={1} aria-label={`${label}, ${index + 1}`} value={item} maxLength={itemLength}
+            onChange={(event) => onChange(items.map((each, at) => at === index ? oneLine(event.target.value) : each))}
             onKeyDown={(event) => {
               if (event.key === 'Enter') { event.preventDefault(); adder.current?.focus() }
               if (event.key === 'Backspace' && !item) { event.preventDefault(); onChange(items.filter((_, at) => at !== index)); adder.current?.focus() }
@@ -178,8 +182,8 @@ export function ListField({ label, value, onChange, add, name, write, itemLength
           <button type="button" className="icon" aria-label={`Remove ${item.trim() || 'this one'}`} onClick={() => onChange(items.filter((_, at) => at !== index))}><X size={14} /></button>
         </div>
       ))}
-      <input ref={adder} id={id} className="add" aria-label={add} placeholder={add} value={draft} maxLength={itemLength}
-        onChange={(event) => setDraft(event.target.value)} onBlur={put}
+      <textarea ref={adder} rows={1} id={id} className="add" aria-label={add} placeholder={add} value={draft} maxLength={itemLength}
+        onChange={(event) => setDraft(oneLine(event.target.value))} onBlur={put}
         onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); put() } }} />
     </div>
   )}</Field>
