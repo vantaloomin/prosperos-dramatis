@@ -308,6 +308,12 @@ def instructions_in(text: str) -> list[str]:
     return list(dict.fromkeys(line.strip()[:200] for line in (text or '').splitlines() if INSTRUCTION.search(line)))[:5]
 
 
+def without_instructions(text: str) -> str:
+    """The pasted character without the lines `instructions_in` names: the model never reads them, since in the red-team
+    runs it obeyed such a line 19 times in 20 even when told not to. The user is shown what was left out."""
+    return '\n'.join(line for line in (text or '').splitlines() if not INSTRUCTION.search(line))
+
+
 def fenced(text: str) -> str:
     """The user's text between the paste markers, with any marker of its own broken so it cannot close them."""
     return re.sub(r'\[\s*\[', '[ [', re.sub(r'\]\s*\]', '] ]', text))
@@ -680,9 +686,10 @@ def draft(picks: dict) -> dict:
 
 
 def split(picks: dict) -> dict:
-    """A whole pasted character split into the fields, with the ones the model had to fill in; nothing is saved."""
-    text = picks['text']
-    adult_text(text)
+    """A whole pasted character split into the fields, with the ones the model had to fill in; nothing is saved.
+    Lines that talk to the app or the model are left out of everything the model reads, and named back."""
+    adult_text(picks['text'])
+    text = without_instructions(picks['text'])
     seed = new_seed()
     sliders = rolled(text, seed)
     calls.step('Settling how they look')
@@ -698,7 +705,7 @@ def split(picks: dict) -> dict:
     pasted = f'The character I pasted:\n[[pasted]]\n{fenced(text)}\n[[end of pasted]]\n\nWrite the JSON now.'
     found = ask(system, Shape({key: value for key, value in picks.items() if key != 'name'}, sliders, plan, roll,
                               split=True), pasted)
-    return found | {'seed': seed, 'instructions': instructions_in(text)}
+    return found | {'seed': seed, 'instructions': instructions_in(picks['text'])}
 
 
 def rewrite(character: dict, field: str, request: str = '') -> dict:
