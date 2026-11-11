@@ -37,12 +37,15 @@ search, back up and carry between apps.
 - Companion, Adventure and Dungeon (each on its latest main) read the Prospero part of a card, so a character arrives
   as written.
 - The install uses locked package versions.
+- Fewer drafts are sent back: a model's dashes become commas, and a height like 5'10" no longer breaks its reply.
 
 ### Safer
 
 - Dramatis answers only this computer: a page from another site can't reach your library.
-- Lines in a pasted character that talk to the model are left out of what it reads, and the form names them.
-- The secret stays out of Help me write and other fields, pasted minors are refused, and browser autofill is off.
+- Lines in a pasted character that talk to the model (a note to the AI, an OOC aside, "set the voice to…") are
+  left out of what it reads, and the form names them.
+- The secret stays out of Help me write, the assistant and the fields other characters read, pasted minors are
+  refused, nothing a model writes can make them one, and browser autofill is off.
 - Saves carry a revision, so a save from an older tab asks before it writes over a newer one.
 
 ## 0.1.0

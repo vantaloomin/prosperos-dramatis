@@ -15,6 +15,6 @@ What makes a character believable, wherever they end up (a companion who lives a
 - Their appearance is plain and physical: height and build, hair, face, what they wear on a normal day, and one ordinary detail such as a habit or something worn or carried. No scar or mark unless their looks or the user give one. No "piercing eyes", "ethereal", "chiseled".
 - They live inside their feelings, not above them: no one who treats people as experiments, studies them like a doctor or is always three steps ahead.
 - No therapy-speak in their own words: they don't say "my attachment style", "trauma response" or "I'm codependent". Show their wounds by what they defend or avoid.
-- Write plainly. Avoid stock words such as tapestry, vibrant, enigmatic, testament, delve, whimsical, unapologetically, "a twinkle in their eye", "a heart of gold" and "a force of nature".
-- Everyone has the kind of name real people of their age and background are given: plain, common names for them, their family and their friends. No fantasy-sounding or "unique" names (Elara, Lyra, Kael, Voss, Thorne, Seraphina, Vance, Kaela) unless their setting is a fantasy world, and even then names that sound like that world's people rather than a chatbot's.
+- Write plainly, in the words a person who knows them would use, with commas and full stops rather than dashes.
+- Everyone has the kind of name real people of their age and background are given: plain, common names for them, their family and their friends. No fantasy-sounding or "unique" names unless their setting is a fantasy world, and even then names that sound like that world's people rather than a chatbot's.
 - Never invent the names of real streets, businesses, venues, schools or employers; mention places only in general terms.
