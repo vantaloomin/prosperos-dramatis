@@ -1,11 +1,32 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Swords } from 'lucide-react'
+import { FileUp, Swords } from 'lucide-react'
+import { fileData, sendJson } from '../api'
 import { Field, TextInput } from '../Fields'
-import { LIMITS, castCalls, newCast, type Cast } from '../castApi'
+import { LIMITS, castCalls, newCast, type Cast, type SavedCast } from '../castApi'
 
-/** A new cast: the question the story asks, and a genre and group type to start from; with neither, a blank board. */
-export function CastStart({ onBegin }: { onBegin: (cast: Cast) => void }) {
+/** A new cast: the question the story asks, and a genre and group type to start from; with neither, a blank board.
+ * Or a cast file another Dramatis exported, opened as a new cast with the characters it brings
+ * (dramatis/library_tools.py). */
+export function CastStart({ onBegin, onOpened }: { onBegin: (cast: Cast) => void; onOpened: (saved: SavedCast, note: string) => void }) {
+  const picker = useRef<HTMLInputElement>(null)
+  const [opening, setOpening] = useState(false)
+  const [error, setError] = useState('')
+  const open = async (file: File | undefined) => {
+    if (!file) return
+    setOpening(true)
+    setError('')
+    try {
+      const found = await sendJson<{ cast: SavedCast; added: number }>('/api/library/casts/import', 'POST', { filename: file.name, data: await fileData(file) })
+      const title = found.cast.cast.title || 'the cast'
+      onOpened(found.cast, found.added ? `Opened ${title}, with ${found.added === 1 ? '1 character' : `${found.added} characters`} new to this library.` : `Opened ${title}.`)
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'That cast file could not be opened.')
+    } finally {
+      setOpening(false)
+      if (picker.current) picker.current.value = ''
+    }
+  }
   const templates = useQuery({ queryKey: ['cast-templates'], queryFn: castCalls.templates, staleTime: Infinity })
   const [theme, setTheme] = useState('')
   const [genreId, setGenreId] = useState('')
@@ -44,7 +65,10 @@ export function CastStart({ onBegin }: { onBegin: (cast: Cast) => void }) {
         )}
         <div className="row">
           <button type="submit" className="primary">{genre || group ? 'Start the board' : 'Start a blank board'}</button>
+          <button type="button" className="quiet" disabled={opening} onClick={() => picker.current?.click()}><FileUp size={14} aria-hidden /> {opening ? 'Opening…' : 'Open a cast file'}</button>
+          <input ref={picker} type="file" accept=".json" hidden aria-label="Cast file" onChange={(event) => void open(event.target.files?.[0])} />
         </div>
+        {error && <p className="error small" role="alert">{error}</p>}
       </form>
     </section>
   )

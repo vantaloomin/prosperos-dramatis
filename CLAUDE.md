@@ -42,6 +42,10 @@ character creator.
   reads it, then it opens in the form with no model (headed lines to their fields) or goes to the paste box for the
   split, both behind the Paste path's checks. What the card has that Dramatis doesn't make is `Character.card`
   (`CardParts`), put back in every export and kept out of prompts by `drafting.for_model`.
+- `dramatis/library_tools.py` (routes under `/api/library`) duplicates, backs up and restores (a zip of the record
+  files; restore only adds what is missing, through `records.migrated`), opens a cast file as a new cast (ids it
+  carries that this library lacks come in as new characters, `relinked`), and names the casts that use a character.
+  Search is `library.listing(search)`, over the character's text values. `src/LibraryTools.tsx` is the screen's part.
 - The Cast board is `src/cast/` with its calls and pure cast edits in `src/castApi.ts`. App keeps each open board
   (unsaved edits survive leaving it) and the corner a drafted character goes to.
 - The Cast board's AI help is `dramatis/cast_ai.py` (routes under `/api/cast-ai`, prompts `prompts/cast-*.md`) and

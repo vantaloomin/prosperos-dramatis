@@ -24,6 +24,7 @@ from dramatis import (
     imports,
     interview,
     library,
+    library_tools,
     model_routes,
     names,
     portraits,
@@ -158,8 +159,8 @@ def api() -> APIRouter:  # noqa: C901 - one route each, kept together
                 'notice': settings.notice()}
 
     @router.get('/characters')
-    def characters():
-        return library.listing()
+    def characters(search: str = Query('', max_length=200)):
+        return library.listing(search)
 
     @router.get('/characters/{character_id}')
     def character(character_id: str):
@@ -267,6 +268,7 @@ def create_app(dist: Path = DIST, hosts: set[str] | None = None) -> FastAPI:
     app.include_router(cast_ai.router)
     app.include_router(assistant.router)
     app.include_router(model_routes.router)
+    app.include_router(library_tools.router)
     if (dist / 'index.html').is_file():
         app.mount('/assets', StaticFiles(directory=dist / 'assets'), name='assets')
 
