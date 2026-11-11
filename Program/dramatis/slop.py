@@ -26,29 +26,17 @@ import re
 from functools import cache
 from pathlib import Path
 
+from dramatis import fields
 from dramatis.formats.companion import naming
 
 DATA = Path(__file__).parent / 'data'
 LISTS = (DATA / 'ai-slop.json', DATA / 'ai-slop-wikipedia.json', DATA / 'ai-slop-dramatis.json')
-# The character's fields the audit reads, with the names the form shows them by.
-FIELDS = {'name': 'Name', 'about': 'About them', 'personality': 'Personality', 'voice': 'How they talk',
-          'sound': 'How they sound aloud', 'appearance': 'Appearance', 'seen_as': 'How others see them',
-          'sees_self': 'How they see themselves', 'background': 'Background', 'wants': 'What they want',
-          'fears': 'What they fear', 'skills': 'Skills', 'flaws': 'Flaws', 'interests': 'Interests',
-          'interview': 'Interview'}
+# The character's fields the audit reads, with the names the form shows them by (dramatis/fields.py).
+FIELDS = fields.labels('core')
 # Emotional edges are read by each one's note (`texts_of`).
-LIFE_FIELDS = {'routine': 'Their routine', 'life_themes': 'Life themes', 'history_together': 'How you know each other',
-               'absence_reaction': 'When you are away', 'emotional_traits': 'Emotional edges'}
+LIFE_FIELDS = fields.labels('life')
 # Their depth, inside the character: the key the form and Help me write use, its label, and where it sits.
-DEPTH = {'arc.lie': ('Lie they believe', ('arc', 'lie')), 'arc.truth': ('Truth they need', ('arc', 'truth')),
-         'arc.catalyst': ('What could force it', ('arc', 'catalyst')),
-         'secret.truth': ("What's really true", ('secret', 'truth')),
-         'secret.cover_story': ('What people believe instead', ('secret', 'cover_story')),
-         'secret.known_by': ('Who knows', ('secret', 'known_by')),
-         'psyche.was': ('Who they were', ('psyche', 'was', 'text')),
-         'psyche.expected': ("Who they're expected to be", ('psyche', 'expected', 'text')),
-         'psyche.wants_to_be': ('Who they want to be', ('psyche', 'wants_to_be', 'text')),
-         'psyche.fears_becoming': ('Who they fear becoming', ('psyche', 'fears_becoming', 'text'))}
+DEPTH = {spec.key: (spec.label, spec.at()) for spec in fields.SPECS if spec.group == 'depth'}
 # Real words that only count as names mid-sentence, and that never match a longer word.
 NO_DERIVATIVES = ('names_word', 'surnames_overdrawn', 'places_overdrawn')
 MADE_UP = 'Made-up names'

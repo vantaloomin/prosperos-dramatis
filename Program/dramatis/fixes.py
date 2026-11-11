@@ -16,20 +16,13 @@ import json
 from fastapi import APIRouter
 from pydantic import BaseModel, Field, ValidationError
 
-from dramatis import drafting, slop
+from dramatis import drafting, fields, slop
 from dramatis.asking import Unusable, ask, fill, template
 from dramatis.character import Character
 from dramatis.drafting import fenced
 from dramatis.formats.companion.errors import DomainError
 
 PUNCTUATION = ',.;:!?)'
-
-
-def path(field: str) -> tuple[str, ...]:
-    """Where a field the audit reads sits in the character."""
-    if field in slop.DEPTH:
-        return slop.DEPTH[field][1]
-    return ('companion', field) if field in slop.LIFE_FIELDS else (field,)
 
 
 def chosen(character: dict, picked: list[dict]) -> list[dict]:
@@ -55,7 +48,7 @@ def spans(hits: list[dict]) -> dict[tuple[str, int | None], list[dict]]:
 
 
 def text_of(character: dict, field: str, item: int | None) -> str:
-    value = slop.at(character, path(field))
+    value = slop.at(character, fields.path(field))
     return slop.text_of_item(value[item]) if item is not None else value
 
 
@@ -128,19 +121,19 @@ class Fixed:
             if item is None:
                 values[field] = text
             else:
-                current = values.get(field, list(slop.at(self.character, path(field))))
+                current = values.get(field, list(slop.at(self.character, fields.path(field))))
                 current[item] = {**current[item], 'note': text} if isinstance(current[item], dict) else text
                 values[field] = current
         patched = self.character
         for field, value in values.items():
-            patched = with_value(patched, path(field), value)
+            patched = with_value(patched, fields.path(field), value)
         if not final and fits(self.character) and not fits(patched):
             raise Unusable('a replacement made its field too long. Use fewer words.')
         labels = {field: found[0]['label'] for (field, _), found in self.places.items()}
         result = []
         for field, value in values.items():
             hits = slop.audit(drafting.placed(field, value), self.allowed)
-            before = json.dumps(slop.at(self.character, path(field)), ensure_ascii=False).casefold()
+            before = json.dumps(slop.at(self.character, fields.path(field)), ensure_ascii=False).casefold()
             added = [hit for hit in slop.hard(hits) if hit['match'].strip().casefold() not in before]
             if added and not final:
                 raise Unusable(slop.problem(added))

@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { ChevronRight, Dices, Square, TriangleAlert, X, Zap } from 'lucide-react'
 import { cleaned, sendJson, type AuditHit } from './api'
+import { FIELDS, type FieldKey } from './generated/fields'
 import { useModelCall } from './modelCall'
 import { profileFor, useModels } from './models/ModelSettings'
 import { proposals, useProposal, type Proposal } from './proposals'
@@ -101,12 +102,22 @@ function Ask({ field, label, write, onDone }: { field: string; label: string; wr
   )
 }
 
+/** A field the registry knows (dramatis/fields.py) takes its key, label, limit and Help me write and Add words from it
+ * by `field`; a prop given beside it wins. */
+function described<T extends { field?: FieldKey; label?: string; name?: string; write?: string; maxLength?: number; add?: string }>(props: T) {
+  const spec = props.field ? FIELDS[props.field] : undefined
+  return {
+    ...props, label: props.label ?? spec?.label ?? '', name: props.name ?? props.field, write: props.write ?? spec?.write,
+    maxLength: props.maxLength ?? spec?.limit, add: props.add ?? spec?.add ?? '',
+  }
+}
+
 /** `name` is the field's key in the character (dotted for their depth, as Help me write and the Sidebar Assistant use
  * it): the assistant knows which field the user is in by it, and proposals stand in the field it names. `write` gives
  * the field its Help me write bolt ("Help me write <write>"), inside the box while it is empty (`filled` false) and
  * beside the label once it has something. `group` labels a set of controls rather than one. */
 interface FieldProps {
-  label: string; name?: string; write?: string; filled?: boolean; group?: boolean
+  field?: FieldKey; label?: string; name?: string; write?: string; filled?: boolean; group?: boolean
   /** Where the value came from, after the label: "(Rolled)". */
   from?: string
   /** Rolls a value with no model (the dice inside the box), when there is one to roll. */
@@ -114,7 +125,8 @@ interface FieldProps {
   children: (id: string) => ReactNode
 }
 
-export function Field({ label, name, write, filled = true, group, from, roll, children }: FieldProps) {
+export function Field(props: FieldProps) {
+  const { label, name, write, filled = true, group, from, roll, children } = described(props)
   const id = useId()
   const proposal = useProposal(name)
   const ready = useModelReady()
@@ -148,15 +160,20 @@ export function Field({ label, name, write, filled = true, group, from, roll, ch
   )
 }
 
-interface TextProps { label: string; value: string; onChange: (value: string) => void; maxLength: number; placeholder?: string; name?: string; write?: string; from?: string }
+interface TextProps {
+  field?: FieldKey; label?: string; value: string; onChange: (value: string) => void; maxLength?: number; placeholder?: string
+  name?: string; write?: string; from?: string
+}
 
-export function TextInput({ label, value, onChange, maxLength, placeholder, name, write, from, roll }: TextProps & { roll?: () => void }) {
+export function TextInput(props: TextProps & { roll?: () => void }) {
+  const { label, value, onChange, maxLength, placeholder, name, write, from, roll } = described(props)
   return <Field label={label} name={name} write={write} filled={!!value.trim()} from={from} roll={roll}>{(id) => (
     <input id={id} value={value} maxLength={maxLength} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />
   )}</Field>
 }
 
-export function TextArea({ label, value, onChange, maxLength, placeholder, name, write, rows = 3 }: TextProps & { rows?: number }) {
+export function TextArea(props: TextProps & { rows?: number }) {
+  const { label, value, onChange, maxLength, placeholder, name, write, rows = 3 } = described(props)
   return <Field label={label} name={name} write={write} filled={!!value.trim()}>{(id) => (
     <textarea id={id} value={value} maxLength={maxLength} rows={rows} style={{ '--rows': rows } as CSSProperties} placeholder={placeholder}
       onChange={(event) => onChange(event.target.value)} />
@@ -168,9 +185,12 @@ const oneLine = (text: string) => text.replace(/\s*\n\s*/g, ' ')
 
 /** A list, one row per item, each wrapping when it is long: Enter in the last box adds one, each has a remove button,
  * and an emptied row goes when the form is saved (`cleanList`). */
-export function ListField({ label, value, onChange, add, name, write, itemLength = 120 }: {
-  label: string; value: string[]; onChange: (value: string[]) => void; add: string; name?: string; write?: string; itemLength?: number
+export function ListField(props: {
+  field?: FieldKey; label?: string; value: string[]; onChange: (value: string[]) => void; add?: string; name?: string; write?: string
+  itemLength?: number
 }) {
+  const { label, value, onChange, add, name, write, maxLength } = described(props)
+  const itemLength = props.itemLength ?? maxLength ?? 120
   const [draft, setDraft] = useState('')
   const adder = useRef<HTMLTextAreaElement>(null)
   const put = () => {

@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { emptyPsyche, getJson, type Impulse, type ImpulseKey, type Psyche as PsycheValue, type Summary } from './api'
 import { Fold, TextArea } from './Fields'
+import { FIELDS } from './generated/fields'
 
-export const IMPULSES: [ImpulseKey, string, string][] = [
-  ['was', 'Who they were', 'who they were'], ['expected', "Who they're expected to be", "who they're expected to be"],
-  ['wants_to_be', 'Who they want to be', 'who they want to be'], ['fears_becoming', 'Who they fear becoming', 'who they fear becoming'],
-]
+/** The four pulls, each with its label (dramatis/fields.py). */
+export const IMPULSES: [ImpulseKey, string][] = (['was', 'expected', 'wants_to_be', 'fears_becoming'] as const)
+  .map((key) => [key, FIELDS[`psyche.${key}`].label])
 const MOST_PRESSING = 6
 
 /** Who they could become: four pulls on them (the Cast board calls it their inner square), each pressed by other
@@ -16,9 +16,9 @@ export function Psyche({ psyche, selfId, onChange }: { psyche: PsycheValue | nul
   return (
     <Fold title="Who they could become" filled={psyche !== null}>
       <div className="grid two">
-        {IMPULSES.map(([key, label, helpLabel]) => (
+        {IMPULSES.map(([key]) => (
           <div key={key} className="stack">
-            <TextArea name={`psyche.${key}`} label={label} write={helpLabel} value={value[key].text} onChange={(text) => set(key, { text })} maxLength={300} rows={2} />
+            <TextArea field={`psyche.${key}`} value={value[key].text} onChange={(text) => set(key, { text })} rows={2} />
             <PressedBy chosen={value[key].pressed_by} selfId={selfId} onChange={(pressed_by) => set(key, { pressed_by })} />
           </div>
         ))}

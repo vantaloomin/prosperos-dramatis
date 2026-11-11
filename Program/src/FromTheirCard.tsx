@@ -40,7 +40,7 @@ export function FromTheirCard({ card, onChange }: { card: CardParts | null; onCh
         ))}
         <ListField label="Tags" add="Add a tag" value={card.tags} onChange={(tags) => set({ tags })} itemLength={100} />
         {card.character_book && (
-          <p className="row small">Lorebook, {entries(card.character_book.entries?.length ?? 0)}
+          <p className="row small">Lorebook, {entries(Array.isArray(card.character_book.entries) ? card.character_book.entries.length : 0)}
             <button type="button" className="link danger" onClick={() => leave('Their lorebook', { ...card, character_book: null })}><Trash2 size={13} aria-hidden /> Leave it out</button></p>
         )}
         {settings.length > 0 && (

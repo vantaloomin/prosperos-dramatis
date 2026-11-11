@@ -49,59 +49,20 @@ export function fileData(file: File): Promise<string> {
   })
 }
 
-export type App = 'companion' | 'adventure' | 'dungeon'
+export type {
+  App, Arc, Block, BlockKind, CardParts, Character, CompanionLife, EmotionalTrait, Gender, Impulse, Looks, LooksField, Psyche,
+  Relationship, Secret, Slider, Trait,
+} from './generated/character'
+import type { App, CardParts, Character, Looks, Psyche, Relationship, Slider, Trait } from './generated/character'
 export const APPS: App[] = ['companion', 'adventure', 'dungeon']
 export const APP_NAMES: Record<App, string> = { companion: 'Companion', adventure: 'Adventure', dungeon: 'Dungeon' }
-export type Gender = 'woman' | 'man' | 'nonbinary' | ''
-export type Relationship = 'friendship' | 'romance' | 'mentor' | 'family' | 'other' | 'persona'
 /** How they know the user in Companion. A user persona is the user themself (dramatis/character.py): Companion takes
  * them as a persona, so its everyday life is not theirs. */
 export const RELATIONSHIPS: [Relationship, string][] = [['friendship', 'Friendship'], ['romance', 'Romance, only with your yes'],
   ['mentor', 'Mentor'], ['family', 'Family'], ['other', 'Something else'], ['persona', 'User persona']]
-export type BlockKind = 'work' | 'study' | 'errand' | 'leisure' | 'social' | 'rest' | 'sleep'
-
-export interface Slider { level: number; source: 'rolled' | 'idea' | 'you' }
-export type Trait = 'social' | 'warmth' | 'order' | 'curiosity' | 'stress'
-export interface Looks {
-  height_cm: number | null; weight_kg: number | null; build: string; skin: string; face: string; jaw: string; nose: string
-  eyes: string; eye_shape: string; hair: string; facial_hair: string; feature: string
-}
-export type LooksFrom = Partial<Record<keyof Looks, 'idea' | 'rolled'>>
-export interface Block { key?: string; label: string; kind: BlockKind; days: number[]; start: string; end: string; themes: string[] }
-export interface EmotionalTrait { name: string; intensity: 'mild' | 'moderate' | 'strong'; note: string }
-export interface CompanionLife {
-  relationship: Relationship; starting_closeness: number; history_together: string; routine: string; schedule: Block[]
-  life_themes: string[]; texting: { bursts: boolean; lowercase: boolean; typos: boolean; quick: boolean }
-  emotional_traits: EmotionalTrait[]; absence_reaction: string; timezone: string
-}
-/** Their inner arc: the lie they believe, the truth they need, and what could force it. */
-export interface Arc { lie: string; truth: string; catalyst: string }
-/** Something they keep from most people; it goes with them into every card and app. */
-export interface Secret { truth: string; cover_story: string; known_by: string }
-/** One pull on them, and the library characters who press on it (never written by a model). */
-export interface Impulse { text: string; pressed_by: string[] }
-export type ImpulseKey = 'was' | 'expected' | 'wants_to_be' | 'fears_becoming'
-export type Psyche = Record<ImpulseKey, Impulse>
-/** What the card they were imported from had that Dramatis doesn't make, kept as it came for the cards they export. */
-export interface CardParts {
-  source: string; first_mes: string; alternate_greetings: string[]; mes_example: string; scenario: string; creator_notes: string
-  system_prompt: string; post_history_instructions: string; creator: string; character_version: string; tags: string[]
-  character_book: { entries?: unknown[] } | null; extensions: Record<string, unknown>
-}
-export interface Character {
-  name: string; gender: Gender; age: number | null; kind: string; lifespan: number | null; birthday: string; setting: string
-  about: string; personality: string; voice: string; sound: string; appearance: string; background: string; wants: string; fears: string
-  skills: string[]; flaws: string[]; interests: string[]; looks: Looks
-  /** Where a draft's Details came from (dramatis/looks.py); a field the user sets has no mark. */
-  looks_from: LooksFrom
-  personality_sliders: Partial<Record<Trait, Slider>> | null; seen_as: string; sees_self: string
-  apps: App[]; companion: CompanionLife
-  interview: string; arc: Arc; secret: Secret; psyche: Psyche | null; card: CardParts | null
-  /** Words the audit flags that the user keeps on them (src/Audit.tsx); missing on characters made before it. */
-  ignored_flags?: string[]
-  /** The fields a model wrote (dramatis/character.py): saved, so the audit and Help me write know them after a reload. */
-  written?: string[]
-}
+/** Where a draft's Details came from (dramatis/looks.py); a field the user sets has no mark. */
+export type LooksFrom = Character['looks_from']
+export type ImpulseKey = keyof Psyche
 /** What the interview suggests for one field, from POST /api/draft/from-interview. */
 export type ProposedField = 'voice' | 'appearance' | 'seen_as' | 'sees_self' | 'flaws' | 'interests'
 export interface Suggestion { field: ProposedField; value: string | string[]; reason: string }
@@ -151,7 +112,7 @@ export function emptyCharacter(apps: App[] = APPS): Character {
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? '',
     },
     interview: '', arc: { lie: '', truth: '', catalyst: '' }, secret: { truth: '', cover_story: '', known_by: '' }, psyche: null,
-    card: null,
+    card: null, ignored_flags: [], written: [],
   }
 }
 

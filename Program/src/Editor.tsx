@@ -216,39 +216,39 @@ export function Editor({ saved, start, seed, filledIn, missing, shortened, note,
             onSaved={(next) => onSaved({ ...next, problems })} />
           <div className="stack grow">
             <div className="grid three">
-              <TextInput name="name" label="Name" value={character.name} onChange={(name) => set({ name })} maxLength={80} roll={rollName} />
-              <Field name="gender" label="Gender">{(id) => (
+              <TextInput field="name" value={character.name} onChange={(name) => set({ name })} roll={rollName} />
+              <Field field="gender">{(id) => (
                 <select id={id} value={character.gender} onChange={(event) => set({ gender: event.target.value as Gender })}>
                   <option value="">Not said</option><option value="woman">Woman</option><option value="man">Man</option><option value="nonbinary">Nonbinary</option>
                 </select>
               )}</Field>
-              <Field name="age" label="Age">{(id) => (
+              <Field field="age">{(id) => (
                 <input id={id} type="number" min={18} max={5000} value={character.age ?? ''} onChange={(event) => set({ age: event.target.value ? Number(event.target.value) : null })} />
               )}</Field>
             </div>
-            <TextInput name="setting" label="Where and when" value={character.setting} onChange={(setting) => set({ setting })} maxLength={200} />
+            <TextInput field="setting" value={character.setting} onChange={(setting) => set({ setting })} />
             <div className="grid three">
-              <TextInput name="kind" label="Kind, if not human" value={character.kind} onChange={(kind) => set({ kind: kind.toLowerCase().replace(/[^a-z0-9-]/g, '') })} maxLength={40} />
-              <Field label="How long they live">{(id) => (
+              <TextInput field="kind" value={character.kind} onChange={(kind) => set({ kind: kind.toLowerCase().replace(/[^a-z0-9-]/g, '') })} />
+              <Field field="lifespan">{(id) => (
                 <select id={id} value={character.lifespan ?? ''} onChange={(event) => set({ lifespan: event.target.value === '' ? null : Number(event.target.value) })}>
                   {LIFESPANS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                 </select>
               )}</Field>
-              <Field label="Birthday">{(id) => (
+              <Field field="birthday">{(id) => (
                 <input id={id} value={character.birthday} maxLength={5} placeholder="MM-DD" onChange={(event) => set({ birthday: event.target.value })} />
               )}</Field>
             </div>
             <AppPicks apps={character.apps} onChange={(apps) => set({ apps })} />
           </div>
         </div>
-        <TextArea name="about" label="About them" write="about them" value={character.about} onChange={(about) => set({ about })} maxLength={2000} rows={3} />
-        <TextArea name="personality" label="Personality" write="their personality" value={character.personality} onChange={(personality) => set({ personality })} maxLength={8000} rows={4} />
+        <TextArea field="about" value={character.about} onChange={(about) => set({ about })} rows={3} />
+        <TextArea field="personality" value={character.personality} onChange={(personality) => set({ personality })} rows={4} />
         <div className="grid two">
           <div className="stack tight">
-            <TextArea name="voice" label="How they talk" write="how they talk" value={character.voice} onChange={(voice) => set({ voice })} maxLength={600} rows={3} />
+            <TextArea field="voice" value={character.voice} onChange={(voice) => set({ voice })} rows={3} />
             {said && <q className="sample">{said}</q>}
           </div>
-          <TextArea name="sound" label="How they sound aloud" write="how they sound aloud" value={character.sound} onChange={(sound) => set({ sound })} maxLength={300} rows={3} />
+          <TextArea field="sound" value={character.sound} onChange={(sound) => set({ sound })} rows={3} />
         </div>
       </section>
 

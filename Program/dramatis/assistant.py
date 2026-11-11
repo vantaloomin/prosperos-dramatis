@@ -22,7 +22,7 @@ from typing import Literal
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-from dramatis import adults, ai, asking, drafting, slop
+from dramatis import adults, ai, asking, drafting, fields, slop
 from dramatis.character import APPS
 from dramatis.drafting import Unusable, fill, template, text_value
 
@@ -34,27 +34,25 @@ LIFE = ('routine', 'life_themes', 'schedule', 'history_together', 'emotional_tra
 COMPANION_ONLY = LIFE
 # Fields the form has that Help me write does not.
 EXTRA = {
-    'name': {'guide': 'their first and last name, or the one name they go by', 'shape': 'a string', 'limit': 80},
+    'name': {'guide': 'their first and last name, or the one name they go by', 'shape': 'a string'},
     'gender': {'guide': 'their gender', 'shape': '"woman", "man", "nonbinary", or "" for not said'},
     'age': {'guide': 'their age in whole years: always 18 or more', 'shape': 'a whole number, or null to leave it open'},
-    'setting': {'guide': 'where and when they come from, in a few words such as "Baltimore, today"', 'shape': 'a string',
-                'limit': 200},
-    'history_together': {'guide': 'how they and the user know each other, in Companion', 'shape': 'a string',
-                         'limit': 2000},
+    'setting': {'guide': 'where and when they come from, in a few words such as "Baltimore, today"', 'shape': 'a string'},
+    'history_together': {'guide': 'how they and the user know each other, in Companion', 'shape': 'a string'},
     'emotional_traits': {'guide': "Companion's emotional edges, such as jealousy or guilt over absence: each one's "
                                   'name, how strong it is and how it shows', 'shape': 'a list of objects {"name": a short '
                                   'name, "intensity": "mild" | "moderate" | "strong", "note": how it shows, in a sentence '
-                                  'or two}', 'count': 12},
+                                  'or two}'},
 }
-LABELS = {**slop.FIELDS, **slop.LIFE_FIELDS, **{key: label for key, (label, _) in slop.DEPTH.items()},
-          'gender': 'Gender', 'age': 'Age', 'setting': 'Where and when', 'schedule': 'Their week'}
+LABELS = fields.LABELS
 
 
 def guides() -> dict[str, dict]:
     """Every field the assistant may change, in the form's order, with its guide and shape."""
     found = drafting.field_guides()
-    return {key: EXTRA[key] for key in ('name', 'gender', 'age', 'setting')} | found | \
-        {key: EXTRA[key] for key in ('history_together', 'emotional_traits')}
+    extra = {key: guide | fields.limits(key) for key, guide in EXTRA.items()}
+    return {key: extra[key] for key in ('name', 'gender', 'age', 'setting')} | found | \
+        {key: extra[key] for key in ('history_together', 'emotional_traits')}
 
 
 def editable(character: dict) -> dict[str, dict]:
@@ -65,11 +63,7 @@ def editable(character: dict) -> dict[str, dict]:
     return {key: guide for key, guide in guides().items() if life or key not in COMPANION_ONLY}
 
 
-def path(field: str) -> tuple[str, ...]:
-    """Where a field sits in the character: arc.lie under arc, psyche.was in its text, routine under companion."""
-    if field in slop.DEPTH:
-        return slop.DEPTH[field][1]
-    return ('companion', field) if field in LIFE else (field,)
+path = fields.path
 
 
 def plain(value):
