@@ -10,10 +10,12 @@ for review. Nothing is saved until the user saves.
 """
 import asyncio
 import threading
+from concurrent.futures import CancelledError
+from concurrent.futures import TimeoutError as Waiting
 from contextlib import contextmanager
 from contextvars import ContextVar
 
-from dramatis import profiles
+from dramatis import calls, profiles
 from dramatis.formats.companion.errors import DomainError, require
 from dramatis.formats.companion.providers.chat import INCOMPLETE, ChatProvider
 
@@ -24,17 +26,40 @@ PROVIDER.learned_effort = profiles.learn_effort
 
 _loop: asyncio.AbstractEventLoop | None = None
 _starting = threading.Lock()
+# How often a waiting route looks whether its client went away.
+LOOK_SECONDS = 0.2
+
+
+class Stopped(DomainError):
+    """The screen stopped waiting, so the model call was cancelled."""
+
+    def __init__(self):
+        super().__init__('Stopped.', 499, 'stopped')
 
 
 def run(work):
     """Run one of the providers' coroutines to its end from a route (FastAPI runs Dramatis' routes in threads). They
-    share one event loop of their own, so the provider's per-run memory (prompt cache, learned efforts) holds."""
+    share one event loop of their own, so the provider's per-run memory (prompt cache, learned efforts) holds. When the
+    request's client goes away (dramatis/calls.py), the coroutine is cancelled rather than left running."""
     global _loop
     with _starting:
         if _loop is None:
             _loop = asyncio.new_event_loop()
             threading.Thread(target=_loop.run_forever, name='dramatis-models', daemon=True).start()
-    return asyncio.run_coroutine_threadsafe(work, _loop).result()
+    gone = calls.GONE.get()
+    if gone is not None and gone.is_set():
+        work.close()
+        raise Stopped()
+    future = asyncio.run_coroutine_threadsafe(work, _loop)
+    while True:
+        try:
+            return future.result(timeout=None if gone is None else LOOK_SECONDS)
+        except Waiting:
+            if gone.is_set():
+                future.cancel()
+                raise Stopped() from None
+        except CancelledError:
+            raise Stopped() from None
 
 
 @contextmanager

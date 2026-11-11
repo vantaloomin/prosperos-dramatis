@@ -45,7 +45,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from dramatis import ai, looks, names, slop
+from dramatis import ai, calls, looks, names, slop
 from dramatis.character import APPS, PERSONA, Character
 from dramatis.formats.companion import personality
 from dramatis.formats.companion.errors import DomainError
@@ -333,15 +333,20 @@ def parse_object(text: str) -> dict:
 
 def ask(system: str, shape, prompt: str = 'Write the JSON now.'):
     """One request and, if the reply cannot be used, one retry that names the problem. `shape(raw, final)` is strict
-    on the first reply; on the retry it makes do where it can."""
+    on the first reply; on the retry it makes do where it can. Each step is told to the screen (dramatis/calls.py)."""
+    calls.step('Writing')
     reply = ai.complete(system, prompt)
+    calls.step('Checking what came back')
     try:
         return shape(parse_object(reply), False)
     except Unusable as problem:
         retry = (f'{prompt}\n\nYour last reply was:\n{reply[:6000]}\n\n'
                  + fill(template('repair.md'), problem=str(problem)))
+    calls.step('Asking again, naming what to fix')
     try:
-        return shape(parse_object(ai.complete(system, retry)), True)
+        found = parse_object(ai.complete(system, retry))
+        calls.step('Checking again')
+        return shape(found, True)
     except Unusable as problem:
         raise DomainError(f"The model's draft could not be used: {problem} Try again, or fill in the form yourself.",
                           502, 'draft_unusable') from problem
@@ -661,7 +666,9 @@ def draft(picks: dict) -> dict:
     seed = new_seed()
     words = f"{picks.get('idea', '')} {picks.get('vibe', '')}"
     sliders = rolled(words, seed)
+    calls.step('Settling how they look')
     plan = looks_plan(seed, picks, words)
+    calls.step('Drawing names')
     roll = names_roll(seed, picks, words)
     system = fill(template('draft.md'), rules=template('rules.md'), picks=picks_text(picks),
                   personality=personality_brief(sliders), looks=looks_text(plan),
@@ -678,7 +685,9 @@ def split(picks: dict) -> dict:
     adult_text(text)
     seed = new_seed()
     sliders = rolled(text, seed)
+    calls.step('Settling how they look')
     plan = looks_plan(seed, picks, text)
+    calls.step('Drawing names')
     roll = names_roll(seed, picks, text)
     depth = depth_asked(picks)
     system = fill(template('split.md'), rules=template('rules.md'), shape=shape_text(picks.get('apps') or list(APPS),

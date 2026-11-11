@@ -35,8 +35,9 @@ export function AppPicks({ apps, onChange }: { apps: App[]; onChange: (apps: App
   )
 }
 
-/** While a model works: which model, and how long it has been at it. */
-export function Waiting({ job = 'writing', doing }: { job?: 'writing' | 'cast'; doing: string }) {
+/** While a model works: what it is doing (the server's step when it has said one), with which model, and how long it
+ * has been at it. */
+export function Waiting({ job = 'writing', doing, step }: { job?: 'writing' | 'cast'; doing: string; step?: string }) {
   const model = profileFor(useModels().data, job)?.config.model
   const [seconds, setSeconds] = useState(0)
   useEffect(() => {
@@ -44,7 +45,7 @@ export function Waiting({ job = 'writing', doing }: { job?: 'writing' | 'cast'; 
     const timer = setInterval(() => setSeconds(Math.floor((Date.now() - begun) / 1000)), 1000)
     return () => clearInterval(timer)
   }, [])
-  return <span className="muted small" role="status">{doing}{model ? ` with ${model}` : ''} · {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}</span>
+  return <span className="muted small" role="status">{[step || doing, model, `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`].filter(Boolean).join(' · ')}</span>
 }
 
 /** The quick start: a few picks, and the user's model writes the rest for review. Nothing is saved before the form. */
@@ -105,7 +106,7 @@ function QuickStart({ initial, onBegin }: { initial?: Picks; onBegin: (begun: Be
         {call.error && <p className="error" role="alert">{call.error}</p>}
         <div className="row">
           {call.busy
-            ? <><button type="button" onClick={call.stop}><Square size={12} aria-hidden /> Stop</button><Waiting doing="Writing them" /></>
+            ? <><button type="button" onClick={call.stop}><Square size={12} aria-hidden /> Stop</button><Waiting doing="Writing them" step={call.step} /></>
             : <button type="submit" className="primary" disabled={!ready}><Bolt /> Write them</button>}
           <button type="button" className="quiet" onClick={() => onBegin({ character: emptyCharacter(APPS) })}>Fill in the form myself</button>
         </div>
@@ -201,7 +202,7 @@ function PasteCharacter({ onBegin }: { onBegin: (begun: Begun) => void }) {
           <button type="button" disabled={reading || call.busy} onClick={() => input.current?.click()}><FileUp size={14} aria-hidden /> {reading ? 'Reading…' : 'Open a character file'}</button>
           {asRead && <button type="button" className="primary" disabled={call.busy} onClick={openAsRead}>Use as written</button>}
           {call.busy
-            ? <><button type="button" onClick={call.stop}><Square size={12} aria-hidden /> Stop</button><Waiting doing="Sorting them" /></>
+            ? <><button type="button" onClick={call.stop}><Square size={12} aria-hidden /> Stop</button><Waiting doing="Sorting them" step={call.step} /></>
             : <button type="button" className={asRead ? undefined : 'primary'} disabled={!ready || !text.trim() || reading} onClick={split}><Bolt /> Sort into fields with my model</button>}
         </div>
       </div>
