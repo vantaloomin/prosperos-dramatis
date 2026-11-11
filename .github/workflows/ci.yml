@@ -7,6 +7,8 @@ on:
   # The daily format sync (sync-formats.yml) starts CI on its own pull request this way, since a pull request a
   # workflow opens does not start other workflows.
   workflow_dispatch:
+  # The Release workflow (release.yml) runs it on the commit it tags.
+  workflow_call:
 
 permissions:
   contents: read
@@ -35,7 +37,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python -m pip install -e ".[dev]"
+      - name: Install the locked packages
+        run: |
+          python -m pip install -r requirements.lock.txt
+          python -m pip install --no-deps -e .
+      - name: Check the lock satisfies pyproject.toml
+        run: python -m pip check
       - name: Lint
         run: python -m ruff check .
       - name: Test
@@ -74,7 +81,7 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: Program/package-lock.json
-      - run: python -m pip install -e .
+      - run: python -m pip install -r requirements.lock.txt && python -m pip install --no-deps -e .
       - run: npm ci --no-audit --no-fund
       - run: npx playwright install --with-deps chromium
       - run: npm run build

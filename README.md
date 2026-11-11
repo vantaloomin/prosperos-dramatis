@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://github.com/vantaloomin/prosperos-dramatis/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/vantaloomin/prosperos-dramatis/actions/workflows/ci.yml/badge.svg?branch=main"></a>
-  <img alt="Runs on Windows" src="https://img.shields.io/badge/runs%20on-Windows-555">
+  <img alt="Runs on Windows and macOS" src="https://img.shields.io/badge/runs%20on-Windows%20%7C%20macOS-555">
   <a href="LICENSE"><img alt="License: AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-555"></a>
 </p>
 
@@ -29,10 +29,10 @@ own code.
 
 ## Where it's at
 
-Dramatis is a work in progress at version 0.1. Drafting, the full form with its depth, the Sidebar Assistant, the
-AI-slop audit, portraits, casts, the library and card export are in. The Prospero apps import a Dramatis card today as
-an ordinary character card; reading everything Dramatis puts in it is the next step for each of them. Windows is the
-only platform with scripts so far.
+Dramatis is a work in progress at version 0.2 ([what changed](CHANGELOG.md)). Drafting, the full form with its depth,
+the Sidebar Assistant, the AI-slop audit, portraits, casts, the library with its backups and card export are in.
+Companion, Adventure and Dungeon (each on its latest main) read the Prospero part of a Dramatis card, so a character
+arrives as written rather than read back from its description. There are scripts for Windows and macOS.
 
 ## What it does
 
@@ -168,9 +168,20 @@ first.
    you use it.
 4. Add a model with **Models** at the top right, then make your first character.
 
-### Mac and Linux
+### Mac
 
-There are no helper scripts yet; [Development](#development) shows how to run it from the `Program` folder.
+1. Clone this repository, or download it as a ZIP and unpack it somewhere of your own, such as Documents.
+2. Open the `Mac` folder and double-click **`install.command`**. It finds Python 3.12+ and Node.js 22.13+ (installing
+   them with Homebrew when it is there, or opening their download pages when it isn't), makes the Python environment
+   in `Program/.venv` with the locked packages and builds the interface. The first time, macOS may ask you to allow it
+   in System Settings > Privacy & Security.
+3. Double-click **`launch.command`**. Dramatis opens in your browser at http://127.0.0.1:8815. Keep its window open
+   while you use it.
+4. Add a model with **Models** at the top right, then make your first character.
+
+### Linux
+
+There are no scripts for Linux; [Development](#development) shows how to run it from the `Program` folder.
 
 Your characters live outside the program folder, so updating keeps them: `%APPDATA%\ProsperoDramatis` on Windows and
 `~/.prosperos-dramatis` elsewhere (`DRAMATIS_HOME` overrides it). Each character is a JSON file in its `characters`
@@ -194,6 +205,7 @@ Each app keeps its own port and data folder, so they all run at once without cla
 | Folder | Who it is for |
 | --- | --- |
 | [`Windows`](Windows) | Running Dramatis on a Windows PC. |
+| [`Mac`](Mac) | Running Dramatis on a Mac: the same scripts as `.command` files (`install.command`, `launch.command`, and so on). |
 | [`Program`](Program) | The app itself: code (`Program/dramatis`), interface (`Program/src`), tests and scripts. You never need to open it to use Dramatis. |
 
 | Script | What it does |
@@ -225,12 +237,15 @@ each app's latest `main` and opens a pull request when anything changed, or an i
 Dramatis only listens on your own computer (127.0.0.1), and answers only its own page there, so a website you visit
 can't reach your library through it. Characters and portraits stay in your data folder. The only
 thing that leaves your PC is what you ask your model to write, sent to the model you picked, and a portrait's prompt,
-sent to the image maker you picked. API keys are kept in your system's credential store (Windows Credential Manager),
-never in a file.
+sent to the image maker you picked. API keys are kept in your system's credential store (Windows Credential Manager,
+the macOS Keychain), never in a file.
 
 ## Development
 
-From `Program/`: `python -m pip install -e ".[dev]"` and `npm ci`, then `python -m dramatis` starts the server.
+From `Program/`: `python -m pip install -r requirements.lock.txt`, `python -m pip install --no-deps -e .` and
+`npm ci`, then `python -m dramatis` starts the server. `requirements.lock.txt` pins every Python package the install
+scripts and CI use (dev tools included); after changing the dependencies in `pyproject.toml`, write it again with
+`uv pip compile pyproject.toml --extra dev --universal --python-version 3.12 --no-header --no-annotate -o requirements.lock.txt`.
 Before pushing, run `python -m ruff check .`, `python -m pytest -q`, `npm test` and `npm run build`.
 
 Each field of the form is defined once, in `dramatis/fields.py`, with its limit read from the character model. After
@@ -242,6 +257,14 @@ throwaway library, so you can walk the whole screen with no model and no keys. W
 done), `node tests/walk/walk.mjs` walks the screen in a browser the way CI does: a quick start, Help me write, Save,
 a paste, a failed portrait, a cast board and a phone. `WALK_SHOTS=<folder>` keeps a screenshot of each step, and
 `WALK_README=docs/images/editor.png` retakes the picture above.
+
+## Releases
+
+Each release has its notes in `Program/docs/releases/v<version>.md`, and its minor version a title in
+`Program/docs/releases/titles.json`; [CHANGELOG.md](CHANGELOG.md) keeps them all. A release is made from main with
+the Release workflow (Actions > Release > Run workflow): it checks that `package.json`, `pyproject.toml` and
+`dramatis/__init__.py` agree on the version and that its notes exist, runs CI and the Mac scripts on that commit, then
+tags it and publishes the notes. The Release notes workflow updates the notes or title of a release already out.
 
 ## Thanks
 

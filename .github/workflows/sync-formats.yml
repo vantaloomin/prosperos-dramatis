@@ -90,11 +90,16 @@ jobs:
             "$([ "$tests" = success ] || echo ' Something here needs a change in Dramatis (a stand-in, a shape) before this merges.')")
           number=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number')
           if [ -n "$number" ]; then gh pr edit "$number" --body "$body"; else
-            # Opening it needs "Allow GitHub Actions to create pull requests" in the repository's settings; without
-            # that, say where the branch is.
-            gh pr create --head "$BRANCH" --title "Sync the vendored formats with the apps' main" --body "$body" ||
-              gh issue create --title "The daily format sync is ready on $BRANCH" \
-                --body "$body"$'\n\n'"Open a pull request from \`$BRANCH\`, or allow GitHub Actions to create pull requests."
+            # Opening it needs "Allow GitHub Actions to create pull requests" in the repository's settings. Without
+            # that, say where the branch is: in an issue when issues are on, and always in this run's summary, and fail
+            # the run so its owner hears of it.
+            if ! gh pr create --head "$BRANCH" --title "Sync the vendored formats with the apps' main" --body "$body"; then
+              note="Open a pull request from \`$BRANCH\`, or allow GitHub Actions to create pull requests."
+              printf '## The daily format sync is ready on %s\n\n%s\n\n%s\n' "$BRANCH" "$body" "$note" >> "$GITHUB_STEP_SUMMARY"
+              gh issue create --title "The daily format sync is ready on $BRANCH" --body "$body"$'\n\n'"$note" || true
+              gh workflow run ci.yml --ref "$BRANCH"
+              exit 1
+            fi
           fi
           # A pull request this workflow pushes does not start CI by itself; ask for it on the branch.
           gh workflow run ci.yml --ref "$BRANCH"

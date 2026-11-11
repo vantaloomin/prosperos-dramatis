@@ -1,0 +1,52 @@
+# Changelog
+
+What changed in each release of Prospero's Dramatis. Each release's notes are also in `Program/docs/releases/`.
+
+## 0.2.0: Depth, casts and portraits
+
+Dramatis 0.2 gives a character depth, a cast to stand in, and a picture, and makes the library something you can
+search, back up and carry between apps.
+
+### New
+
+- **Depth.** An in-voice interview, an inner arc (the lie they believe, the truth they need, what could force it), who
+  they could become (who they were, are expected to be, want to be, fear becoming) and a secret. The secret goes with
+  them into every app, so they know what they are keeping.
+- **Casts.** A story's people as a two-layer opposition on the Cast board, with suggestions for corners, a check of a
+  square and the turn, each put on the board for you to keep or put back. A card exported from a cast says where they
+  stand in it.
+- **Portraits.** Made with Companion's own image makers, kept at full size, or your own PNG, JPEG or WebP.
+- **Sidebar Assistant.** A chat beside the form that sees it as you type and proposes edits you keep or put back.
+- **Bring characters in** from other apps' cards and files, with what Dramatis doesn't make kept for their cards.
+- **The library.** Search by any of their words, duplicate a character, back the whole library up as one file and
+  bring a backup back, open a cast file from another Dramatis, and a warning naming the casts before a delete.
+- **User persona.** A character who is you, to play as rather than talk to.
+- **Models.** Companion's full model setup, with a profile for each job (writing, the assistant, casts).
+- **Card exports** for SillyTavern, Marinara and Front Porch, without the Prospero-only part.
+- **Mac.** Double-click scripts in the `Mac` folder, as on Windows.
+
+### Better
+
+- A quick-start draft fills every section and says what the model left empty; its looks are settled first (from your
+  words, or rolled) and its name comes from Companion's name banks.
+- The AI-slop audit's Worth a look: tick hits, then Fix selected, Fix all or Ignore.
+- Every model result stands in its field with Keep / Put back, and Stop stops the model.
+- Unsaved edits and unsaved cast boards survive switching and reloading, every view has its own address so Back and
+  Forward work, and the library sits in a drawer on a phone.
+- Skills, flaws and interests are short phrases; text boxes grow to fit.
+- Companion, Adventure and Dungeon (each on its latest main) read the Prospero part of a card, so a character arrives
+  as written.
+- The install uses locked package versions.
+
+### Safer
+
+- Dramatis answers only this computer: a page from another site can't reach your library.
+- Lines in a pasted character that talk to the model are left out of what it reads, and the form names them.
+- The secret stays out of Help me write and other fields, pasted minors are refused, and browser autofill is off.
+- Saves carry a revision, so a save from an older tab asks before it writes over a newer one.
+
+## 0.1.0
+
+The first version: one character creator for Prospero's Companion, Adventure and Dungeon. A character drafted with
+a model from a few words or a pasted text, checked against each app's own models, with the AI-slop audit, saved in a
+library and exported as a Character Card V3 that carries each app's shape of them.
