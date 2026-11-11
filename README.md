@@ -124,6 +124,8 @@ puts the card into their portrait, or a plain picture if they have none.
 
 - **Prospero apps**: everything, for Companion, Adventure and Dungeon. Under `extensions.prospero` it carries the
   whole character and each app's own shape of them, so nothing is lost on the way in, and Dramatis opens it whole.
+  Dungeon's persona has only About you for who they are, so the rest (how they look and talk, wants, fears, skills,
+  flaws, the lie, the secret) follows their own About there, as much as fits.
 - **SillyTavern, Marinara, Front Porch and other chat apps**: the same card with nothing under `extensions`, so what
   only the Prospero apps use (Companion's schedule, routine, texting habits and emotional edges, the sliders) stays
   in the suite. Those apps keep any extension a card brings and pass it on when the card is shared again, so this is

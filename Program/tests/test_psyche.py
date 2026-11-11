@@ -42,7 +42,7 @@ def test_each_app_gets_the_psyche_where_it_reads_it():
         'I want to be: someone with a day off', "I'm afraid of turning into: her mother, bitter at sixty"]
     adventure = for_adventure(character)['made']['sees_self']
     assert adventure == companion['sees_self'] and 'eldest' not in adventure
-    assert 'eldest' not in str(for_dungeon(character))
+    assert for_dungeon(character)['persona']['about'].endswith('Who they were: the eldest who fixed everyone else.')
     # Library ids never leave the extension.
     full = card(character, '', '')
     assert 'a1b2c3d4e5f6' not in str(full['data']['extensions']['prospero']['apps'])

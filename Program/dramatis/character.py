@@ -371,8 +371,25 @@ def for_adventure(character: Character) -> dict:
     return {'persona': persona(character, adventure), 'made': made.model_dump()}
 
 
+def dungeon_about(character: Character) -> str:
+    """Dungeon's persona has only About you for who they are: their own About, then how they look and talk, what they
+    want and fear, their skills and flaws, the lie they believe, their secret and who they were, as many as fit in
+    Dungeon's limit."""
+    limit = dungeon.PersonaInput.model_fields['about'].metadata[0].max_length
+    secret = secret_text(character.secret)
+    was = character.psyche.was.text.strip() if character.psyche else ''
+    extras = [f'{label} {sentence(text)}' if text else '' for label, text in (
+        ('How they look:', character.appearance), ('How they talk:', character.voice),
+        ('What they want:', character.wants), ('What they fear:', character.fears),
+        ('Skills:', '; '.join(character.skills)), ('Flaws:', '; '.join(character.flaws)))]
+    extras += [arc_sentence(character.arc), f'Something they keep to themselves: {secret}' if secret else '',
+               f'Who they were: {sentence(was)}' if was else '']
+    return folded(character.about, extras, limit, '\n\n')
+
+
 def for_dungeon(character: Character) -> dict:
-    return {'persona': persona(character, dungeon)}
+    """Dungeon's persona, with the rest of the character folded into About you (`dungeon_about`)."""
+    return {'persona': persona(character, dungeon, about=dungeon_about(character) or None)}
 
 
 SHAPES = {'companion': for_companion, 'adventure': for_adventure, 'dungeon': for_dungeon}
