@@ -36,8 +36,8 @@ only platform with scripts so far.
 
 ## What it does
 
-**A few things to start.** Pick a name, gender, age and where and when they come from (all optional). Your model
-writes the rest: who they are, their personality, how they talk and how they sound, how others
+**A few things to start.** Pick a name, gender, age and where and when they come from (all optional), and which apps
+they are for (remembered for next time). Your model writes the rest, only what those apps read: who they are, their personality, how they talk and how they sound, how others
 see them and how they see themselves, background, wants and fears, skills, flaws and interests, and for Companion,
 their week, routine and life themes. Names come from Companion's own name banks: leave Name empty and your model picks
 one of several that people their age were really given where and when they come from (Victorian London, Osaka, the
@@ -103,14 +103,15 @@ and the list stays out of the prompts, so the model never sees those words.
 **Works in.** While you edit, each app checks the character with its own rules, and the form shows **Works in
 Companion**, or what that app would refuse.
 
-**Portraits.** Add a PNG of your own, or set up an image maker under Portraits in **Models** at the top right and press
+**Portraits.** Add a picture of your own (PNG, JPEG or WebP), or set up an image maker under Portraits in **Models** at the top right and press
 **Make a portrait**. The image makers are Prospero's Companion's own, run with its code: ComfyUI with one of its model
 families (Krea 2, Qwen Image 2.1, Z-Image Turbo, Anima, or Booru for SDXL, Pony and Illustrious checkpoints), Codex
 under your ChatGPT sign-in, or an image API with your key (OpenAI, OpenRouter, Google, NanoGPT, NovelAI or another).
 **Check** asks the maker whether it has what it needs without drawing anything. Your model writes the picture's prompt
 from how they look (Appearance, Looks, age and setting; never how they see themselves or how others see them), you
 pick a style, and the new portrait shows beside the old one until you choose **Use this**. It is cropped to a card's
-2:3, and the prompt always asks for a dressed adult.
+2:3 at the size it was drawn, and the prompt always asks for a dressed adult. Portraits are kept whole; only the card for
+other chat apps carries a smaller copy.
 
 **Models.** **Models** at the top right opens Companion's own model setup: add a profile for each provider
 and model you use, **Test connection** to list the models it offers without writing anything, and pick one. Generation

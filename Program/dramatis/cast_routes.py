@@ -9,7 +9,7 @@ from fastapi import APIRouter, Query
 from fastapi.responses import Response
 from pydantic import BaseModel
 
-from dramatis import cards, casts, library
+from dramatis import cards, casts, images, library
 from dramatis.formats.companion.errors import DomainError, require
 
 
@@ -58,7 +58,8 @@ def card_files(cast_id: str, kind: str, target: cards.Target) -> list[tuple[str,
         if kind == 'json':
             found.append((name, json.dumps(full, ensure_ascii=False, indent=1).encode('utf-8')))
         else:
-            found.append((name, cards.with_card(library.portrait(character_id) or cards.plain_png(), full)))
+            picture = images.for_target(library.portrait(character_id) or cards.plain_png(), target)
+            found.append((name, cards.with_card(picture, full)))
     return found
 
 

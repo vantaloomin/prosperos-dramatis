@@ -29,6 +29,7 @@ from dramatis.formats.companion.images.adapters.codex import CodexAdapter
 from dramatis.formats.companion.images.adapters.comfyui import DEFAULT_FAMILY, FAMILIES, ComfyAdapter, model_file
 from dramatis.formats.companion.images.adapters.hosted import HostedAdapter, api_base
 from dramatis.formats.companion.providers.urls import validate_compatible_url
+from dramatis.library import MAX_PORTRAIT
 
 KINDS = ('off', 'comfyui', 'codex', 'hosted')
 KEY_NAME = 'image-api'
@@ -149,14 +150,65 @@ def check() -> dict:
     return view
 
 
+# The longest side a kept portrait has: large enough for any app to show it whole, small enough to stay a portrait.
+LONGEST = 2048
+# The picture a card for other chat apps carries (dramatis/cards.py `chat`): their usual size, so the card stays small.
+CHAT_SIZE = (512, 768)
+
+
+def png_of(picture: Image.Image) -> bytes:
+    out = io.BytesIO()
+    picture.save(out, 'PNG', optimize=True)
+    return out.getvalue()
+
+
 def card_picture(data: bytes) -> bytes:
-    """Any picture as the PNG a card is made from: cropped to 2:3 and shrunk to the card's picture size."""
+    """A made picture as the PNG kept as their portrait: cropped to a card's 2:3 at its own size, no larger than
+    LONGEST. Only a card for other chat apps is shrunk (`for_target`)."""
     try:
         with Image.open(io.BytesIO(data)) as opened:
             picture = ImageOps.exif_transpose(opened).convert('RGB')
     except (UnidentifiedImageError, OSError, ValueError) as error:
         raise DomainError('The image maker sent something that is not a picture.', 502) from error
-    fitted = ImageOps.fit(picture, PLAIN_SIZE, Image.Resampling.LANCZOS, centering=CENTRE)
-    out = io.BytesIO()
-    fitted.save(out, 'PNG', optimize=True)
-    return out.getvalue()
+    width = min(picture.width, picture.height * PLAIN_SIZE[0] // PLAIN_SIZE[1])
+    size = (width, width * PLAIN_SIZE[1] // PLAIN_SIZE[0])
+    if size[1] > LONGEST:
+        size = (LONGEST * PLAIN_SIZE[0] // PLAIN_SIZE[1], LONGEST)
+    return png_of(ImageOps.fit(picture, size, Image.Resampling.LANCZOS, centering=CENTRE))
+
+
+def portrait_png(data: bytes) -> bytes:
+    """A picture someone chose for a portrait (PNG, JPEG, WebP or any other kind Pillow reads) as the PNG it is kept
+    as. A PNG that fits is kept as it is; anything else is turned upright and converted, and shrunk to LONGEST only
+    when it would not fit the library's limit."""
+    try:
+        with Image.open(io.BytesIO(data)) as opened:
+            opened.load()
+            if opened.format == 'PNG' and len(data) <= MAX_PORTRAIT:
+                return data
+            picture = ImageOps.exif_transpose(opened)
+            picture = picture.convert('RGBA' if 'A' in picture.getbands() else 'RGB')
+    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError) as error:
+        raise DomainError('Choose a PNG, JPEG or WebP picture.', 422) from error
+    png = png_of(picture)
+    if len(png) > MAX_PORTRAIT:
+        picture.thumbnail((LONGEST, LONGEST), Image.Resampling.LANCZOS)
+        png = png_of(picture)
+    require(len(png) <= MAX_PORTRAIT, 'That picture is too large for a portrait, even made smaller.', 422)
+    return png
+
+
+def for_target(png: bytes, target: str) -> bytes:
+    """The portrait as a card for `target` carries it: whole for the Prospero apps, shrunk to CHAT_SIZE (keeping its
+    shape) for other chat apps."""
+    if target != 'chat':
+        return png
+    try:
+        with Image.open(io.BytesIO(png)) as opened:
+            if opened.width <= CHAT_SIZE[0] and opened.height <= CHAT_SIZE[1]:
+                return png
+            picture = opened.convert('RGBA' if 'A' in opened.getbands() else 'RGB')
+    except (UnidentifiedImageError, OSError, ValueError) as error:
+        raise DomainError('Their portrait could not be read. Choose it again.', 422) from error
+    picture.thumbnail(CHAT_SIZE, Image.Resampling.LANCZOS)
+    return png_of(picture)

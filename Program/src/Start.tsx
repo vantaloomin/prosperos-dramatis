@@ -35,6 +35,26 @@ export function AppPicks({ apps, onChange }: { apps: App[]; onChange: (apps: App
   )
 }
 
+const MADE_FOR = 'dramatis:made-for'
+
+/** Which apps a new character is made for, remembered between visits: a draft writes only what those apps read, so a
+ * Dungeon-only character gets no Companion week. All three until the user picks. */
+export function rememberedApps(): App[] {
+  try {
+    const found = JSON.parse(localStorage.getItem(MADE_FOR) ?? 'null') as unknown
+    const apps = Array.isArray(found) ? APPS.filter((app) => found.includes(app)) : []
+    return apps.length ? apps : APPS
+  } catch { return APPS }
+}
+
+function useMadeFor(): [App[], (apps: App[]) => void] {
+  const [apps, setApps] = useState(rememberedApps)
+  return [apps, (next) => {
+    setApps(next)
+    try { localStorage.setItem(MADE_FOR, JSON.stringify(next)) } catch { /* kept for this visit only */ }
+  }]
+}
+
 /** While a model works: what it is doing (the server's step when it has said one), with which model, and how long it
  * has been at it. */
 export function Waiting({ job = 'writing', doing, step }: { job?: 'writing' | 'cast'; doing: string; step?: string }) {
@@ -49,7 +69,7 @@ export function Waiting({ job = 'writing', doing, step }: { job?: 'writing' | 'c
 }
 
 /** The quick start: a few picks, and the user's model writes the rest for review. Nothing is saved before the form. */
-function QuickStart({ initial, onBegin }: { initial?: Picks; onBegin: (begun: Begun) => void }) {
+function QuickStart({ initial, apps, onApps, onBegin }: { initial?: Picks; apps: App[]; onApps: (apps: App[]) => void; onBegin: (begun: Begun) => void }) {
   const ready = useModelReady()
   const call = useModelCall()
   const [picks, setPicks] = useState({ name: '', gender: '' as Gender, age: '', setting: '', idea: '', vibe: '', relationship: 'friendship' as Relationship, emotional_edges: false, ...initial })
@@ -60,7 +80,7 @@ function QuickStart({ initial, onBegin }: { initial?: Picks; onBegin: (begun: Be
   const submit = (event?: FormEvent) => {
     event?.preventDefault()
     void call.run((signal) => sendJson<Drafted>('/api/draft', 'POST', {
-      ...picks, age: picks.age ? Number(picks.age) : null, apps: APPS, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? '',
+      ...picks, age: picks.age ? Number(picks.age) : null, apps, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? '',
     }, signal), (found) => onBegin({ character: found.character, seed: found.seed, missing: found.missing, shortened: found.shortened, note: 'Your model drafted them. Read it through, change anything, then save.' }),
     'The draft could not be written.')
   }
@@ -88,6 +108,7 @@ function QuickStart({ initial, onBegin }: { initial?: Picks; onBegin: (begun: Be
           )}</Field>
         </div>
         <TextInput label="Where and when" value={picks.setting} onChange={(setting) => set({ setting })} maxLength={200} />
+        <AppPicks apps={apps} onChange={onApps} />
         <Fold title="More options" filled={!!initial?.idea}>
           <TextArea label="Who are they?" value={picks.idea} onChange={(idea) => set({ idea })} maxLength={2000} rows={2} />
           <div className="vibes">
@@ -96,19 +117,19 @@ function QuickStart({ initial, onBegin }: { initial?: Picks; onBegin: (begun: Be
               {VIBES.map((vibe) => <button key={vibe} type="button" className="chip" aria-pressed={vibes.includes(vibe.toLowerCase())} onClick={() => toggleVibe(vibe)}>{vibe}</button>)}
             </div>
           </div>
-          <Field label="Relationship in Companion">{(id) => (
+          {apps.includes('companion') && <Field label="Relationship in Companion">{(id) => (
             <select id={id} value={picks.relationship} onChange={(event) => set({ relationship: event.target.value as Relationship })}>
               {RELATIONSHIPS.map(([value, name]) => <option key={value} value={value}>{name}</option>)}
             </select>
-          )}</Field>
-          {picks.relationship !== 'persona' && <label className="check"><input type="checkbox" checked={picks.emotional_edges} onChange={(event) => set({ emotional_edges: event.target.checked })} /> Emotional edges in Companion, such as jealousy or missing you</label>}
+          )}</Field>}
+          {apps.includes('companion') && picks.relationship !== 'persona' && <label className="check"><input type="checkbox" checked={picks.emotional_edges} onChange={(event) => set({ emotional_edges: event.target.checked })} /> Emotional edges in Companion, such as jealousy or missing you</label>}
         </Fold>
         {call.error && <p className="error" role="alert">{call.error}</p>}
         <div className="row">
           {call.busy
             ? <><button type="button" onClick={call.stop}><Square size={12} aria-hidden /> Stop</button><Waiting doing="Writing them" step={call.step} /></>
             : <button type="submit" className="primary" disabled={!ready}><Bolt /> Write them</button>}
-          <button type="button" className="quiet" onClick={() => onBegin({ character: emptyCharacter(APPS) })}>Fill in the form myself</button>
+          <button type="button" className="quiet" onClick={() => onBegin({ character: emptyCharacter(apps) })}>Fill in the form myself</button>
         </div>
       </form>
     </section>
@@ -125,7 +146,7 @@ const instructionsNote = (lines?: string[]) => lines?.length
 /** A character the user already has: pasted, or a character file from another app (Companion's importer reads it). A
  * file opens in the form as written, with no model, or the model sorts it into the fields; either way, its greetings,
  * lorebook and picture stay with them. A card Dramatis made opens whole. */
-function PasteCharacter({ onBegin }: { onBegin: (begun: Begun) => void }) {
+function PasteCharacter({ apps, onBegin }: { apps: App[]; onBegin: (begun: Begun) => void }) {
   const ready = useModelReady()
   const call = useModelCall()
   const input = useRef<HTMLInputElement>(null)
@@ -172,11 +193,11 @@ function PasteCharacter({ onBegin }: { onBegin: (begun: Begun) => void }) {
   const withFile = (character: Character): Character => ({ ...character, card: file?.card ?? character.card ?? null })
   const asRead = file?.character && text === file.text ? file.character : null
   const openAsRead = () => asRead && onBegin({
-    character: withFile({ ...asRead, apps: APPS, companion: { ...asRead.companion, timezone: asRead.companion.timezone || timezone } }),
+    character: withFile({ ...asRead, apps, companion: { ...asRead.companion, timezone: asRead.companion.timezone || timezone } }),
     portrait: file?.portrait ?? undefined, brought: true,
     note: `${asRead.name || 'They'} opened as the file has them. Read the fields through, fill in the rest, then save.${instructionsNote(file?.instructions)}`,
   })
-  const split = () => void call.run((signal) => sendJson<Drafted>('/api/draft/split', 'POST', { text, apps: APPS, timezone }, signal), (found) => onBegin({
+  const split = () => void call.run((signal) => sendJson<Drafted>('/api/draft/split', 'POST', { text, apps, timezone }, signal), (found) => onBegin({
     character: withFile(found.character), seed: found.seed, filledIn: found.filled_in, portrait: file?.portrait ?? undefined, allowed: text,
     note: `Your character, sorted into the fields.${found.filled_in?.length ? ' What your text didn’t say is marked for you to keep or put back.' : ''}${instructionsNote(found.instructions)}`,
   }), 'The character could not be sorted into the fields.')
@@ -211,10 +232,11 @@ function PasteCharacter({ onBegin }: { onBegin: (begun: Begun) => void }) {
 }
 
 export function Start({ initial, onBegin }: { initial?: Picks; onBegin: (begun: Begun) => void }) {
+  const [apps, setApps] = useMadeFor()
   return (
     <div className="start">
-      <QuickStart initial={initial} onBegin={onBegin} />
-      <PasteCharacter onBegin={onBegin} />
+      <QuickStart initial={initial} apps={apps} onApps={setApps} onBegin={onBegin} />
+      <PasteCharacter apps={apps} onBegin={onBegin} />
     </div>
   )
 }

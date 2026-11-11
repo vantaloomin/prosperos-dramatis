@@ -176,7 +176,7 @@ async function library(page) {
     const said = page.locator('.library-tools [role=status]')
     await said.waitFor()
     if (!/^Brought back 1 character\. \d+ already here were left as they are\.$/.test(await said.innerText())) throw new Error(`The backup said: ${await said.innerText()}`)
-    await page.locator('aside').getByText('Dana Okafor (copy)').waitFor()
+    await page.locator('aside').getByText('Dana Okafor (copy)').first().waitFor()
   })
 }
 

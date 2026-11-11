@@ -92,7 +92,7 @@ def test_another_apps_card_opens_as_text_for_the_paste_box_and_as_a_form():
     assert opened['character']['background'] == 'Mira runs a ferry.' and opened['card'] is None
 
 
-def test_portraits_are_pngs():
+def test_a_portrait_must_be_a_picture():
     api = client()
     made = api.post('/api/characters', json={'character': CHARACTER}).json()
     refused = api.put(f"/api/characters/{made['id']}/portrait", json={'filename': 'p.jpg', 'data': encoded(b'\xff\xd8')})
