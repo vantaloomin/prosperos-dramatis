@@ -244,3 +244,18 @@ def test_skills_flaws_and_interests_are_asked_for_as_short_phrases():
     assert drafting.CORE_SHAPE.count('a phrase of 3 to 8 words') == 3
     assert 'short phrases of 3 to 8 words' in drafting.template('rules.md')
     assert 'short phrases of 3 to 8 words' in drafting.template('split.md')
+
+
+def test_text_past_its_limit_ends_at_a_sentence_never_mid_word():
+    # A sentence that would keep less than half gives way to the last whole word.
+    assert drafting.cut('Short one. Then a much longer sentence that runs on.', 40) == 'Short one. Then a much longer sentence'
+    assert drafting.cut('She keeps the late shift. She hates mornings.', 30) == 'She keeps the late shift.'
+    assert drafting.cut('one long phrase with no stop in it anywhere', 20) == 'one long phrase with'
+    assert drafting.text_value('  "Leave it." He left the room for good.  ', 20) == '"Leave it."'
+
+
+def test_a_draft_says_which_fields_it_shortened(model):
+    model.replies = [reply(wants='She wants the day shift back. ' * 20)]
+    found = drafting.draft(PICKS)
+    assert found['shortened'] == ['wants']
+    assert found['character']['wants'].endswith('back.') and len(found['character']['wants']) <= 300

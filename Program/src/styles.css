@@ -426,3 +426,5 @@ h3.models-section { display: flex; gap: 0.4rem; align-items: center; margin: 0 0
 .models-dialog .model-form { margin: 0; align-items: end; }
 .models-dialog .model-form input, .models-dialog .model-form select { width: 100%; }
 .models-dialog .model-line { font-size: 0.9rem; }
+.edges { display: grid; gap: 0.6rem; justify-items: start; }
+.edge { display: grid; gap: 0.3rem; width: 100%; }

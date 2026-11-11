@@ -29,7 +29,7 @@ export type Outcome = 'proposed' | 'kept' | 'put back' | 'replaced'
 interface State { form: Form | null; open: Record<string, Proposal>; outcomes: Record<string, Outcome>; written: string[] }
 
 // Fields under `companion` in the character, as Help me write and the assistant name them.
-const LIFE = new Set(['routine', 'life_themes', 'schedule', 'history_together', 'absence_reaction', 'timezone'])
+const LIFE = new Set(['routine', 'life_themes', 'schedule', 'history_together', 'absence_reaction', 'timezone', 'emotional_traits'])
 
 /** Where a field sits in the character, from its key: arc.lie under arc, psyche.was in its text, routine under
  * companion (dramatis/assistant.py `path`). */

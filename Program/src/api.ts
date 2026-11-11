@@ -87,7 +87,7 @@ export type Problems = Partial<Record<App, string[]>>
 export interface Saved { id: string; created: string; updated: string; seed: string; character: Character; portrait: boolean; problems: Problems }
 export interface Summary { id: string; name: string; about: string; apps: App[]; updated: string; portrait: boolean }
 /** `missing`: the fields a quick-start draft came back without, after its one retry (dramatis/drafting.py). */
-export interface Drafted { character: Character; seed: string; filled_in?: string[]; instructions?: string[]; missing?: string[] }
+export interface Drafted { character: Character; seed: string; filled_in?: string[]; instructions?: string[]; missing?: string[]; shortened?: string[] }
 export interface Opened { kind: 'character'; character: Character }
 /** Another app's character file, read: its text for the paste box, the form filled from it (or why not), and what it
  * keeps for their cards. */
@@ -137,7 +137,10 @@ export const cleanList = (items: string[]) => [...new Set(items.map((item) => it
 export function cleaned(character: Character): Character {
   return {
     ...character, skills: cleanList(character.skills), flaws: cleanList(character.flaws), interests: cleanList(character.interests),
-    companion: { ...character.companion, life_themes: cleanList(character.companion.life_themes) },
+    companion: {
+      ...character.companion, life_themes: cleanList(character.companion.life_themes),
+      emotional_traits: character.companion.emotional_traits.filter((edge) => edge.name.trim()),
+    },
     card: character.card && { ...character.card, tags: cleanList(character.card.tags), alternate_greetings: character.card.alternate_greetings.filter((text) => text.trim()) },
   }
 }

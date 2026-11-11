@@ -74,8 +74,12 @@ def save(character: Character, character_id: str | None = None, seed: str = '') 
 
 def delete(character_id: str):
     get(character_id)
-    path_of(character_id).unlink(missing_ok=True)
-    path_of(character_id, '.png').unlink(missing_ok=True)
+    try:
+        path_of(character_id).unlink(missing_ok=True)
+        path_of(character_id, '.png').unlink(missing_ok=True)
+    except OSError as error:
+        raise DomainError('They could not be deleted: another program has their file open. Close it and try again.',
+                          409, 'in_use') from error
 
 
 def portrait(character_id: str) -> bytes | None:

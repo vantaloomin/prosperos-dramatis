@@ -30,7 +30,7 @@ HISTORY_TURNS = 10
 SHOWN_CHARS = 400
 REPLY_CHARS = 3000
 # Companion's part of the character, under `companion`.
-LIFE = ('routine', 'life_themes', 'schedule', 'history_together')
+LIFE = ('routine', 'life_themes', 'schedule', 'history_together', 'emotional_traits')
 COMPANION_ONLY = LIFE
 # Fields the form has that Help me write does not.
 EXTRA = {
@@ -41,6 +41,10 @@ EXTRA = {
                 'limit': 200},
     'history_together': {'guide': 'how they and the user know each other, in Companion', 'shape': 'a string',
                          'limit': 2000},
+    'emotional_traits': {'guide': "Companion's emotional edges, such as jealousy or guilt over absence: each one's "
+                                  'name, how strong it is and how it shows', 'shape': 'a list of objects {"name": a short '
+                                  'name, "intensity": "mild" | "moderate" | "strong", "note": how it shows, in a sentence '
+                                  'or two}', 'count': 12},
 }
 LABELS = {**slop.FIELDS, **slop.LIFE_FIELDS, **{key: label for key, (label, _) in slop.DEPTH.items()},
           'gender': 'Gender', 'age': 'Age', 'setting': 'Where and when', 'schedule': 'Their week'}
@@ -50,7 +54,7 @@ def guides() -> dict[str, dict]:
     """Every field the assistant may change, in the form's order, with its guide and shape."""
     found = drafting.field_guides()
     return {key: EXTRA[key] for key in ('name', 'gender', 'age', 'setting')} | found | \
-        {'history_together': EXTRA['history_together']}
+        {key: EXTRA[key] for key in ('history_together', 'emotional_traits')}
 
 
 def editable(character: dict) -> dict[str, dict]:
@@ -138,6 +142,8 @@ def value_for(field: str, guide: dict, raw, final: bool):
         if raw not in (*drafting.GENDERS, ''):
             raise Unusable('"gender" must be "woman", "man", "nonbinary" or "".')
         return raw
+    if field == 'emotional_traits':
+        return drafting.traits_value(raw, guide['count'])
     listed = 'count' in guide or field == 'schedule'
     if raw in (None, '', []):
         return [] if listed else ''

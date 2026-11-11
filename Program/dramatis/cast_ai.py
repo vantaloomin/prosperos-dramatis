@@ -22,7 +22,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from dramatis import ai, casts, drafting, library, slop
 from dramatis.casts import Cast, Corner, Square, name_of
-from dramatis.drafting import Unusable, ask, fill, template, text_value
+from dramatis.drafting import Unusable, ask, cut, fill, template, text_value
 from dramatis.formats.companion.errors import require
 
 FEWEST, MOST = 2, 4
@@ -97,15 +97,6 @@ def audited(texts: list[tuple[str, str, str]], allowed: str, final: bool) -> lis
     if slop.hard(hits) and not final:
         raise Unusable(slop.problem(slop.hard(hits)))
     return hits
-
-
-def cut(text: str, limit: int) -> str:
-    """A text within its limit, at the last full sentence that fits when there is one."""
-    if len(text) <= limit:
-        return text
-    kept = text[:limit]
-    end = max(kept.rfind('. '), kept.rfind('! '), kept.rfind('? '))
-    return kept[:end + 1] if end > limit // 2 else kept.rstrip()
 
 
 # ---- Suggest corners ----------------------------------------------------------------------------------------------
