@@ -6,7 +6,7 @@ they said can become proposals for their fields (prompts/from-interview.md). Bot
 - `proposals` reads the transcript back and suggests new values for a few fields (PROPOSABLE), each with a reason.
   Nothing changes until the user applies one on the form. `sound` is never proposed: it is the physical voice, which a
   written interview cannot show.
-- Both go through `drafting.ask` like any draft: a reply that cannot be used is asked for once more, and hard hits
+- Both go through `asking.ask` like any draft: a reply that cannot be used is asked for once more, and hard hits
   from the AI-slop audit are sent back once. Nothing is saved.
 """
 import json
@@ -15,8 +15,8 @@ import re
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-from dramatis import drafting, slop
-from dramatis.drafting import Unusable, ask, fill, template, text_value
+from dramatis import adults, asking, drafting, slop
+from dramatis.asking import Unusable, ask, fill, template, text_value
 from dramatis.formats.companion.errors import require
 
 LIMIT = 16000
@@ -73,7 +73,7 @@ def interview(character: dict) -> dict:
 
 def proposal_value(field: str, value):
     if field in drafting.LIST_LIMITS:
-        return drafting.list_value(value, *drafting.LIST_LIMITS[field])
+        return asking.list_value(value, *drafting.LIST_LIMITS[field])
     return text_value(value, drafting.TEXT_LIMITS[field])
 
 
@@ -105,7 +105,7 @@ def proposals(character: dict) -> dict:
             if field not in PROPOSABLE or field in found:
                 continue
             value = proposal_value(field, item.get('value'))
-            if field == 'appearance' and drafting.youthful(value):
+            if field == 'appearance' and adults.youthful(value):
                 continue
             if value and not unchanged(character, field, value):
                 found[field] = {'field': field, 'value': value, 'reason': text_value(item.get('reason'), 300)}

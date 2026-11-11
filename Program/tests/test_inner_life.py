@@ -3,7 +3,7 @@ import json
 
 from fastapi.testclient import TestClient
 
-from dramatis import drafting, library
+from dramatis import asking, drafting, library
 from dramatis.cards import card, description
 from dramatis.character import Character, for_adventure, for_companion, problems
 from dramatis.main import create_app
@@ -111,5 +111,5 @@ def test_the_draft_always_writes_an_arc_and_a_paste_only_when_asked(model):
 
 
 def test_the_rules_carry_the_new_lines():
-    rules = drafting.template('rules.md')
+    rules = asking.template('rules.md')
     assert 'three steps ahead' in rules and 'attachment style' in rules and 'Vance, Kaela' in rules

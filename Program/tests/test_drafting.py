@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from dramatis import drafting
+from dramatis import adults, asking, drafting
 from dramatis.formats.companion.errors import DomainError
 from tests.helpers import SLEEP, WORK, reply
 
@@ -175,7 +175,7 @@ def test_a_pasted_minor_is_refused_before_any_model_call(model, text):
     'She is a senior in middle management at a bank.',
 ])
 def test_an_adult_with_young_people_around_them_is_not_refused(text):
-    assert drafting.young_text(text) == ''
+    assert adults.young_text(text) == ''
 
 
 def test_the_paste_is_in_the_message_without_the_lines_that_talk_to_the_model(model):
@@ -217,7 +217,7 @@ def test_a_childlike_appearance_is_sent_back_then_refused(model):
     model.replies = ['{"value": "Looks about 15, in braces on her teeth."}'] * 2
     with pytest.raises(DomainError):
         drafting.rewrite({'name': 'Dana', 'age': 30}, 'appearance')
-    assert drafting.youthful('A scar on her chin from her teen years; looks two years older than she is.') == []
+    assert adults.youthful('A scar on her chin from her teen years; looks two years older than she is.') == []
 
 
 def test_a_line_break_inside_a_string_is_kept(model):
@@ -243,16 +243,16 @@ def test_skills_flaws_and_interests_are_asked_for_as_short_phrases():
         assert '3 to 8 words' in guides[key]['guide']
         assert 'sentence' not in guides[key]['guide']
     assert drafting.CORE_SHAPE.count('a phrase of 3 to 8 words') == 3
-    assert 'short phrases of 3 to 8 words' in drafting.template('rules.md')
-    assert 'short phrases of 3 to 8 words' in drafting.template('split.md')
+    assert 'short phrases of 3 to 8 words' in asking.template('rules.md')
+    assert 'short phrases of 3 to 8 words' in asking.template('split.md')
 
 
 def test_text_past_its_limit_ends_at_a_sentence_never_mid_word():
     # A sentence that would keep less than half gives way to the last whole word.
-    assert drafting.cut('Short one. Then a much longer sentence that runs on.', 40) == 'Short one. Then a much longer sentence'
-    assert drafting.cut('She keeps the late shift. She hates mornings.', 30) == 'She keeps the late shift.'
-    assert drafting.cut('one long phrase with no stop in it anywhere', 20) == 'one long phrase with'
-    assert drafting.text_value('  "Leave it." He left the room for good.  ', 20) == '"Leave it."'
+    assert asking.cut('Short one. Then a much longer sentence that runs on.', 40) == 'Short one. Then a much longer sentence'
+    assert asking.cut('She keeps the late shift. She hates mornings.', 30) == 'She keeps the late shift.'
+    assert asking.cut('one long phrase with no stop in it anywhere', 20) == 'one long phrase with'
+    assert asking.text_value('  "Leave it." He left the room for good.  ', 20) == '"Leave it."'
 
 
 def test_a_draft_says_which_fields_it_shortened(model):

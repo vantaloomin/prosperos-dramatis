@@ -90,6 +90,11 @@ character creator.
 - The server answers only this computer (`dramatis/local_only.py`): a Host or Origin that isn't localhost, 127.0.0.1
   or ::1 gets a 403 before any route, against DNS rebinding. Tests' `testserver` is let in by `conftest.py`.
 - The model never saves anything: drafts go to the form for review, and only Save writes to the library.
+- Every model call that wants JSON back goes through `dramatis/asking.py` (`ask`: the prompt file filled, the reply
+  parsed, one retry, `Unusable` when it still isn't). The adults-only policy (ages, youthful wording, "not theirs")
+  is `dramatis/adults.py`, used by every route that takes the user's words. `drafting.py` is the drafts themselves.
+- The character form is `src/Editor.tsx` with its sections in `src/editor/sections.tsx` and the export and Works in
+  rows in `src/editor/status.tsx`.
 - `python -m dramatis --stub` (`dramatis/stub.py`) swaps `ai.complete` for fixed answers chosen by a mark each prompt
   carries (`ANSWERS`; `tests/test_stub.py` checks every prompt still gets its own), in a throwaway library with the
   profile in memory. CI's `walk` job runs `tests/walk/walk.mjs` (Playwright) against it; a new screen flow gets a step

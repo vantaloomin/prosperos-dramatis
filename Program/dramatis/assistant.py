@@ -22,7 +22,7 @@ from typing import Literal
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-from dramatis import ai, drafting, slop
+from dramatis import adults, ai, asking, drafting, slop
 from dramatis.character import APPS
 from dramatis.drafting import Unusable, fill, template, text_value
 
@@ -134,9 +134,9 @@ def value_for(field: str, guide: dict, raw, final: bool):
     if field == 'age':
         if raw in (None, ''):
             return None
-        age = drafting.age_value(raw)
+        age = adults.age_value(raw)
         if age is None or not 18 <= age <= 5000:
-            raise Unusable(f'"age" must be a whole number of years, 18 or more. {drafting.ADULTS_ONLY}')
+            raise Unusable(f'"age" must be a whole number of years, 18 or more. {adults.ADULTS_ONLY}')
         return age
     if field == 'gender':
         if raw not in (*drafting.GENDERS, ''):
@@ -148,8 +148,8 @@ def value_for(field: str, guide: dict, raw, final: bool):
     if raw in (None, '', []):
         return [] if listed else ''
     value = drafting.field_value(field, guide, {'value': raw}, final)
-    if field == 'about' and drafting.YOUNG.search(value):
-        raise Unusable(drafting.ADULTS_ONLY)
+    if field == 'about' and adults.YOUNG.search(value):
+        raise Unusable(adults.ADULTS_ONLY)
     return value
 
 
@@ -205,7 +205,7 @@ def answer(body: 'AssistantBody') -> dict:
     allowed = ' '.join([json.dumps(drafting.own_words(character), ensure_ascii=False), body.message,
                         *(turn['content'] for turn in history if turn['role'] == 'user')])
     with ai.doing('assistant'):
-        return drafting.ask(system, Edits(character, allowed), conversation(history, body.message))
+        return asking.ask(system, Edits(character, allowed), conversation(history, body.message))
 
 
 # Routes -----------------------------------------------------------------------------------------------------------

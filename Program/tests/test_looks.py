@@ -1,6 +1,6 @@
 import json
 
-from dramatis import drafting, looks
+from dramatis import adults, drafting, looks
 from dramatis.character import Character
 from dramatis.formats.companion import looks as companion_looks
 from tests.helpers import reply
@@ -118,10 +118,10 @@ def test_the_detail_is_never_of_the_part_people_already_notice():
 
 
 def test_nothing_in_the_bank_reads_as_model_written_or_young():
-    from dramatis import drafting, slop
+    from dramatis import slop
     every = texts('any') | texts('modern') | texts('period')
     assert len(every) > 250
-    assert not [text for text in every if slop.scan(text) or drafting.youthful(text)]
+    assert not [text for text in every if slop.scan(text) or adults.youthful(text)]
 
 
 def test_the_stock_eyebrow_scar_is_worth_a_look():

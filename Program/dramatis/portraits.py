@@ -19,7 +19,7 @@ from pathlib import Path
 from fastapi import APIRouter
 from pydantic import BaseModel, Field, ValidationError
 
-from dramatis import ai, drafting, images, library
+from dramatis import adults, ai, asking, images, library
 from dramatis.character import Character
 from dramatis.formats.companion.errors import DomainError, require
 
@@ -62,25 +62,25 @@ def prompt_value(raw: dict) -> str:
     text = raw.get('prompt')
     text = ' '.join(text.split())[:PROMPT_LIMIT] if isinstance(text, str) else ''
     if not text:
-        raise drafting.Unusable('"prompt" was empty.')
+        raise asking.Unusable('"prompt" was empty.')
     unsafe = UNSAFE.search(text)
     if unsafe:
-        raise drafting.Unusable(UNSAFE_PROBLEM.format(word=unsafe[0]))
+        raise asking.Unusable(UNSAFE_PROBLEM.format(word=unsafe[0]))
     return text
 
 
 def described(character: Character) -> str:
     """The text model's image prompt for them, asked for once more with the problem named if it cannot be used."""
-    system = drafting.fill(drafting.template('portrait.md'), facts=facts(character))
+    system = asking.fill(asking.template('portrait.md'), facts=facts(character))
     asked = 'Write the JSON now.'
     for _ in range(2):
         reply = ai.complete(system, asked)
         try:
-            return prompt_value(drafting.parse_object(reply))
-        except drafting.Unusable as problem:
+            return prompt_value(asking.parse_object(reply))
+        except asking.Unusable as problem:
             found = problem
             asked = (f'Write the JSON now.\n\nYour last reply was:\n{reply[:3000]}\n\n'
-                     + drafting.fill(drafting.template('repair.md'), problem=str(problem)))
+                     + asking.fill(asking.template('repair.md'), problem=str(problem)))
     raise DomainError(f"The model's portrait prompt could not be used: {found} Try again, or add a picture of "
                       'your own.', 502, 'prompt_unusable')
 
@@ -89,7 +89,7 @@ def make(character: Character, style: str) -> dict:
     """A portrait to look at, as a 2:3 PNG in base64, and the prompt it was drawn from. Nothing is saved."""
     line = style_line(style)
     require(images.config()['ready'], 'Set up an image maker first: Models, at the top, under Portraits.', 409)
-    drafting.adults_only(character.age, character.about)
+    adults.adults_only(character.age, character.about)
     prompt = ' '.join(part for part in (described(character), line) if part)
     picture = images.card_picture(images.generate(prompt))
     return {'image': base64.b64encode(picture).decode('ascii'), 'prompt': prompt, 'style': style}
