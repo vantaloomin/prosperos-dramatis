@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { CheckCircle2, Download, MessageSquareText, Trash2, TriangleAlert } from 'lucide-react'
-import { APPS, APP_NAMES, RELATIONSHIPS, cleaned, type AuditHit, sendJson, type App, type Character, type Gender, type Looks, type Problems, type Relationship, type Saved } from './api'
+import { APPS, APP_NAMES, RELATIONSHIPS, cleaned, savedOver, type AuditHit, sendJson, type App, type Character, type Gender, type Looks, type Problems, type Relationship, type Saved } from './api'
 import { assistant, useAssistantShown } from './assistant/store'
 import { trackFocus, useProposalForm } from './assistant/useForm'
 import { EmotionalEdges } from './EmotionalEdges'
@@ -171,7 +171,9 @@ export function Editor({ saved, start, seed, filledIn, missing, shortened, note,
       const kept = proposals.keepAll()
       const sent = proposals.form()?.get() ?? character
       const body = { character: cleaned(sent), seed }
-      let next = saved ? await sendJson<Saved>(`/api/characters/${saved.id}`, 'PUT', body) : await sendJson<Saved>('/api/characters', 'POST', body)
+      let next = saved
+        ? await savedOver((revision) => sendJson<Saved>(`/api/characters/${saved.id}`, 'PUT', { ...body, revision }), saved.revision)
+        : await sendJson<Saved>('/api/characters', 'POST', body)
       // They are in the library from here: the form knows their id before the portrait goes, so a portrait that fails
       // never makes the next Save post a second copy.
       baseline.current = asSaved(sent)

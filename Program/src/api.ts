@@ -1,12 +1,29 @@
+/** A failure the server explained: its own message, and its code (`stale`, `unreadable`, …) when it gave one. */
+export class ApiError extends Error {
+  constructor(message: string, readonly code: string) { super(message) }
+}
+
 /** Calls to the local Dramatis server. Errors carry the server's own message. */
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, init)
   const body = await response.json().catch(() => ({}))
   if (!response.ok) {
     const detail = Array.isArray(body.detail) ? 'The request was not understood.' : body.detail
-    throw new Error(body.error ?? detail ?? `The server answered ${response.status}.`)
+    throw new ApiError(body.error ?? detail ?? `The server answered ${response.status}.`, body.code ?? '')
   }
   return body as T
+}
+
+/** A save made from `revision`: when the file changed elsewhere since (another tab), the user chooses whether to save
+ * over it (dramatis/records.py). Throws a plain error when they don't. */
+export async function savedOver<T>(save: (revision?: number) => Promise<T>, revision: number | undefined): Promise<T> {
+  try {
+    return await save(revision)
+  } catch (failure) {
+    if (!(failure instanceof ApiError) || failure.code !== 'stale') throw failure
+    if (!window.confirm(`${failure.message} Save over it anyway?`)) throw new Error('Not saved. Discard changes to see the other version, or Save again to choose.')
+    return save(undefined)
+  }
 }
 
 export const getJson = <T,>(path: string) => call<T>(path)
@@ -84,8 +101,8 @@ export interface Suggestion { field: ProposedField; value: string | string[]; re
 export interface Interviewed { interview: string; sample: string; audit: AuditHit[] }
 export interface AuditHit { field: string; label: string; severity: 'hard' | 'flag'; rule: string; match: string; context: string }
 export type Problems = Partial<Record<App, string[]>>
-export interface Saved { id: string; created: string; updated: string; seed: string; character: Character; portrait: boolean; problems: Problems }
-export interface Summary { id: string; name: string; about: string; apps: App[]; updated: string; portrait: boolean }
+export interface Saved { id: string; created: string; updated: string; revision: number; seed: string; character: Character; portrait: boolean; problems: Problems }
+export interface Summary { id: string; name: string; about: string; apps: App[]; updated: string; portrait: boolean; broken?: boolean }
 /** `missing`: the fields a quick-start draft came back without, after its one retry (dramatis/drafting.py). */
 export interface Drafted { character: Character; seed: string; filled_in?: string[]; instructions?: string[]; missing?: string[]; shortened?: string[] }
 export interface Opened { kind: 'character'; character: Character }
@@ -95,7 +112,7 @@ export interface OpenedFile {
   kind: 'file'; format: string; name: string; text: string; truncated: boolean; character: Character | null; refused: string
   card: CardParts | null; kept: string[]; portrait: string | null; notes: string[]; instructions: string[]
 }
-export interface Health { ok: boolean; name: string; version: string; formats: Record<App, { repo: string; commit: string }> }
+export interface Health { ok: boolean; name: string; version: string; notice?: string; formats: Record<App, { repo: string; commit: string }> }
 export interface ImageConfig {
   kind: 'off' | 'comfyui' | 'codex' | 'hosted'; provider: string; family: string; base_url: string; model: string; has_key: boolean; ready: boolean
   families: Record<string, string>; providers: Record<string, { label: string; base_url: string }>
