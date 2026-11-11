@@ -64,6 +64,8 @@ character creator.
   the rest of a field never changes; Ignore saves the words in `Character.ignored_flags`, which `slop.audit` leaves out.
 - Browser autofill and password managers are off on every field: `src/noAutofill.ts` (started in `main.tsx`) marks each
   `input`, `textarea` and `select` as it appears, so a new field needs nothing.
+- The server answers only this computer (`dramatis/local_only.py`): a Host or Origin that isn't localhost, 127.0.0.1
+  or ::1 gets a 403 before any route, against DNS rebinding. Tests' `testserver` is let in by `conftest.py`.
 - The model never saves anything: drafts go to the form for review, and only Save writes to the library.
 - Before pushing, from `Program/`: `python -m ruff check .`, `python -m pytest -q`, `npm run build`.
 - `main` takes changes through pull requests.

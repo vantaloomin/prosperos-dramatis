@@ -212,7 +212,8 @@ each app's latest `main` and opens a pull request when anything changed, or an i
 
 ## Privacy
 
-Dramatis only listens on your own computer (127.0.0.1). Characters and portraits stay in your data folder. The only
+Dramatis only listens on your own computer (127.0.0.1), and answers only its own page there, so a website you visit
+can't reach your library through it. Characters and portraits stay in your data folder. The only
 thing that leaves your PC is what you ask your model to write, sent to the model you picked, and a portrait's prompt,
 sent to the image maker you picked. API keys are kept in your system's credential store (Windows Credential Manager),
 never in a file.
