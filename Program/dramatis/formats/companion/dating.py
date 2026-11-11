@@ -256,21 +256,35 @@ def looks(sheet: dict, data: dict) -> dict:
     return found
 
 
-def on_app(sheet: dict, data: dict) -> bool:
-    """Whether they are looking at all, from what the sheet has before it is named (names are the slow part)."""
+def status_now(sheet: dict, data: dict, seeded: str, day: date | None, matched: bool) -> str:
+    """Their status as the dating app reads it (Hit List #102). With a `day`, the town's couples have moved on
+    (companion/world/couples.py): someone who started with a partner and has been single a few weeks is back to
+    'single'; while they are with someone, new or not, they keep their seeded status and stay off the app. A
+    `matched` person is read as they were when the user matched with them: single, so a match never changes."""
+    if seeded not in ('seeing someone', 'married'):
+        return seeded
+    from dramatis.stand_ins import couples  # couples reads this module.
+    return 'single' if matched or day and couples.looking_again(sheet, data, seeded, day) else seeded
+
+
+def on_app(sheet: dict, data: dict, day: date | None = None) -> bool:
+    """Whether they are looking at all, from what the sheet has before it is named (names are the slow part). With
+    a `day`, as their love life stands then (`status_now`)."""
     if sheet.get('notable'):
         return False  # A city's named characters are never on the app.
     seed, is_modern, life = townsfolk.drawn(sheet), townsfolk.modern(data), life_of(sheet, data)
-    single = status(seed, life, sheet['desire'], is_modern) in ('single', 'widowed')
+    state = status_now(sheet, data, status(seed, life, sheet['desire'], is_modern), day, False)
+    single = state in ('single', 'widowed')
     return looking(seed, life, sheet['desire'], single, is_modern, sheet['age']) != 'no'
 
 
-def details(sheet: dict, data: dict) -> dict:
-    """Everything about them that dating needs, the same every time for the same person."""
+def details(sheet: dict, data: dict, day: date | None = None, matched: bool = False) -> dict:
+    """Everything about them that dating needs, the same every time for the same person. Their seeded love life,
+    or with a `day` or `matched` the one the dating app reads (`status_now`)."""
     seed, who, is_modern = townsfolk.drawn(sheet), gender(sheet), townsfolk.modern(data)
     label, drawn_to = orientation(seed, sheet['age'], who)
     life = life_of(sheet, data)
-    state = status(seed, life, sheet['desire'], is_modern)
+    state = status_now(sheet, data, status(seed, life, sheet['desire'], is_modern), day, matched)
     after = looking(seed, life, sheet['desire'], state in ('single', 'widowed'), is_modern, sheet['age'])
     low, high = age_range(life, after)  # In human terms, like `suits` reads it.
     return {'gender': who, 'orientation': label, 'drawn_to': drawn_to, 'status': state, 'looking': after,

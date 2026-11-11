@@ -9,8 +9,9 @@ character creator.
 - `dramatis/formats/` is the apps' own code, vendored (their request models, Companion's card reader and slider
   rules). Never edit it here: change it in that app, then run
   `python scripts/sync_format.py --companion <checkout> --adventure <checkout> --dungeon <checkout>`. CI's `formats`
-  job fails when an app's main has moved on. `dramatis/stand_ins/` replaces the few modules those files import that
-  would pull in a whole app.
+  job fails when a copy differs from the app at the commit `SOURCE.json` records; an app's newer main arrives as the
+  daily `sync-formats` workflow's own PR on `sync/formats` (or an issue, when the sync cannot run).
+  `dramatis/stand_ins/` replaces the few modules those files import that would pull in a whole app.
 - `dramatis/character.py` is the shared character and each app's shape of it, checked with that app's own models.
   A new field goes there first, with the tightest limit of the apps that read it.
 - A character whose Companion relationship is `persona` is the user themself: Companion's shape of them is its

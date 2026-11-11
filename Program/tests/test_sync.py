@@ -18,16 +18,18 @@ def unvendored(text: str, app: str) -> str:
     back = {place: module for module, place in sync.APPS[app]['modules'].items()}
 
     def line(match: re.Match) -> str:
-        module, names, indent = match['module'], match['names'], match['indent']
+        module, names, indent, comment = match['module'], match['names'], match['indent'], match['comment'] or ''
         if module in back:
-            return f'{indent}from {back[module]} import {names}'
+            return f'{indent}from {back[module]} import {names}{comment}'
         places: dict[str, list[str]] = {}
         for name in (item.strip() for item in names.strip('()').split(',')):
             places.setdefault(back[f"{module}.{name.split(' as ')[0]}"].rpartition('.')[0], []).append(name)
+        if len(places) == 1:
+            return f'{indent}from {next(iter(places))} import {names}{comment}'
         return '\n'.join(f"{indent}from {place} import {', '.join(found)}" for place, found in places.items())
 
-    return re.sub(r'^(?P<indent>[ \t]*)from (?P<module>dramatis\.(?:formats|stand_ins)[\w.]*) import (?P<names>.+)$', line,
-                  text, flags=re.M)
+    return re.sub(r'^(?P<indent>[ \t]*)from (?P<module>dramatis\.(?:formats|stand_ins)[\w.]*) import '
+                  r'(?P<names>[^#\n]*?)(?P<comment>[ \t]*#[^\n]*)?$', line, text, flags=re.M)
 
 
 def checkout(root: Path, app: str) -> Path:
@@ -73,6 +75,12 @@ def test_an_import_that_is_not_vendored_stops_the_sync(tmp_path):
     errors.write_text('from companion.database import optional\n', encoding='utf-8')
     with pytest.raises(SystemExit, match='not vendored'):
         sync.main(['--companion', str(root)], target=tmp_path / 'formats')
+
+
+def test_an_import_keeps_its_trailing_comment():
+    line = '    from companion.world import couples  # couples reads this module.\n'
+    found = sync.IMPORT.sub(lambda match: sync.swap(match, sync.APPS['companion']['modules'], 'x.py'), line)
+    assert found == '    from dramatis.stand_ins import couples  # couples reads this module.\n'
 
 
 def test_one_import_of_modules_from_two_places_becomes_a_line_for_each():

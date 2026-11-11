@@ -1,0 +1,100 @@
+name: Sync formats
+
+# Once a day, bring Companion's, Adventure's and Dungeon's latest main into dramatis/formats (scripts/sync_format.py).
+# A change arrives as one pull request on the `sync/formats` branch, kept up to date until it merges; a sync that
+# cannot run (an app imports something Dramatis has no copy or stand-in for) opens an issue with the message instead.
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: write
+
+concurrency:
+  group: sync-formats
+
+defaults:
+  run:
+    working-directory: Program
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BRANCH: sync/formats
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: vantaloomin/prosperos-companion
+          path: companion
+          persist-credentials: false
+          sparse-checkout: Program/companion
+      - uses: actions/checkout@v4
+        with:
+          repository: vantaloomin/prosperos-adventure
+          path: adventure
+          persist-credentials: false
+          sparse-checkout: Program/adventure
+      - uses: actions/checkout@v4
+        with:
+          repository: vantaloomin/prosperos-dungeon
+          path: dungeon
+          persist-credentials: false
+          sparse-checkout: Program/dungeon
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e ".[dev]"
+      - id: sync
+        name: Sync
+        run: |
+          set +e
+          python scripts/sync_format.py --companion ../companion --adventure ../adventure --dungeon ../dungeon > ../sync.log 2>&1
+          status=$?
+          cat ../sync.log
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          [ -z "$(git status --porcelain -- dramatis/formats)" ] && echo "changed=false" >> "$GITHUB_OUTPUT" || echo "changed=true" >> "$GITHUB_OUTPUT"
+      - name: Report a sync that cannot run
+        if: steps.sync.outputs.status != '0'
+        run: |
+          title="The daily format sync cannot run"
+          body=$(printf 'scripts/sync_format.py stopped against the apps'"'"' latest main:\n\n```\n%s\n```\n\nRun: %s/%s/actions/runs/%s' \
+            "$(cat ../sync.log)" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID")
+          number=$(gh issue list --state open --search "in:title \"$title\"" --json number --jq '.[0].number')
+          if [ -n "$number" ]; then gh issue comment "$number" --body "$body"; else gh issue create --title "$title" --body "$body"; fi
+          exit 1
+      - name: Test the synced copies
+        id: tests
+        if: steps.sync.outputs.status == '0' && steps.sync.outputs.changed == 'true'
+        continue-on-error: true
+        run: python -m ruff check . && python -m pytest -q
+      - name: Open or update the sync pull request
+        if: steps.sync.outputs.status == '0' && steps.sync.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898+github-actions[bot]@users.noreply.github.com"
+          git switch -C "$BRANCH"
+          git add -A dramatis/formats
+          git commit -q -m "Sync the vendored formats with the apps' main" -m "$(cat ../sync.log)"
+          git push -f origin "$BRANCH"
+          tests="${{ steps.tests.outcome }}"
+          body=$(printf 'The daily sync found the apps had moved on:\n\n```\n%s\n```\n\nLint and tests on the synced copies: **%s**.%s' \
+            "$(cat ../sync.log)" "$tests" \
+            "$([ "$tests" = success ] || echo ' Something here needs a change in Dramatis (a stand-in, a shape) before this merges.')")
+          number=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number')
+          if [ -n "$number" ]; then gh pr edit "$number" --body "$body"; else
+            # Opening it needs "Allow GitHub Actions to create pull requests" in the repository's settings; without
+            # that, say where the branch is.
+            gh pr create --head "$BRANCH" --title "Sync the vendored formats with the apps' main" --body "$body" ||
+              gh issue create --title "The daily format sync is ready on $BRANCH" \
+                --body "$body"$'\n\n'"Open a pull request from \`$BRANCH\`, or allow GitHub Actions to create pull requests."
+          fi
+          # A pull request this workflow pushes does not start CI by itself; ask for it on the branch.
+          gh workflow run ci.yml --ref "$BRANCH"
