@@ -93,6 +93,8 @@ export const proposals = {
   unregister(key: string) { if (state.form?.key === key) set({ form: null, open: {}, written: [] }) },
   /** A form gone for good (saved as another key, or deleted) takes its proposals with it. */
   forget(key: string) { byForm.delete(key); writtenBy.delete(key) },
+  /** The fields a model has written on the open form (and not put back), for Save to keep with them. */
+  written: () => state.written,
 
   /** Puts a model's value into its field as a proposal. Returns its id, or '' when no form is open. */
   propose(found: Omit<Proposal, 'id' | 'before' | 'path'> & { path?: string[]; id?: string }): string {

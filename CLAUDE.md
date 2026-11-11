@@ -64,6 +64,9 @@ character creator.
   `formats/companion/providers`). Profiles and which one does each job (`writing`, `assistant`, `cast`) are
   `dramatis/profiles.py` (in settings.json, keys in the keyring), routes in `model_routes.py`; a caller names its job
   with `ai.doing(job)`. The Models screen is Companion's, ported to `src/models/`.
+- `Character.written` keeps the fields a model wrote (form keys), saved with them: the audit of a brought character
+  reads only those, and Help me write and the assistant hold only the other fields as the user's own words
+  (`drafting.own_words`).
 - The AI-slop audit on the form is `src/Audit.tsx`: Fix selected / Fix all go to `dramatis/fixes.py` (`/api/draft/fix`,
   `prompts/fix.md`), where the model answers only replacements for the marked spans and the server puts them in, so
   the rest of a field never changes; Ignore saves the words in `Character.ignored_flags`, which `slop.audit` leaves out.

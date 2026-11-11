@@ -94,6 +94,8 @@ export interface Character {
   interview: string; arc: Arc; secret: Secret; psyche: Psyche | null; card: CardParts | null
   /** Words the audit flags that the user keeps on them (src/Audit.tsx); missing on characters made before it. */
   ignored_flags?: string[]
+  /** The fields a model wrote (dramatis/character.py): saved, so the audit and Help me write know them after a reload. */
+  written?: string[]
 }
 /** What the interview suggests for one field, from POST /api/draft/from-interview. */
 export type ProposedField = 'voice' | 'appearance' | 'seen_as' | 'sees_self' | 'flaws' | 'interests'
