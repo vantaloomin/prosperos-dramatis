@@ -48,4 +48,28 @@ describe('drafts', () => {
     expect(draftStore.get('bad')).toBeUndefined()
     expect(draftStore.get('ok')?.begun.character.name).toBe('Ida')
   })
+
+  it('lets a saved or dropped draft leave storage at once, so a reload straight after cannot bring it back', async () => {
+    const { draftStore } = await import('../../src/drafts')
+    draftStore.put(draft('new-1', 'Ruth'))
+    vi.advanceTimersByTime(500)
+    expect(storage.getItem('dramatis:draft:new-1')).not.toBeNull()
+    draftStore.put(draft('new-1', 'Ruth'))  // changed again, waiting to be written
+    draftStore.drop('new-1')
+    expect(storage.getItem('dramatis:draft:new-1')).toBeNull()
+    vi.advanceTimersByTime(500)
+    expect(storage.getItem('dramatis:draft:new-1')).toBeNull()
+  })
+
+  it('keeps a cast board with changes, and lets a saved one without changes go', async () => {
+    const { castStore } = await import('../../src/drafts')
+    const { newCast } = await import('../../src/castApi')
+    const cast = newCast('Who should rule?', undefined, undefined)
+    const saved = { id: 'abc', created: '', updated: '', revision: 1, cast, computed: { checks: [] } } as never
+    castStore.write({ new: { saved: null, cast }, abc: { saved, cast: { ...cast, title: 'The Long Winter' } } })
+    expect(Object.keys(castStore.read()).sort()).toEqual(['abc', 'new'])
+    expect(castStore.read().abc.cast.title).toBe('The Long Winter')
+    castStore.write({ abc: { saved, cast } })
+    expect(castStore.read()).toEqual({})
+  })
 })

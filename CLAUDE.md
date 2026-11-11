@@ -63,7 +63,11 @@ character creator.
   over (`savedOver` in `src/api.ts`).
 - A character form with unsaved changes is a draft in `src/drafts.ts` (by id, or `new-…` before its first save), kept
   in localStorage, one entry per draft (another tab's arrive by the `storage` event), so switching characters or
-  reloading loses nothing; the library marks them and Discard drops one.
+  reloading loses nothing; the library marks them and Discard drops one. Cast boards with changes not saved are kept
+  the same way (`castStore`).
+- Each view has an address in the URL's hash (`src/address.ts`: `#/character/<id>`, `#/draft/<key>`, `#/cast/<id>`,
+  `#/new-cast`, `#/models`), so a reload stays and Back and Forward move between views; a first save replaces the
+  unsaved address. A new view in `App` needs a case there.
 - Stop stops the model: `dramatis/calls.py` middleware sets the request's `gone` event when the browser drops it, and
   `ai.run` cancels the provider's coroutine (hosted streams close, CLI processes end). A screen call names its run
   (`X-Dramatis-Run`, from `src/modelCall.ts`); `calls.step` records what a draft is doing for GET /api/progress/{run}.
