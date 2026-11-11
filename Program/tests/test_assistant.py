@@ -32,8 +32,9 @@ def test_it_sees_the_form_as_typed_and_its_edits_come_back_shaped(model):
         {'field': 'flaws', 'label': 'Flaws', 'path': ['flaws'], 'value': ['Holds grudges for years']},
         {'field': 'arc.lie', 'label': 'Lie they believe', 'path': ['arc', 'lie'], 'value': 'Needing help means failing.'}]
     system, prompt = model.asked[0]
-    # The form as it stands, secret and all, but not the sliders as numbers.
-    assert 'Steady at work' in system and 'morphine' in system and '"level"' not in system
+    # The form as it stands, but not the sliders as numbers, and not the secret: the message is not about it.
+    assert 'Steady at work' in system and 'morphine' not in system and '"level"' not in system
+    assert '- secret.truth (' not in system
     assert prompt.startswith('Their new message:\nMake her flaws harsher.')
 
 
@@ -103,7 +104,7 @@ def test_an_edit_that_changes_nothing_is_left_out(model):
 
 def test_an_empty_value_clears_the_field(model):
     model.replies = [said(edits=[{'field': 'flaws', 'value': []}, {'field': 'secret.truth', 'value': ''}])]
-    assert [(edit['field'], edit['value']) for edit in ask('Clear those.')['edits']] == [('flaws', []), ('secret.truth', '')]
+    assert [(edit['field'], edit['value']) for edit in ask('Clear those.', focus='secret.truth')['edits']] == [('flaws', []), ('secret.truth', '')]
 
 
 def test_the_route_answers_with_the_reply(model):
@@ -123,7 +124,10 @@ def test_it_sees_the_secret_it_may_edit_and_never_gives_an_adult_a_child_s_look(
                      said(edits=[{'field': 'appearance', 'value': 'Slight, with a childlike face.'}])]
     found = ask('Make her look younger.')
     assert found['edits'] == [] and 'younger than 18' in model.asked[1][1]
-    assert 'She stole morphine once.' in model.asked[0][0]
+    model.replies = [said(edits=[{'field': 'secret.truth', 'value': 'She stole morphine twice.'}])]
+    found = ask('Make it worse.', focus='secret.truth')
+    assert 'She stole morphine once.' in model.asked[2][0]
+    assert found['edits'][0]['value'] == 'She stole morphine twice.'
 
 
 def test_it_may_edit_emotional_edges_shaped_like_companion_keeps_them(model):
@@ -134,3 +138,39 @@ def test_it_may_edit_emotional_edges_shaped_like_companion_keeps_them(model):
                                'path': ['companion', 'emotional_traits'],
                                'value': [{'name': 'Jealousy', 'intensity': 'mild',
                                           'note': 'Goes quiet when you mention friends.'}]}]
+
+
+SECRET = CHARACTER | {'secret': {'truth': 'She froze on a 911 call at the county dispatch center and a man died.',
+                                 'cover_story': 'She left the county job for nursing.', 'known_by': 'no one'}}
+
+
+def test_the_secret_is_shown_only_when_the_message_is_about_it(model):
+    model.replies = [said(), said()]
+    ask('Tighten her background.', character=SECRET)
+    assert 'froze' not in model.asked[0][0] and 'She left the county job for nursing.' in model.asked[0][0]
+    ask('What is she hiding from her sister?', character=SECRET)
+    assert 'froze' in model.asked[1][0] and '- secret.truth (' in model.asked[1][0]
+
+
+def test_an_edit_anyone_reads_that_tells_the_secret_is_sent_back_once_then_dropped(model):
+    leak = {'field': 'background', 'value': 'She froze on a call once, and a man died on the line.'}
+    model.replies = [said(edits=[leak]), said(edits=[leak, {'field': 'wants', 'value': 'Day shifts.'}])]
+    found = ask('How does her secret shape her? Fix her background to fit.', character=SECRET)
+    assert 'other characters read' in model.asked[1][1]
+    assert [edit['field'] for edit in found['edits']] == ['wants']
+
+
+def test_the_secret_goes_where_the_user_asks_for_it(model):
+    model.replies = [said(edits=[{'field': 'background', 'value': 'She froze on a call once, and a man died.'}])]
+    found = ask('Put her secret in the background, everyone knows now.', character=SECRET)
+    assert len(model.asked) == 1 and found['edits'][0]['field'] == 'background'
+
+
+def test_a_text_edit_or_reply_that_makes_them_a_minor_never_lands(model):
+    model.replies = [said(edits=[{'field': 'background', 'value': 'Going to the local high school.'}]),
+                     said(edits=[{'field': 'setting', 'value': 'Baltimore, still in high school'}])]
+    found = ask('Make her younger in spirit.')
+    assert found['edits'] == [] and 'younger than 18' in model.asked[1][1]
+    model.replies = [said("Here's Dana: she is 16 now."), said("Here's Dana: she is 16 now.")]
+    found = ask('Make her younger.')
+    assert found == {'reply': assistant.adults.ADULTS_ONLY, 'edits': [], 'audit': []}

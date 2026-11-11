@@ -112,4 +112,6 @@ def test_the_draft_always_writes_an_arc_and_a_paste_only_when_asked(model):
 
 def test_the_rules_carry_the_new_lines():
     rules = asking.template('rules.md')
-    assert 'three steps ahead' in rules and 'attachment style' in rules and 'Vance, Kaela' in rules
+    assert 'three steps ahead' in rules and 'attachment style' in rules
+    # The stock lists are the audit's, never the prompt's: naming them makes them likelier (Wren, 52 drafts).
+    assert 'Elara' not in rules and 'tapestry' not in rules

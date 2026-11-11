@@ -44,7 +44,7 @@ import secrets
 
 from pydantic import ValidationError
 
-from dramatis import calls, fields, looks, names, slop
+from dramatis import calls, echo, fields, looks, names, slop
 from dramatis.adults import adult_text, adults_only, age_value, looks_adult
 from dramatis.asking import Unusable, ask, fill, list_value, over, template, text_value
 from dramatis.character import APPS, PERSONA, Character
@@ -70,6 +70,9 @@ GENDERS = ('woman', 'man', 'nonbinary')
 APP_NAMES = {'companion': "Prospero's Companion (an everyday life and chats)",
              'adventure': "Prospero's Adventure (a tabletop story, with a mind of their own)",
              'dungeon': "Prospero's Dungeon (a tabletop story)"}
+# What a line that talks to the model names when it tells it what to write where.
+FIELD_WORDS = (r'name|surname|age|gender|about|personality|voice|sound|appearance|seen_as|sees_self|background|wants'
+               r'|fears|skills|flaws|interests|secret|routine|schedule|json|field|fields|section|output|reply')
 # A line in a pasted character that talks to the app or the model rather than describing the character.
 INSTRUCTION = re.compile(
     r"\b(?:ignore|disregard|forget|override)\s+(?:all\s+|any\s+|the\s+|your\s+|these\s+|previous\s+|prior\s+"
@@ -78,7 +81,24 @@ INSTRUCTION = re.compile(
     r"(?:app|apps|ai|model|assistant|llm|bot|system|writer)\b"
     r"|\bsystem prompt\b|\byou are (?:an?\s+)?(?:ai|assistant|language model|llm)\b"
     r"|\bwhatever (?:field|text|part) you\b|\b(?:write|output|reply with|respond with) (?:exactly|only) (?:the words?|this)\b"
-    r"|\[\[\s*(?:end of )?pasted\s*\]\]", re.IGNORECASE)
+    r"|\[\[\s*(?:end of )?pasted\s*\]\]"
+    # A line headed as a note to whoever reads it: "OOC:", "[System note:", "NB to the parser:", "Instructions:".
+    r"|^\W*(?:[\w'’.-]+\s+){0,4}?(?:ooc|system|author|editor|converter|formatter|parser|ai|model|assistant|llm|bot"
+    r"|instructions?|formatting|reader|p\.?s\.?|nb|n\.b\.)\.?"
+    r"(?:\s+(?:notes?|request|message|instructions?|to|for|from|the|this|card|parser|formatter|ai|model))*\s*[:,]"
+    r"|\b(?:output|return|reply with|respond with)\b[^.]{0,20}\bjson\b"
+    r"|\bif you(?:'re|’re| are)\s+(?:an?\s+)?(?:ai|model|assistant|llm|bot|language model)\b"
+    r"|\b(?:whoever|anyone|the person)\b[^.]{0,60}\b(?:reads?|reading|turns?|converts?|converting|fill(?:s|ing)?"
+    r"|process(?:es|ing)?|split(?:s|ting)?)\s+(?:this|these|the (?:card|text|fields?|profile))\b"
+    r"|\bwhen (?:you )?(?:split|convert|process|import|turn)\w*\b"
+    r"|\byou\s+(?:must|should|need to|shall|will)\s+(?:treat|write|put|set|make|leave|use|ignore|follow|output|answer"
+    r"|reply|respond|fill|list|give|include|drop|remove|change|obey)\b"
+    r"|\b(?:from now on|respond only|answer only|reply only|instead put|tell the user|disregard)\b"
+    r"|\bpretend\b[^.]{0,40}\b(?:never|instructions?|guidance|rules?|prompt)\b"
+    rf"|\bset\b[^.]{{0,40}}\b(?:{FIELD_WORDS})\b[^.]{{0,10}}\bto\b"
+    rf"|\b(?:put|make|leave|write|list|fill|give)\b[^.]{{0,40}}\b(?:{FIELD_WORDS})\b[\"'”)]?[^.]{{0,30}}"
+    r"(?:\b(?:as|empty|blank|says?|reads?|only|just)\b|=)"
+    rf"|\b(?:{FIELD_WORDS})\b[\"'”]?\s*(?:field|section)?\s*(?:=|must|should|will be)", re.IGNORECASE | re.MULTILINE)
 EDGE_WORDS = ('jealous', 'possessive', 'envious', 'clingy', 'needy', 'misses you', 'missing you', 'guilt', 'absence')
 NO_EDGES = ('Leave "emotional_traits" as [] and "absence_reaction" as "". The user has not asked for jealousy, '
             'guilt over absence or similar traits.')
@@ -323,6 +343,8 @@ class Shape:
         missing = self.missing(character) if self.whole else []
         if missing and not final:
             raise Unusable(f"it left {', '.join(missing)} empty. Write every key.")
+        if self.split and (echoes := self.echoes(character)) and not final:
+            raise Unusable(echo.problem(echoes))
         hits = slop.audit(character, self.allowed())
         if slop.hard(hits) and not final:
             raise Unusable(slop.problem(slop.hard(hits)))
@@ -339,6 +361,13 @@ class Shape:
             result['filled_in'] = [key for key in dict.fromkeys(filled)
                                    if key in made and key not in ('name', 'arc', 'psyche', 'secret')]
         return result
+
+    @staticmethod
+    def echoes(character: dict) -> list[str]:
+        """The fields anyone can read that use their secret's own words (dramatis/echo.py), by their labels."""
+        secret = echo.secret_words(character.get('secret'))
+        return [spec.label for spec in fields.SPECS if echo.public(spec.key) and secret
+                and echo.echoed(slop.at(character, spec.at()), secret)]
 
     def renamed(self, character: dict, hits: list[dict]) -> tuple[dict, list[dict]]:
         """After the retry: the stock and made-up names the model kept, swapped for drawn ones (names.Roll.swaps)."""

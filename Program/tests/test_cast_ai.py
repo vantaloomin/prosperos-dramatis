@@ -123,12 +123,12 @@ def test_a_stock_name_goes_back_once_but_the_authors_own_words_are_theirs(model)
     mine = blank()
     mine['outer']['corners'][0]['label'] = "Elara's Guard"
     model.replies = [suggested({'label': "Elara's Guard", 'stance': 'One crown keeps the roads safe.'},
-                               {'label': 'The guilds', 'stance': 'Coin rules — always has.'}),
+                               {'label': 'The guilds', 'stance': 'Coin rules. I hope this helps.'}),
                      suggested({'label': "Elara's Guard", 'stance': 'One crown keeps the roads safe.'},
                                {'label': 'The guilds', 'stance': 'Coin rules, and always has.'})]
     found = cast_ai.suggest(casts.checked(mine), 'outer')
     assert 'proposals.1.stance' not in json.dumps(found['audit']) and found['audit'] == []
-    assert 'dash' in model.asked[1][1] and 'Elara' not in model.asked[1][1].split('Your last reply could not')[1]
+    assert 'I hope this helps' in model.asked[1][1] and 'Elara' not in model.asked[1][1].split('Your last reply could not')[1]
 
 
 def test_suggestions_need_a_split_side_that_is_on_the_board(model):

@@ -12,6 +12,14 @@ from dramatis.formats.companion.errors import DomainError
 PROMPTS = Path(__file__).parent / 'prompts'
 
 
+# A height's inch mark straight after feet and inches (5'10" or 5' 10"), when it is not the string's own end: what
+# follows the end of a string is a colon, a closing bracket, or a comma before the next string or the end.
+HEIGHT = re.compile(r"""(\d['’]\s?\d{1,2})"(?!\s*(?:[:}\]]|,\s*["{\[\]}]|$))""")
+# The dashes the AI-slop audit holds against a draft (data/ai-slop.json, em_dash), and a range of numbers between them.
+DASH = re.compile(r'\s*(?:—|–|(?<=\w)--(?=\w)|\s--\s|\s-\s)\s*')
+RANGE = re.compile(r'(?<=\d)\s*[–—]\s*(?=\d)')
+
+
 class Unusable(Exception):
     """The model's reply could not become a character; the message says why, for the one retry."""
 
@@ -32,14 +40,35 @@ def parse_object(text: str) -> dict:
     start, end = text.find('{'), text.rfind('}')
     if start < 0 or end < start:
         raise Unusable('it did not contain a JSON object.')
+    found = text[start:end + 1]
     try:
         # Not strict: a line break inside a string, which some models send, is kept rather than refused.
-        data = json.loads(text[start:end + 1], strict=False)
+        data = json.loads(found, strict=False)
     except json.JSONDecodeError as error:
-        raise Unusable(f'the JSON was malformed ({error.msg}).') from error
+        # A height in feet and inches (5'10") whose inch mark ends the string early: escaped, then read once more.
+        try:
+            data = json.loads(HEIGHT.sub(r'\1\\"', found), strict=False)
+        except json.JSONDecodeError:
+            raise Unusable(f'the JSON was malformed ({error.msg}).') from error
     if not isinstance(data, dict):
         raise Unusable('it was not a JSON object.')
-    return data
+    return undashed(data)
+
+
+def undashed(value):
+    """Every text in a reply with its dashes made plain punctuation: a range takes a hyphen, an aside commas. The
+    audit holds a dash against a draft, and swapping them here saves sending most replies back."""
+    if isinstance(value, dict):
+        return {key: undashed(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [undashed(item) for item in value]
+    if not isinstance(value, str) or not DASH.search(value):
+        return value
+    text = RANGE.sub('-', value)
+    text = DASH.sub(', ', text)
+    text = re.sub(r',\s*([,.;:!?)])', r'\1', text)
+    text = re.sub(r'([(\n]|^),\s*', r'\1', text)
+    return text.rstrip(', ')
 
 
 def ask(system: str, shape, prompt: str = 'Write the JSON now.'):

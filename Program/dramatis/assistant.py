@@ -13,16 +13,24 @@ object, and every change it makes is checked here first.
   the library.
 - Every edit goes through the AI-slop audit (dramatis/slop.py): a hard hit the user didn't write sends the reply
   back once, and what is left comes back for the form to show.
+- Their secret is shown only when the user is in the secret or their inner fields (arc, psyche, how they see
+  themselves) or their message is about them; otherwise the model sees only what people believe, and cannot edit the
+  secret. A field anyone can read whose edit uses the secret's own words is sent back once, then dropped
+  (dramatis/echo.py).
+- Every text it writes, the reply included, is read for an age under 18 or a school they are still at
+  (`adults.young_text`): an edit that has one is sent back once, then dropped, and a reply that still has one after
+  the retry is replaced, with no edits.
 
 Nothing is stored here, and the conversation is the screen's to keep.
 """
 import json
+import re
 from typing import Literal
 
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-from dramatis import adults, ai, asking, drafting, fields, slop
+from dramatis import adults, ai, asking, drafting, echo, fields, slop
 from dramatis.character import APPS
 from dramatis.drafting import Unusable, fill, template, text_value
 
@@ -45,6 +53,13 @@ EXTRA = {
                                   'or two}'},
 }
 LABELS = fields.LABELS
+# A message about their secret or how they are inside, which is when the assistant is shown the secret.
+INNER_TALK = re.compile(r"\b(?:secrets?|hid(?:e|es|den|ing)|cover(?:[- ]up| story)|lie|lies|lying|truth|(?:story )?arc"
+                        r"|catalyst|psyche|inner|deep down|inside|sees? (?:them|her|him)sel(?:f|ves)|how (?:they|she|he) "
+                        r"sees?|nobody knows|no one knows|who knows)\b", re.IGNORECASE)
+# A message that asks for the secret in a field anyone can read, so its words there are the user's wish.
+SECRET_OUT = re.compile(r"\b(?:put|move|add|include|mention|reveal|weave|work|bring|use)\b[^.?!]{0,60}\bsecret\b",
+                        re.IGNORECASE)
 
 
 def guides() -> dict[str, dict]:
@@ -55,12 +70,19 @@ def guides() -> dict[str, dict]:
         {key: extra[key] for key in ('history_together', 'emotional_traits')}
 
 
-def editable(character: dict) -> dict[str, dict]:
+def editable(character: dict, inner: bool = True) -> dict[str, dict]:
     """The fields it may change on this character: Companion's part only when they are made for Companion as a
-    companion, since a user persona has no life there."""
+    companion, since a user persona has no life there, and the secret only when it is shown it (`inner`)."""
     apps = character.get('apps') or list(APPS)
     life = 'companion' in apps and not drafting.is_persona(character.get('companion') or {})
-    return {key: guide for key, guide in guides().items() if life or key not in COMPANION_ONLY}
+    return {key: guide for key, guide in guides().items()
+            if (life or key not in COMPANION_ONLY) and (inner or not key.startswith('secret.'))}
+
+
+def inner(focus: str | None, message: str) -> bool:
+    """Whether this message is about their secret or how they are inside: the user is in one of those fields, or
+    their message speaks of it."""
+    return (bool(focus) and drafting.sees_secret(focus)) or bool(INNER_TALK.search(message))
 
 
 path = fields.path
@@ -99,20 +121,22 @@ def changed_text(seen: dict | None, now: dict) -> str:
     return 'Since your last answer they changed these fields themselves:\n' + '\n'.join(lines)
 
 
-def where_text(focus: str | None, character: dict) -> str:
-    if focus not in editable(character):
+def where_text(focus: str | None, character: dict, shown: bool = True) -> str:
+    if focus not in editable(character, shown):
         return ''
     return (f'They are in the {LABELS.get(focus, focus)} field ("{focus}") right now, so "this", "here" or "it" most '
             'likely means that field.')
 
 
-def fields_text(character: dict) -> str:
-    return '\n'.join(f"- {key} ({guide['shape']}): {guide['guide']}" for key, guide in editable(character).items())
+def fields_text(character: dict, shown: bool = True) -> str:
+    return '\n'.join(f"- {key} ({guide['shape']}): {guide['guide']}"
+                     for key, guide in editable(character, shown).items())
 
 
-def character_text(character: dict) -> str:
-    """The form as the model sees it: the interview included, the sliders said nowhere."""
-    return json.dumps(drafting.for_model(character, interview=True, secret=True), ensure_ascii=False, indent=1)
+def character_text(character: dict, secret: bool = True) -> str:
+    """The form as the model sees it: the interview included, the sliders said nowhere, and their secret only when
+    the message is about it (`inner`); otherwise what people believe instead."""
+    return json.dumps(drafting.for_model(character, interview=True, secret=secret), ensure_ascii=False, indent=1)
 
 
 def conversation(history: list[dict], message: str) -> str:
@@ -144,18 +168,23 @@ def value_for(field: str, guide: dict, raw, final: bool):
     value = drafting.field_value(field, guide, {'value': raw}, final)
     if field == 'about' and adults.YOUNG.search(value):
         raise Unusable(adults.ADULTS_ONLY)
+    if found := adults.young_text(echo.texts(value)):
+        raise Unusable(f'"{field}" makes them younger than 18 ("{found}"). {adults.ADULTS_ONLY}')
     return value
 
 
 class Edits:
     """The reply and its edits, each checked against the form it was shown."""
 
-    def __init__(self, character: dict, allowed: str):
-        self.character, self.allowed, self.fields = character, allowed, editable(character)
+    def __init__(self, character: dict, allowed: str, shown: bool = True, secret: set[str] = frozenset()):
+        self.character, self.allowed, self.fields = character, allowed, editable(character, shown)
+        self.secret = secret
 
     def __call__(self, raw: dict, final: bool) -> dict:
         reply = text_value(raw.get('reply'), REPLY_CHARS)
-        edits, hits, problems = {}, [], []
+        if (young := adults.young_text(reply)) and final:
+            return {'reply': adults.ADULTS_ONLY, 'edits': [], 'audit': []}
+        edits, hits, problems = {}, [], [f'"reply" makes them younger than 18 ("{young}"). {adults.ADULTS_ONLY}'] if young else []
         for item in raw.get('edits') if isinstance(raw.get('edits'), list) else []:
             try:
                 found = self.edit(item, final)
@@ -184,6 +213,8 @@ class Edits:
         value = value_for(field, self.fields[field], item.get('value'), final)
         if same(slop.at(self.character, path(field)), value):
             return None
+        if echo.public(field) and echo.echoed(value, self.secret):
+            raise Unusable(echo.problem([LABELS.get(field, field)]))
         return {'field': field, 'label': LABELS.get(field, field), 'path': list(path(field)), 'value': value}
 
 
@@ -191,15 +222,19 @@ def answer(body: 'AssistantBody') -> dict:
     """One message to the assistant: its reply and the edits for the form; nothing is saved."""
     character = body.character
     history = [turn.model_dump() for turn in body.history]
+    shown = inner(body.focus, body.message)
     system = fill(template('assistant.md'), rules=template('rules.md'), emotional=drafting.FIELD_EDGES,
-                  where=where_text(body.focus, character), fields=fields_text(character),
+                  where=where_text(body.focus, character, shown), fields=fields_text(character, shown),
                   # Last, so braces in the user's own words are never read as placeholders.
-                  changed=changed_text(body.seen, character), character=character_text(character))
+                  changed=changed_text(body.seen, character), character=character_text(character, shown))
     # What the user typed or pasted, here or on the form, is theirs: the audit never holds it against the model.
     allowed = ' '.join([json.dumps(drafting.own_words(character), ensure_ascii=False), body.message,
                         *(turn['content'] for turn in history if turn['role'] == 'user')])
+    # The secret's own words, held against an edit to a field anyone reads, unless the user asked for it there.
+    secret = set() if not shown or SECRET_OUT.search(body.message) else \
+        echo.secret_words(character.get('secret'), echo.public_text(character), body.message)
     with ai.doing('assistant'):
-        return asking.ask(system, Edits(character, allowed), conversation(history, body.message))
+        return asking.ask(system, Edits(character, allowed, shown, secret), conversation(history, body.message))
 
 
 # Routes -----------------------------------------------------------------------------------------------------------

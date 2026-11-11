@@ -15,6 +15,9 @@ YOUNG = re.compile(r"\b(?:is|am|aged?)\s+(?:1[0-7]|[1-9])\b(?!\s*(?:years?\s+(?:
 # in figures or words, or a school year. Read one sentence at a time, see `young_text`.
 UNDER = (r'(?:1[0-7]|[2-9]|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen'
          r'|sixteen|seventeen)')
+# A school for teenagers, but not a game, a reunion or a building someone works at.
+SCHOOL = (r"(?:(?:the|a)\s+)?(?:[\w'’.-]+\s+){0,2}?(?:high|middle|secondary|junior high)[- ]?school\b"
+          r"(?!['’]s|\s+(?:football|basketball|games?|reunions?|sports|plays?|dances?|events?|teachers?|staff)\b)")
 YOUNG_TEXT = re.compile(
     rf"\b(?:is|am|are|'s|’s|aged?)\s+(?:only\s+|just\s+|barely\s+|now\s+)?{UNDER}"
     r"(?=\s*(?:$|[.,;!?)]|years?\b|yrs?\b|y/?o\b|and\b|but\b|now\b|-years?))"
@@ -23,7 +26,12 @@ YOUNG_TEXT = re.compile(
     r"|\b(?:freshman|sophomore|junior|senior)\s+(?:at|in)\s+(?:[\w'’.-]+\s+){0,3}?(?:high|middle|junior high)\b"
     r"(?!\s+(?:management|managers?|ground|class|income|earth|ages)\b)"
     r"|\b(?:high|middle|secondary)[- ]school\s+(?:student|kid|freshman|sophomore|junior|senior|girl|boy)\b"
-    r"|\b(?:high|middle)[- ]schooler\b|\b(?:[1-9]|1[0-2])(?:st|nd|rd|th)[- ]grader?\b", re.IGNORECASE | re.MULTILINE)
+    r"|\b(?:high|middle)[- ]schooler\b|\b(?:[1-9]|1[0-2])(?:st|nd|rd|th)[- ]grader?\b"
+    # Still at school now: still in, finishing or going to high school, a year left of it, on the student council.
+    rf"|\b(?:still|currently)\s+(?:in|at|attending)\s+{SCHOOL}"
+    rf"|\b(?:finishing|finishes|attends|attending|goes\s+to|going\s+to)\s+{SCHOOL}"
+    rf"|\b(?:a|one|two|three)\s+(?:more\s+)?years?\s+(?:left|to go)\s+(?:of|in|at|until|before)\s+{SCHOOL}"
+    r"|\bstudent council\b", re.IGNORECASE | re.MULTILINE)
 # Before the match in its sentence: someone else's age (her son is 12), the past (when she was a junior at...), or a
 # job with young people in it (teaches 10th grade).
 NOT_THEIRS = re.compile(r"\b(?:daughters?|sons?|kids?|child(?:ren)?|sisters?|brothers?|siblings?|nieces?|nephews?"

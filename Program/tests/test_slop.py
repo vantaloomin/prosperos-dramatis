@@ -33,15 +33,23 @@ def test_a_draft_with_stock_names_is_sent_back_once(model):
     found = drafting.draft(PICKS)
     assert found['character']['name'] == 'Dana Okafor' and not slop.hard(found['audit'])
     retry = model.asked[1][1]
-    assert 'Elara (Name)' in retry and 'instead of dashes' in retry
+    # The dash was made a comma before the audit read it, so only the name went back.
+    assert 'Elara (Name)' in retry and 'dashes' not in retry
     # The list itself is never in the drafting prompt.
     assert 'Seraphina Vale' not in model.asked[0][0]
 
 
 def test_what_survives_the_retry_comes_back_for_the_form(model):
-    model.replies = [reply(background='Grew up by the sea — mostly.')] * 2
+    model.replies = [reply(background='Grew up by the sea. I hope this helps.')] * 2
     found = drafting.draft(PICKS)
-    assert {hit['match'] for hit in slop.hard(found['audit'])} == {'—'}
+    assert {hit['match'] for hit in slop.hard(found['audit'])} == {'I hope this helps'}
+
+
+def test_dashes_become_plain_punctuation_without_a_retry(model):
+    model.replies = [reply(background='Grew up by the sea — mostly — and left in 2009–2010.')]
+    found = drafting.draft(PICKS)
+    assert found['character']['background'] == 'Grew up by the sea, mostly, and left in 2009-2010.'
+    assert len(model.asked) == 1 and not slop.hard(found['audit'])
 
 
 def test_a_stock_name_kept_after_the_retry_is_swapped_for_a_drawn_one_everywhere(model):
