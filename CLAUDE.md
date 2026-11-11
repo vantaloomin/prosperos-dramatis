@@ -19,7 +19,9 @@ character creator.
 - `dramatis/casts.py` is the Cast layer: a story's people as a two-layer four-corner opposition, saved in
   `casts/<id>.json` beside the library and pointing at characters by id. Resonance candidates and checks are computed
   there with no model; only structure is a hard error. Genres, group types, axes and tags are data
-  (`dramatis/data/cast_*.json`), so a new template is a JSON entry. Routes are in `cast_routes.py`.
+  (`dramatis/data/cast_*.json`), so a new template is a JSON entry. Routes are in `cast_routes.py`. A card exported
+  from a cast carries that character's place in it (`casts.context_for`: `extensions.prospero.cast` and the
+  description's "Their place in" paragraph, by name, never by id); the single-character card has none.
 - The Details of how they look are settled before the model writes their Appearance (`dramatis/looks.py`): what the
   user's words speak of the model reads into the fields, the rest are rolled first with Companion's own looks banks
   (vendored `formats/companion/looks.py` and `dating.py`), and `Character.looks_from` marks each as From their words or

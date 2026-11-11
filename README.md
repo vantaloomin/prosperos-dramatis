@@ -138,7 +138,8 @@ or a blank board. Give each corner a why or a how, a few how-tags and a characte
 one drafted for that corner through the quick start. When corners on different sides share a tag, the board draws a
 dashed line between them to confirm or dismiss. Checks and relationships between characters stay live as you edit,
 and **Focus** shows one character's inner square beside the board. **Export** saves the cast file, or a card for each
-of its characters in either kind above.
+of its characters in either kind above. Each of those cards ends with their place in the cast: their side, their way,
+who stands beside and against them, and how they see the others.
 
 Your model can help with a cast too. **Suggest corners** offers sides for the outer square, or the people inside a
 split side. **Check my square** points out a stance that reads as the wrong kind, such as a why where a how belongs.
