@@ -6,6 +6,7 @@ The character so far, as JSON:
 {{character}}
 
 "what_people_believe" is what other people believe about them; write it as true. A "secret", when you are shown one, is theirs: it may shape this field, but say it outright only in the secret itself or in how they see themselves.
+{{public}}
 
 {{emotional}}
 

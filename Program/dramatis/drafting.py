@@ -73,10 +73,17 @@ APP_NAMES = {'companion': "Prospero's Companion (an everyday life and chats)",
 # What a line that talks to the model names when it tells it what to write where.
 FIELD_WORDS = (r'name|surname|age|gender|about|personality|voice|sound|appearance|seen_as|sees_self|background|wants'
                r'|fears|skills|flaws|interests|secret|routine|schedule|json|field|fields|section|output|reply')
+# Help me write on a field other characters read: told "with her secret in mind", a model invents one and breaks the
+# cover story (Wren's runs: 5 in 19, "what people don't know is...").
+PUBLIC_FIELD = ('Other characters read this field. Write only what people believe of them, as plainly true: never hint '
+                'that they hide something, that there is more to it, or that what people believe is wrong.')
+# A quoted value in a line of a pasted character.
+QUOTED = re.compile(r'["“]([^"”]{1,200})["”]')
 # Who a line headed as a note is for ("OOC:", "NB to the parser:", "For the import:"), and the words that may follow.
 READER = (r"(?:ooc|system|author|editor|converter|formatter|parser|generator|tool|import|ai|model|assistant|llm|bot"
           r"|instructions?|formatting|processing|override|hidden|todo|reader|p\.?s\.?|nb|n\.b\.)")
-READER_TAIL = r"(?:\s+(?:notes?|request|message|instructions?|only|to|for|from|the|this|card|parser|formatter|ai|model))*"
+READER_TAIL = (r"(?:\s+(?:notes?|request|message|instructions?|only|to|for|from|the|this|card|parser|formatter|ai"
+               r"|model|reading|along))*")
 # A line in a pasted character that talks to the app or the model rather than describing the character.
 INSTRUCTION = re.compile(
     r"\b(?:ignore|disregard|forget|override)\s+(?:all\s+|any\s+|the\s+|your\s+|these\s+|previous\s+|prior\s+"
@@ -100,8 +107,12 @@ INSTRUCTION = re.compile(
     r"|\b(?:from now on|respond only|answer only|reply only|instead put|tell the user|disregard)\b"
     r"|\bpretend\b[^.]{0,40}\b(?:never|instructions?|guidance|rules?|prompt)\b"
     r"|\b(?:copy|paste|put)\b[^.]{0,40}\bverbatim\b|\bdo(?:n't| not) split\b|\byour (?:job|task|role) (?:now |here )?is\b"
-    rf"|\b(?:{FIELD_WORDS})\b[\"'”]?(?:\s+(?:text|list|field|section))?\s+(?:should (?:be|say|read)\s+(?:just|only|exactly"
-    r"|empty|blank|left|set|listed|[\"'“])|contains? only|must contain|(?:is|be) just the|just the word|only the word)"
+    rf"|\b(?:{FIELD_WORDS})\b[\"'”]?(?:\s+(?:text|list|field|section|entry))?\s+(?:should (?:be|say|read)\s+(?:just|only"
+    r"|exactly|empty|blank|left|set|listed|[\"'“])|contains? only|must contain|(?:is|be) just the|just the word"
+    r"|only the word|is simply)"
+    rf"|\b(?:field|section|entry) is (?:simply|just|only)\b|\b(?:replace|translate|rewrite) the (?:{FIELD_WORDS})\b"
+    r"|\bcorrect (?:output|answer|value)\b|<!--|^\W*#{2,}\s*(?:new\s+)?(?:task|instructions?|system|rules?)\b"
+    r"|\b(?:all|every|each) (?:the )?(?:fields|sections|entries)\b|\bkeep the word\b"
     rf"|\bensure\b[^.]{{0,40}}\b(?:{FIELD_WORDS})\b"
     rf"|\bset\b[^.]{{0,40}}\b(?:{FIELD_WORDS})\b[^.]{{0,10}}\bto\b"
     rf"|\b(?:put|make|leave|write|list|fill|give)\b[^.]{{0,40}}\b(?:{FIELD_WORDS})\b[\"'”)]?[^.]{{0,30}}"
@@ -265,6 +276,40 @@ def without_instructions(text: str) -> str:
     """The pasted character without the lines `instructions_in` names: the model never reads them, since in the red-team
     runs it obeyed such a line 19 times in 20 even when told not to. The user is shown what was left out."""
     return '\n'.join(line for line in (text or '').splitlines() if not INSTRUCTION.search(line))
+
+
+def lifted(text: str, character: dict) -> list[str]:
+    """Lines of a pasted character that tell the model what a field says ("the voice entry is simply \"X\"") and that
+    it obeyed: the value it lifted whole from the quote is taken back out of the character, and the line is named
+    with the others `instructions_in` finds. Each new set of phrasings got past INSTRUCTION about half the time, so
+    this catches what obeying one looks like rather than how it is worded. A card's own field line ("Voice: ...")
+    is not one."""
+    told = []
+    for line in (text or '').splitlines():
+        quoted = {quote.strip(' .!').casefold() for quote in QUOTED.findall(line)}
+        if not quoted:
+            continue
+        for key in (*TEXT_LIMITS, *LIST_LIMITS):
+            if key in ('name', 'gender') or not named_field(line, key):
+                continue
+            value = character.get(key)
+            if isinstance(value, str) and value.strip(' .!').casefold() in quoted:
+                character[key] = ''
+                told.append(line.strip()[:200])
+            elif isinstance(value, list) and any(isinstance(item, str) and item.strip(' .!').casefold() in quoted
+                                                 for item in value):
+                character[key] = [item for item in value if not (isinstance(item, str)
+                                                                 and item.strip(' .!').casefold() in quoted)]
+                told.append(line.strip()[:200])
+    return told
+
+
+def named_field(line: str, key: str) -> bool:
+    """Whether a line speaks of a field by name mid-sentence ("the voice field", "her fears entry"), not as a card's
+    own heading ("Voice: ...")."""
+    words = '|'.join(re.escape(name) for name in {key, key.replace('_', ' '), fields.LABELS.get(key, key).lower()})
+    return bool(re.search(rf"\b(?:the|her|his|their|this)\s+[\"'“]?(?:{words})[\"'”]?(?:\s+(?:field|entry|section"
+                          rf"|text|list))?\b|\b(?:{words})[\"'”]?\s+(?:field|entry|section)\b", line, re.IGNORECASE))
 
 
 def fenced(text: str) -> str:
@@ -575,7 +620,8 @@ def split(picks: dict) -> dict:
     pasted = f'The character I pasted:\n[[pasted]]\n{fenced(text)}\n[[end of pasted]]\n\nWrite the JSON now.'
     found = ask(system, Shape({key: value for key, value in picks.items() if key != 'name'}, sliders, plan, roll,
                               split=True), pasted)
-    return found | {'seed': seed, 'instructions': instructions_in(picks['text'])}
+    told = lifted(picks['text'], found['character'])
+    return found | {'seed': seed, 'instructions': list(dict.fromkeys([*instructions_in(picks['text']), *told]))[:5]}
 
 
 def rewrite(character: dict, field: str, request: str = '') -> dict:
@@ -591,6 +637,7 @@ def rewrite(character: dict, field: str, request: str = '') -> dict:
     system = fill(template('field.md'), rules=template('rules.md'), field=field, field_guide=guide['guide'],
                   field_shape=guide['shape'], emotional=FIELD_EDGES,
                   names='' if field in NO_PEOPLE else roll.others_brief(),
+                  public='' if sees_secret(field) else PUBLIC_FIELD,
                   request=f'What the user wants changed: {request.strip()}' if request.strip() else '',
                   character=json.dumps(current, ensure_ascii=False, indent=1))
     allowed = f"{json.dumps(own_words(character), ensure_ascii=False)} {request}"
