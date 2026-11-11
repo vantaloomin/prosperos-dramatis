@@ -207,7 +207,8 @@ python scripts/sync_format.py --companion "Z:\Coding Projects\prosperos-companio
 python -m pytest -q
 ```
 
-CI checks the copies against each app's latest `main` on every pull request and once a day.
+CI checks that the copies are exactly what each app had at the recorded commit. Once a day a workflow syncs them with
+each app's latest `main` and opens a pull request when anything changed, or an issue when the sync can't run.
 
 ## Privacy
 

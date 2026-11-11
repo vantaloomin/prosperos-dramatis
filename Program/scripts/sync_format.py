@@ -95,6 +95,9 @@ APPS = {
             'companion.world.lifespans': 'dramatis.stand_ins.lifespans',
             'companion.world.mix': 'dramatis.stand_ins.mix',
             'companion.world.townsfolk': 'dramatis.stand_ins.townsfolk',
+            # dating.py asks couples.py whether someone partnered has been single long enough to date again, which
+            # needs a town's weeks; a Dramatis character has no town, so they keep the status they were given.
+            'companion.world.couples': 'dramatis.stand_ins.couples',
             'companion.models': 'dramatis.formats.companion.models',
             **{f'companion.providers.{name}': f'dramatis.formats.companion.providers.{name}' for name in PROVIDER_MODULES},
             # chat.py asks the built-in model's server where it runs (Companion downloads and runs one), and the
@@ -120,8 +123,9 @@ APPS = {
         'modules': {},
     },
 }
-IMPORT = re.compile(r'^(?P<indent>[ \t]*)from (?P<module>(?:companion|adventure|dungeon)(?:\.\w+)*) import (?P<names>.+)$',
-                    re.M)
+# One `from <app module> import ...` line; a trailing comment is kept as it is.
+IMPORT = re.compile(r'^(?P<indent>[ \t]*)from (?P<module>(?:companion|adventure|dungeon)(?:\.\w+)*) import '
+                    r'(?P<names>[^#\n]*?)(?P<comment>[ \t]*#[^\n]*)?$', re.M)
 HEADER = '# Vendored from {repo} {path} by scripts/sync_format.py. Edit it there, then sync.\n'
 PART_HEADER = ('# Vendored from {repo} {path} by scripts/sync_format.py: only {names}, with the imports they use.\n'
                '# Edit it there, then sync.\n')
@@ -132,9 +136,9 @@ def swap(match: re.Match, modules: dict[str, str], path: str) -> str:
 
     `from companion.errors import DomainError` takes the module's own place; `from companion.world import catalog,
     dating` takes the package of each module it names, one line for each place they live in Dramatis."""
-    module, names, indent = match['module'], match['names'], match['indent']
+    module, names, indent, comment = match['module'], match['names'], match['indent'], match['comment'] or ''
     if module in modules:
-        return f'{indent}from {modules[module]} import {names}'
+        return f'{indent}from {modules[module]} import {names}{comment}'
     wanted = [name.strip() for name in names.strip('()').split(',') if name.strip()]
     places: dict[str, list[str]] = {}
     for name in wanted:
@@ -143,8 +147,9 @@ def swap(match: re.Match, modules: dict[str, str], path: str) -> str:
             raise SystemExit(f'{path} imports {name} from {module}, which is not vendored. Add it to APPS.')
         places.setdefault(target, []).append(name)
     if len(places) == 1:
-        return f'{indent}from {next(iter(places))} import {names}'
-    return '\n'.join(f"{indent}from {target} import {', '.join(found)}" for target, found in places.items())
+        return f'{indent}from {next(iter(places))} import {names}{comment}'
+    lines = [f"{indent}from {target} import {', '.join(found)}" for target, found in places.items()]
+    return '\n'.join([f'{indent}{comment.strip()}', *lines] if comment else lines)
 
 
 def vendored(text: str, path: str, app: dict) -> str:

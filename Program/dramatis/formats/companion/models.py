@@ -103,6 +103,8 @@ class MoneySetup(Input):
     # What they take home a month in their city's money: None works it out from their work and city, 0 is unpaid
     # (a volunteer, a carer).
     pay: float | None = Field(default=None, ge=0, le=1_000_000_000)
+    # How they hold their home (companion/life/owning.py): empty is the app's pick, from their words, age and pay.
+    home: Literal['', 'rent', 'mortgage', 'owned'] = ''
 
 
 class Looks(Input):
@@ -575,6 +577,8 @@ class LifeSettingsUpdate(Input):
     together_realism: int | None = Field(default=None, ge=0, le=3)
     # Moving on (companion/life/onward.py): 0 never, 1 now and then, 2 true to life, 3 often.
     onward_realism: int | None = Field(default=None, ge=0, le=3)
+    # Weather (companion/world/skies.py): 0 gentle, 1 true to life, 2 stormy. No off: the climate was always there.
+    weather_realism: int | None = Field(default=None, ge=0, le=2)
     # Rough patches (companion/life/rough_patches.py): 0 off, 1 easy, 2 true to life, 3 dramatic.
     rough_patches_realism: int | None = Field(default=None, ge=0, le=3)
     # Next steps (companion/life/steps.py): 0 only when the user brings it up, 1 slow, 2 true to life, 3 fast.
