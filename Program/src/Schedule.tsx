@@ -46,7 +46,7 @@ export function Schedule({ blocks, onChange }: { blocks: Block[]; onChange: (blo
           <button type="button" className="icon" aria-label={`Remove ${block.label || 'this block'}`} onClick={() => onChange(blocks.filter((_, at) => at !== index))}><Trash2 size={14} /></button>
         </div>
       ))}
-      <button type="button" onClick={() => onChange([...blocks, { label: '', kind: 'leisure', days: [0, 1, 2, 3, 4], start: '18:00', end: '19:00', themes: [] }])}><Plus size={14} aria-hidden /> Add a block</button>
+      <button type="button" onClick={() => onChange([...blocks, { key: '', label: '', kind: 'leisure', days: [0, 1, 2, 3, 4], start: '18:00', end: '19:00', themes: [] }])}><Plus size={14} aria-hidden /> Add a block</button>
       {problems.length > 0 && <ul className="error small">{problems.map((problem) => <li key={problem}>{problem}</li>)}</ul>}
     </div>
   )

@@ -21,6 +21,7 @@ import re
 from functools import cache
 from pathlib import Path
 
+from dramatis import fields
 from dramatis.formats.companion import generators
 from dramatis.formats.companion import looks as sheet
 
@@ -28,7 +29,7 @@ NUMBERS = ('height_cm', 'weight_kg')
 WORDS = ('build', 'skin', 'face', 'jaw', 'nose', 'eyes', 'eye_shape', 'hair', 'facial_hair', 'feature')
 FIELDS = NUMBERS + WORDS
 LIMITS = {'height_cm': (120, 230), 'weight_kg': (35, 250)}
-TEXT_LIMITS = {field: 200 if field in ('hair', 'feature') else 120 for field in WORDS}
+TEXT_LIMITS = {field: fields.limit(f'looks.{field}') for field in WORDS}
 PRONOUNS = {'woman': 'she/her', 'man': 'he/him', 'nonbinary': 'they/them'}
 LABELS = {'height_cm': 'Height', 'weight_kg': 'Weight', 'build': 'Build', 'skin': 'Skin', 'face': 'Face shape',
           'jaw': 'Jaw and chin', 'nose': 'Nose', 'eyes': 'Eye colour', 'eye_shape': 'Eye shape', 'hair': 'Hair',

@@ -44,7 +44,7 @@ import secrets
 
 from pydantic import ValidationError
 
-from dramatis import calls, looks, names, slop
+from dramatis import calls, fields, looks, names, slop
 from dramatis.adults import adult_text, adults_only, age_value, looks_adult
 from dramatis.asking import Unusable, ask, fill, list_value, over, template, text_value
 from dramatis.character import APPS, PERSONA, Character
@@ -52,10 +52,11 @@ from dramatis.formats.companion import personality
 from dramatis.formats.companion.errors import DomainError
 from dramatis.formats.companion.models import RoutineBlock
 
-TEXT_LIMITS = {'name': 80, 'about': 2000, 'personality': 8000, 'voice': 600, 'sound': 300, 'appearance': 600,
-               'seen_as': 400, 'sees_self': 1200, 'background': 12000, 'wants': 300, 'fears': 300}
-LIST_LIMITS = {'skills': (20, 300), 'flaws': (20, 300), 'interests': (50, 120)}
-LIFE_TEXT = {'routine': 8000, 'absence_reaction': 2000}
+# What a draft writes, with each one's limits from the model (dramatis/fields.py).
+TEXT_LIMITS = fields.text_limits('name', 'about', 'personality', 'voice', 'sound', 'appearance', 'seen_as', 'sees_self',
+                                 'background', 'wants', 'fears')
+LIST_LIMITS = fields.list_limits('skills', 'flaws', 'interests')
+LIFE_TEXT = fields.text_limits('routine', 'absence_reaction')
 REQUIRED = ('name', 'about', 'personality')
 # Companion's fields a model writes, under `companion`.
 LIFE_KEYS = ('routine', 'life_themes', 'schedule', 'absence_reaction', 'emotional_traits', 'history_together')
@@ -123,7 +124,7 @@ LIFE_SHAPE = ''',
   "absence_reaction": ""'''
 SECRET_SHAPE = ''',
   "secret": {"truth": "what is really true that they hide, only if their text gives one", "cover_story": "what people believe instead", "known_by": "who knows"}'''
-SECRET_LIMITS = {'truth': 600, 'cover_story': 400, 'known_by': 200}
+SECRET_LIMITS = {key: fields.limit(f'secret.{key}') for key in ('truth', 'cover_story', 'known_by')}
 # A draft's secret: the model writes one, as ordinary as the rest of them.
 DRAFT_SECRET_SHAPE = ''',
   "secret": {"truth": "one ordinary thing that is really true and that they keep from most people", "cover_story": "what people believe instead", "known_by": "who knows, or \\"no one\\""}'''
@@ -167,7 +168,8 @@ DEPTH_WORDS = {
 
 
 def field_guides() -> dict[str, dict]:
-    return json.loads(template('fields.json'))
+    """Help me write's fields: each one's guide and shape for the model (prompts/fields.json) and its limits."""
+    return {key: guide | fields.limits(key) for key, guide in json.loads(template('fields.json')).items()}
 
 
 def shape_text(apps: list[str], split: bool = False, depth: tuple[str, ...] = (), persona: bool = False,
@@ -358,10 +360,11 @@ class Shape:
             found['secret'] = {key: text_value(secret.get(key), limit) for key, limit in SECRET_LIMITS.items()}
         if 'arc' in self.depth:
             arc = raw.get('arc') if isinstance(raw.get('arc'), dict) else {}
-            found['arc'] = {key: text_value(arc.get(key), 300) for key in ARC_KEYS}
+            found['arc'] = {key: text_value(arc.get(key), fields.limit(f'arc.{key}')) for key in ARC_KEYS}
         if 'psyche' in self.depth:
             psyche = raw.get('psyche') if isinstance(raw.get('psyche'), dict) else {}
-            found['psyche'] = {key: {'text': text_value(psyche.get(key), 300)} for key in PSYCHE_KEYS}
+            found['psyche'] = {key: {'text': text_value(psyche.get(key), fields.limit(f'psyche.{key}'))}
+                               for key in PSYCHE_KEYS}
         return found
 
     def written(self, raw: dict, character: dict) -> list[str]:
@@ -398,7 +401,7 @@ class Shape:
         if not sleeps_every_day(blocks) and not final:
             raise Unusable(SLEEP_PROBLEM)
         life |= {key: text_value(raw.get(key), limit) for key, limit in LIFE_TEXT.items()}
-        life |= {'schedule': blocks, 'life_themes': list_value(raw.get('life_themes'), 20, 120),
+        life |= {'schedule': blocks, 'life_themes': list_value(raw.get('life_themes'), *fields.list_limits('life_themes')['life_themes']),
                  'texting': {'lowercase': bool(LOWERCASE.search(made['voice']))}}
         if edges_allowed(self.picks):
             life['emotional_traits'] = traits_value(raw.get('emotional_traits'))
@@ -562,11 +565,9 @@ def audited(field: str, value, allowed: str, final: bool, roll: names.Roll | Non
 
 def placed(field: str, value) -> dict:
     """One field's value where it sits in a character, for the audit: arc.lie under arc, routine under companion."""
-    if field in slop.DEPTH:
-        for key in reversed(slop.DEPTH[field][1]):
-            value = {key: value}
-        return value
-    return {field: value} if field in slop.FIELDS else {'companion': {field: value}}
+    for key in reversed(fields.path(field)):
+        value = {key: value}
+    return value
 
 
 def field_value(field: str, guide: dict, raw: dict, final: bool):

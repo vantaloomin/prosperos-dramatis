@@ -13,7 +13,10 @@ character creator.
   daily `sync-formats` workflow's own PR on `sync/formats` (or an issue, when the sync cannot run).
   `dramatis/stand_ins/` replaces the few modules those files import that would pull in a whole app.
 - `dramatis/character.py` is the shared character and each app's shape of it, checked with that app's own models.
-  A new field goes there first, with the tightest limit of the apps that read it.
+  A new field goes there first, with the tightest limit of the apps that read it, then one `Spec` in
+  `dramatis/fields.py` (its label, section, Help me write words; the limit is read from the model), then
+  `python scripts/screen_types.py`, which writes `src/generated/` (the character's TypeScript types and the registry).
+  The form takes a field by `field="about"`; a test fails when `src/generated/` is out of date.
   An app with no field for part of the character gets it folded into a text it reads (`folded`): Companion's
   background, Adventure's and Companion's How they see themselves, and Dungeon's About you (`dungeon_about`).
 - A character whose Companion relationship is `persona` is the user themself: Companion's shape of them is its

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type DragEvent, type FormEvent } from 'rea
 import { ClipboardPaste, FileUp, Square, UserPlus } from 'lucide-react'
 import { APPS, APP_NAMES, RELATIONSHIPS, emptyCharacter, fileData, sendJson, type App, type Character, type Drafted, type Gender, type Opened, type OpenedFile, type Relationship } from './api'
 import { Bolt, Field, Fold, TextArea, TextInput, useModelReady } from './Fields'
+import { FIELDS } from './generated/fields'
 import { useModelCall } from './modelCall'
 import { useNameRoll } from './rollName'
 import { profileFor, useModels } from './models/ModelSettings'
@@ -95,7 +96,7 @@ function QuickStart({ initial, apps, onApps, onBegin }: { initial?: Picks; apps:
       {!ready && <p className="note">Set up a model at the top to draft with it, or fill in the form yourself.</p>}
       <form className="stack" onSubmit={submit}>
         <div className="grid three">
-          <TextInput label="Name" value={picks.name} onChange={(name) => set({ name })} maxLength={80} roll={rollName} />
+          <TextInput label={FIELDS.name.label} value={picks.name} onChange={(name) => set({ name })} maxLength={FIELDS.name.limit} roll={rollName} />
           <Field label="Gender">{(id) => (
             <select id={id} value={picks.gender} onChange={(event) => set({ gender: event.target.value as Gender })}>
               <option value="">Any</option><option value="woman">Woman</option><option value="man">Man</option><option value="nonbinary">Nonbinary</option>
@@ -107,7 +108,7 @@ function QuickStart({ initial, apps, onApps, onBegin }: { initial?: Picks; apps:
             </select>
           )}</Field>
         </div>
-        <TextInput label="Where and when" value={picks.setting} onChange={(setting) => set({ setting })} maxLength={200} />
+        <TextInput label={FIELDS.setting.label} value={picks.setting} onChange={(setting) => set({ setting })} maxLength={FIELDS.setting.limit} />
         <AppPicks apps={apps} onChange={onApps} />
         <Fold title="More options" filled={!!initial?.idea}>
           <TextArea label="Who are they?" value={picks.idea} onChange={(idea) => set({ idea })} maxLength={2000} rows={2} />

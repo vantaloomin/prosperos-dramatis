@@ -31,14 +31,14 @@ from pathlib import PureWindowsPath
 from PIL import Image, UnidentifiedImageError
 from pydantic import ValidationError
 
-from dramatis import adults, asking, cards, drafting, library
+from dramatis import adults, asking, cards, drafting, fields, library
 from dramatis.character import CARD_DATA, CARD_TEXT, CardParts, Character, Looks
 from dramatis.formats.companion.errors import DomainError
 from dramatis.formats.companion.imports import cards as reader
 from dramatis.formats.companion.imports import formats, lorebooks
 
 BLURB = 'JSON'
-LIMITS = drafting.TEXT_LIMITS | {'setting': 200, 'arc.lie': 300, 'arc.truth': 300}
+LIMITS = fields.text_limits(*drafting.TEXT_LIMITS, 'setting', 'arc.lie', 'arc.truth')
 # The headings and keys that name a field, by the field (dotted for their arc) they fill. Dramatis' own card headings
 # (cards.description) come first in each.
 FIELD_NAMES = {

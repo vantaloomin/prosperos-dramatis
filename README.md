@@ -233,6 +233,10 @@ never in a file.
 From `Program/`: `python -m pip install -e ".[dev]"` and `npm ci`, then `python -m dramatis` starts the server.
 Before pushing, run `python -m ruff check .`, `python -m pytest -q`, `npm test` and `npm run build`.
 
+Each field of the form is defined once, in `dramatis/fields.py`, with its limit read from the character model. After
+changing either, `python scripts/screen_types.py` writes the screen's copy (`src/generated/`): the character's
+TypeScript types and the field table the form reads its labels and limits from.
+
 `python -m dramatis --stub` starts it with a stand-in model that answers every model call with a fixed reply, in a
 throwaway library, so you can walk the whole screen with no model and no keys. With it running (and `npm run build`
 done), `node tests/walk/walk.mjs` walks the screen in a browser the way CI does: a quick start, Help me write, Save,
