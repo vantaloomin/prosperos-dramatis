@@ -1,0 +1,49 @@
+name: Mac
+
+# The macOS double-click scripts, run on a Mac: install.command sets Dramatis up from the lock, launch.command starts
+# it, a second launch finds it running, and stop.command stops it. Runs when the scripts or what they install change.
+
+on:
+  pull_request:
+    paths: ["Mac/**", "Program/scripts/macos/**", "Program/requirements.lock.txt", "Program/pyproject.toml",
+            "Program/package.json", "Program/package-lock.json", "Program/dramatis/launch.py", ".github/workflows/mac.yml"]
+  push:
+    branches: [main]
+    paths: ["Mac/**", "Program/scripts/macos/**", "Program/requirements.lock.txt", "Program/pyproject.toml",
+            "Program/package.json", "Program/package-lock.json", "Program/dramatis/launch.py", ".github/workflows/mac.yml"]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  install-launch-stop:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: Mac/install.command
+      - name: Check the install
+        run: Program/scripts/macos/install.sh --check-only
+      - name: Launch, launch again, stop
+        env:
+          DRAMATIS_HOME: ${{ runner.temp }}/library
+        run: |
+          Mac/launch.command --no-browser > launch.log 2>&1 &
+          for attempt in $(seq 60); do curl -sf http://127.0.0.1:8815/api/health > /dev/null && break; sleep 1; done
+          curl -sf http://127.0.0.1:8815/api/health
+          Mac/launch.command --no-browser | grep 'already running'
+          Mac/stop.command
+          if curl -sf http://127.0.0.1:8815/api/health; then echo 'Still running after stop.command' >&2; exit 1; fi
+      - if: failure()
+        run: cat launch.log

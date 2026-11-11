@@ -1,0 +1,90 @@
+name: Release
+
+# Publishes a GitHub release for the version in Program/package.json, started by hand from the Actions tab on main
+# (after Prospero's Companion's). CI and the Mac scripts run on the commit first; the release is tagged on that exact
+# commit, with notes from Program/docs/releases/v<version>.md and its minor version's title from titles.json. GitHub
+# attaches the source as ZIP and tarball; the Windows and Mac scripts install from it.
+
+on:
+  workflow_dispatch:
+    inputs:
+      prerelease:
+        description: Mark the release as a pre-release
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      title: ${{ steps.version.outputs.title }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check the branch, version numbers and notes
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then echo "Releases are made from main only." >&2; exit 1; fi
+          version=$(node -p "require('./Program/package.json').version")
+          python3 - "$version" <<'PY'
+          import re, sys, tomllib
+          version = sys.argv[1]
+          with open('Program/pyproject.toml', 'rb') as f:
+              project = tomllib.load(f)['project']['version']
+          app = re.search(r"^VERSION = '([^']+)'", open('Program/dramatis/__init__.py').read(), re.M).group(1)
+          if not version == project == app:
+              sys.exit(f'Version mismatch: package.json {version}, pyproject.toml {project}, dramatis/__init__.py {app}')
+          PY
+          test -f "Program/docs/releases/v$version.md" || { echo "Missing Program/docs/releases/v$version.md" >&2; exit 1; }
+          grep -q "^## $version" CHANGELOG.md || { echo "CHANGELOG.md has no section for $version" >&2; exit 1; }
+          # Every release in a minor version shares its title, from Program/docs/releases/titles.json.
+          title=$(jq -r --arg minor "${version%.*}" '.[$minor] // empty' Program/docs/releases/titles.json)
+          test -n "$title" || { echo "Add a title for ${version%.*} to Program/docs/releases/titles.json" >&2; exit 1; }
+          if gh release view "v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "v$version is already released." >&2; exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "title=v$version: $title" >> "$GITHUB_OUTPUT"
+
+  ci:
+    needs: check
+    uses: ./.github/workflows/ci.yml
+
+  mac:
+    needs: check
+    uses: ./.github/workflows/mac.yml
+
+  publish:
+    needs: [check, ci, mac]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          sparse-checkout: Program/docs/releases
+      - name: Tag and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.check.outputs.version }}
+          TITLE: ${{ needs.check.outputs.title }}
+          PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          flags=()
+          if [ "$PRERELEASE" = "true" ]; then flags+=(--prerelease); fi
+          gh release create "v$VERSION" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "$TITLE" --notes-file "Program/docs/releases/v$VERSION.md" "${flags[@]}"

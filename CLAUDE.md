@@ -5,7 +5,10 @@ The suite's character creator: one character, made once with AI help, that Prosp
 character creator.
 
 - Layout mirrors Worldsmith: the app lives in `Program/` (Python package `dramatis/`, FastAPI on port 8815; React +
-  Vite screen in `src/`, dev server 5207); `Windows/` holds only the double-click scripts.
+  Vite screen in `src/`, dev server 5207); `Windows/` and `Mac/` hold only the double-click scripts (the Mac ones run
+  `Program/scripts/macos/*.sh`, after Companion's; CI's `mac.yml` installs, launches and stops on a Mac). Both install
+  from `Program/requirements.lock.txt`; a dependency change in `pyproject.toml` means writing it again (README,
+  Development).
 - `dramatis/formats/` is the apps' own code, vendored (their request models, Companion's card reader and slider
   rules). Never edit it here: change it in that app, then run
   `python scripts/sync_format.py --companion <checkout> --adventure <checkout> --dungeon <checkout>`. CI's `formats`
@@ -104,3 +107,6 @@ character creator.
   there. The screen's pure logic has Vitest tests in `tests/screen/` (`npm test`).
 - Before pushing, from `Program/`: `python -m ruff check .`, `python -m pytest -q`, `npm test`, `npm run build`.
 - `main` takes changes through pull requests.
+- A release: the version agrees in `package.json`, `pyproject.toml` and `dramatis/__init__.py`, its notes are
+  `Program/docs/releases/v<version>.md` (and a CHANGELOG.md section), and the Release workflow tags it after CI and
+  the Mac job pass. Never run it without Vanta's yes.
