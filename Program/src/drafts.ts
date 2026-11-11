@@ -6,6 +6,7 @@
  * library until Save. */
 import { useSyncExternalStore } from 'react'
 import type { Character, Saved } from './api'
+import type { Cast, SavedCast } from './castApi'
 import type { Begun } from './Start'
 
 export const NEW = 'new'
@@ -54,6 +55,12 @@ const listeners = new Set<() => void>()
 /** Only drafts with changes are stored, each in its own entry, without a portrait waiting to be saved (too large for
  * storage). A draft without changes, or dropped, leaves storage. */
 function store(key: string) {
+  // A draft saved or dropped leaves storage at once, so a reload straight after Save cannot bring it back.
+  if (!drafts[key]?.changed) {
+    dirty.delete(key)
+    try { localStorage.removeItem(PREFIX + key) } catch { /* storage refused */ }
+    return
+  }
   dirty.add(key)
   clearTimeout(timer)
   timer = setTimeout(() => {
@@ -125,4 +132,42 @@ if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', (event) => {
     if (draftStore.atRisk()) event.preventDefault()
   })
+}
+
+/** Cast boards with changes not saved, kept the same way: one storage entry each (CAST_PREFIX + the cast's id, or NEW
+ * for one not saved yet), so a reload or a second tab brings the board back as it was left. */
+const CAST_PREFIX = 'dramatis:cast:'
+
+export interface KeptBoard { saved: SavedCast | null; cast: Cast }
+
+/** Whether a board holds anything Save would write: a new one always, a saved one when it differs. */
+export const boardChanged = (board: KeptBoard) => !board.saved || JSON.stringify(board.saved.cast) !== JSON.stringify(board.cast)
+
+export const castStore = {
+  /** The boards kept in this browser. */
+  read(): Record<string, KeptBoard> {
+    const found: Record<string, KeptBoard> = {}
+    try {
+      for (let index = 0; index < localStorage.length; index++) {
+        const name = localStorage.key(index)
+        if (!name?.startsWith(CAST_PREFIX)) continue
+        const board = JSON.parse(localStorage.getItem(name) ?? 'null') as KeptBoard | null
+        if (board && typeof board === 'object' && board.cast && typeof board.cast === 'object') found[name.slice(CAST_PREFIX.length)] = board
+      }
+    } catch { /* nothing stored */ }
+    return found
+  },
+  /** Keeps every board with changes and lets the rest go. */
+  write(boards: Record<string, KeptBoard>) {
+    try {
+      for (const [key, board] of Object.entries(boards)) {
+        if (boardChanged(board)) localStorage.setItem(CAST_PREFIX + key, JSON.stringify({ saved: board.saved, cast: board.cast }))
+        else localStorage.removeItem(CAST_PREFIX + key)
+      }
+      for (let index = localStorage.length - 1; index >= 0; index--) {
+        const name = localStorage.key(index)
+        if (name?.startsWith(CAST_PREFIX) && !(name.slice(CAST_PREFIX.length) in boards)) localStorage.removeItem(name)
+      }
+    } catch { /* storage refused: the board stays for this visit */ }
+  },
 }

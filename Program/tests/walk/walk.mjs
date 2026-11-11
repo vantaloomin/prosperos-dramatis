@@ -78,6 +78,19 @@ async function character(page) {
     await page.waitForTimeout(300)
     if (await page.getByRole('button', { name: 'Discard changes' }).count()) throw new Error('Opening them marked the form changed.')
   })
+  await step('a reload stays on their form', async () => {
+    if (!page.url().includes('#/character/')) throw new Error(`The address is ${page.url()}.`)
+    await page.reload()
+    await page.getByRole('heading', { name: 'Dana Okafor' }).waitFor()
+  })
+  await step('Back closes Models and leaves the form as it was', async () => {
+    await page.getByRole('button', { name: /^Models/ }).click()
+    await page.getByRole('heading', { name: 'Models' }).waitFor()
+    if (!page.url().endsWith('#/models')) throw new Error(`The address is ${page.url()}.`)
+    await page.goBack()
+    await page.getByRole('heading', { name: 'Models' }).waitFor({ state: 'hidden' })
+    await page.getByRole('heading', { name: 'Dana Okafor' }).waitFor()
+  })
 }
 
 /** The README's picture: the character just saved, at twice the pixels. */
@@ -130,13 +143,26 @@ async function portrait(page) {
   })
 }
 
-/** A blank cast board opens. */
+/** A blank cast board opens, keeps through a reload, and Back and Forward move through the views. */
 async function cast(page) {
   await step('a cast board starts', async () => {
     await page.getByRole('button', { name: 'New cast' }).click()
     await page.getByRole('button', { name: /Start (a blank|the) board/ }).click()
-    await page.locator('main').getByRole('textbox').first().waitFor()
+    await page.getByLabel('Title').fill('The Long Winter')
     await shot(page, '05-board')
+  })
+  await step('a board not saved yet survives a reload', async () => {
+    await page.waitForTimeout(200)
+    await page.reload()
+    const title = page.getByLabel('Title')
+    await title.waitFor()
+    if (await title.inputValue() !== 'The Long Winter') throw new Error(`The title came back as "${await title.inputValue()}".`)
+  })
+  await step('Back and Forward move between views', async () => {
+    await page.goBack()
+    await page.getByRole('heading', { name: 'A new cast' }).waitFor()
+    await page.goForward()
+    await page.getByLabel('Title').waitFor()
   })
 }
 

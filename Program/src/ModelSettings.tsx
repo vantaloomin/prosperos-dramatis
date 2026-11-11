@@ -5,6 +5,7 @@ import { getJson, sendJson, type ImageCheck, type ImageConfig } from './api'
 import { ModelSettings as ModelProfiles, profileFor, useModels } from './models/ModelSettings'
 
 const OPEN = 'dramatis:set-up-model'
+const MODELS = '#/models'
 
 /** Open Models from anywhere, such as the Cast board's Set up a text model. */
 export const openModelSettings = () => window.dispatchEvent(new Event(OPEN))
@@ -17,10 +18,25 @@ export function ModelSettings() {
   const images = useQuery({ queryKey: ['images'], queryFn: () => getJson<ImageConfig>('/api/images') })
   const dialog = useRef<HTMLDialogElement>(null)
   const [open, setOpen] = useState(false)
-  const show = () => { setOpen(true); dialog.current?.showModal() }
+  // Open, the dialog has its own address (#/models, src/address.ts): Back closes it, and a reload opens it again.
+  const show = () => {
+    if (window.location.hash !== MODELS) window.history.pushState(null, '', MODELS)
+    setOpen(true)
+    if (!dialog.current?.open) dialog.current?.showModal()
+  }
+  const closed = () => {
+    setOpen(false)
+    if (window.location.hash === MODELS) window.history.back()
+  }
   useEffect(() => {
+    const moved = () => { if (window.location.hash !== MODELS && dialog.current?.open) dialog.current.close() }
+    if (window.location.hash === MODELS) {
+      window.history.replaceState(null, '', '#/')
+      show()
+    }
     window.addEventListener(OPEN, show)
-    return () => window.removeEventListener(OPEN, show)
+    window.addEventListener('popstate', moved)
+    return () => { window.removeEventListener(OPEN, show); window.removeEventListener('popstate', moved) }
   }, [])
   const writing = profileFor(models.data, 'writing')
   const missing = !!models.data && !writing
@@ -31,7 +47,7 @@ export function ModelSettings() {
       <button type="button" className="models-button" onClick={show} title={state} aria-label={`Models. ${state}`}>
         <Cpu size={15} aria-hidden /> Models <span className={missing ? 'dot amber' : 'dot'} aria-hidden />
       </button>
-      <dialog ref={dialog} className="models-dialog" aria-labelledby="models-title" onClose={() => setOpen(false)}>
+      <dialog ref={dialog} className="models-dialog" aria-labelledby="models-title" onClose={closed}>
         <header><h2 id="models-title">Models</h2><button type="button" className="icon-button" aria-label="Close" onClick={() => dialog.current?.close()}><X size={18} aria-hidden /></button></header>
         {open && <>
           <section aria-labelledby="models-text"><h3 id="models-text" className="models-section"><Cpu size={16} aria-hidden /> Text</h3><ModelProfiles /></section>

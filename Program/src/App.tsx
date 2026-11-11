@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Drama, Link2, Plus, Swords, Users, X } from 'lucide-react'
+import { addressText, readAddress, replaces, type Address } from './address'
 import { APPS, APP_NAMES, getJson, type Health, type Saved, type Summary } from './api'
 import { CastBoard, linkSaved, type Board } from './cast/CastBoard'
 import { CastStart } from './cast/CastStart'
 import { castCalls, draftIdea, editCorner, findCorner, type Cast, type SavedCast } from './castApi'
 import { Assistant } from './assistant/Assistant'
 import { useAssistantShown } from './assistant/store'
-import { draftStore, NEW, useChangedDrafts } from './drafts'
+import { castStore, draftStore, NEW, useChangedDrafts } from './drafts'
 import { Editor } from './Editor'
 import { ModelSettings } from './ModelSettings'
 import { Start, type Begun, type Picks } from './Start'
@@ -22,6 +23,11 @@ type View =
   | { kind: 'new-cast' }
   | { kind: 'cast'; key: string }
 
+/** The view's address (src/address.ts). */
+const addressOf = (view: View): Address =>
+  view.kind === 'edit' ? (view.saved ? { kind: 'character', id: view.saved.id } : { kind: 'draft', key: view.draft })
+    : view.kind === 'cast' ? { kind: 'cast', key: view.key }
+      : view.kind === 'new-cast' ? { kind: 'new-cast' } : { kind: 'start' }
 
 const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((word) => word[0].toUpperCase()).join('')
 
@@ -115,7 +121,9 @@ export function App() {
   const client = useQueryClient()
   const health = useQuery({ queryKey: ['health'], queryFn: () => getJson<Health>('/api/health') })
   const [view, setView] = useState<View>({ kind: 'start' })
-  const [boards, setBoards] = useState<Record<string, Board>>({})
+  // Boards with changes not saved are kept in this browser, so a reload brings them back (src/drafts.ts).
+  const [boards, setBoards] = useState<Record<string, Board>>(() => castStore.read())
+  useEffect(() => castStore.write(boards), [boards])
   const [linked, setLinked] = useState<{ castKey: string; text: string } | null>(null)
   const [error, setError] = useState('')
   // Said once by the server (a settings file it had to set aside), kept until closed.
@@ -139,6 +147,7 @@ export function App() {
   }
   const openCast = async (key: string) => {
     if (boards[key]) { go({ kind: 'cast', key }); return }
+    if (key === NEW) { go({ kind: 'new-cast' }); return }
     try {
       const saved = await castCalls.get(key)
       setBoards((current) => ({ ...current, [key]: { saved, cast: saved.cast } }))
@@ -191,6 +200,36 @@ export function App() {
     const key = `${NEW}-${Date.now()}`
     return { kind: 'edit', key, draft: key, saved: null, begun, pending: current.kind === 'start' ? current.pending : undefined }
   })
+  /** Goes where an address points, as Back, Forward or a reload asks; one that names nothing any more is the quick
+   * start. */
+  const visit = (address: Address) => {
+    // Back from the Models dialog lands on the view already open: it stays as it is.
+    if (addressText(address) === addressText(addressOf(view))) return
+    if (address.kind === 'character') void open(address.id)
+    else if (address.kind === 'draft') { if (draftStore.get(address.key)) openDraft(address.key); else go({ kind: 'start' }) }
+    else if (address.kind === 'cast') void openCast(address.key)
+    else if (address.kind === 'new-cast') go({ kind: 'new-cast' })
+    else if (address.kind === 'start') go({ kind: 'start' })
+  }
+  const visiting = useRef(visit)
+  visiting.current = visit
+  useEffect(() => {
+    visiting.current(readAddress(window.location.hash))
+    const moved = () => visiting.current(readAddress(window.location.hash))
+    window.addEventListener('popstate', moved)
+    return () => window.removeEventListener('popstate', moved)
+  }, [])
+  // Each new view gets its own address, so Back returns to the one before. A new character or cast that was just
+  // saved takes its id's address in place of the unsaved one. The first view takes the address it was opened at.
+  const address = addressText(addressOf(view))
+  const first = useRef(true)
+  useEffect(() => {
+    if (first.current) { first.current = false; return }
+    const now = window.location.hash || '#/'
+    if (now === address || now === '#/models') return
+    if (replaces(now, address)) window.history.replaceState(null, '', address)
+    else window.history.pushState(null, '', address)
+  }, [address])
   const pending = view.kind === 'start' || view.kind === 'edit' ? view.pending : undefined
   const pendingBoard = pending && boards[pending.castKey]
   const chosen = view.kind === 'edit' ? view.saved?.id ?? view.draft : null
