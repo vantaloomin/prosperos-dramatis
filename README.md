@@ -24,7 +24,7 @@ It started as Companion's character creator, and checks every character with Com
 own code.
 
 <p align="center">
-  <img src="Program/docs/images/editor.png" alt="Dana Okafor in the Dramatis form, with Works in Companion, Adventure and Dungeon checks above her fields" width="880">
+  <img src="Program/docs/images/editor.png" alt="Dana Okafor in the Dramatis form, with Works in Companion, Adventure and Dungeon above her fields" width="880">
 </p>
 
 ## Where it's at
@@ -224,7 +224,13 @@ never in a file.
 ## Development
 
 From `Program/`: `python -m pip install -e ".[dev]"` and `npm ci`, then `python -m dramatis` starts the server.
-Before pushing, run `python -m ruff check .`, `python -m pytest -q` and `npm run build`.
+Before pushing, run `python -m ruff check .`, `python -m pytest -q`, `npm test` and `npm run build`.
+
+`python -m dramatis --stub` starts it with a stand-in model that answers every model call with a fixed reply, in a
+throwaway library, so you can walk the whole screen with no model and no keys. With it running (and `npm run build`
+done), `node tests/walk/walk.mjs` walks the screen in a browser the way CI does: a quick start, Help me write, Save,
+a paste, a failed portrait, a cast board and a phone. `WALK_SHOTS=<folder>` keeps a screenshot of each step, and
+`WALK_README=docs/images/editor.png` retakes the picture above.
 
 ## Thanks
 

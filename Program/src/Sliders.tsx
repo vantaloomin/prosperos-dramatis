@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Dices, X } from 'lucide-react'
 import { sendJson, type Character, type Slider, type SliderView, type Trait } from './api'
 
@@ -8,8 +8,8 @@ const SOURCE_NAMES = { rolled: 'Rolled', idea: 'From their words', you: 'Set by 
  * character's words say ("shy", "kind"), then rolled from the form's seed. Roll again changes only the Rolled ones.
  * Type shows the four-letter type they read as; typing one sets four sliders from it. A character brought from another
  * app is `still`: what their words don't settle stays In between, unrolled, until Roll again. */
-export function Sliders({ character, seed, still, onChange }: {
-  character: () => Character; seed: string; still?: boolean; onChange: (sliders: Record<Trait, Slider>) => void
+export function Sliders({ character, words, seed, still, onChange }: {
+  character: () => Character; words: string; seed: string; still?: boolean; onChange: (sliders: Record<Trait, Slider>) => void
 }) {
   const [view, setView] = useState<SliderView | null>(null)
   const [roll, setRoll] = useState(0)
@@ -30,8 +30,15 @@ export function Sliders({ character, seed, still, onChange }: {
       setError(failure instanceof Error ? failure.message : 'The sliders could not be set.')
     }
   }
-  // Settled once when the form opens; words typed later settle a slider the next time they are asked for.
+  // Settled when the form opens, and again a moment after the words they read change (About them, Personality, How
+  // they talk, Flaws), so what is saved is what opening them settles: a saved character never opens changed.
+  const opened = useRef(true)
   useEffect(() => { void ask({}) }, [seed])  // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (opened.current) { opened.current = false; return }
+    const timer = setTimeout(() => void ask({}), 600)
+    return () => clearTimeout(timer)
+  }, [words])  // eslint-disable-line react-hooks/exhaustive-deps
   if (!view) return error ? <p className="error small">{error}</p> : null
   const set = (key: Trait, level: number) => void ask({ sliders: { ...view.sliders, [key]: { level, source: 'you' } } })
   const handBack = (key: Trait) => {

@@ -13,3 +13,5 @@ Program/*.tsbuildinfo
 **/personas/
 persona-*.md
 persona.md
+Program/walk-shots/
+Program/stub.log
