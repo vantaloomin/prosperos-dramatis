@@ -43,6 +43,17 @@ POSSESSED = re.compile(r"\b(?:her|his|their|my|our|your|its|the)\s+[\w'’-]+\s*
 # After "a 15-year-old": someone else, not the character.
 SOMEONE_ELSE = re.compile(r"\s*(?:daughter|son|kid|child|sister|brother|sibling|niece|nephew|cousin|student|pupil"
                           r"|dog|cat|horse|car|truck|bike|house|whisky|whiskey|scotch|wine|tree)", re.IGNORECASE)
+# A request to make the character younger than 18 ("make her sixteen", "turn Dana into a high school sophomore"),
+# and a reply that says it did ("her age is now 16"). A count that is not an age ("ten times angrier") is left alone.
+NOT_AN_AGE = (r"(?!\s*(?:times|percent|%|years?\s+(?:older|younger|ago|later)|minutes|hours|days|weeks|months|feet|inches"
+              r"|pounds|kilos|kg|lbs|of)\b)")
+ASKS_YOUNG = re.compile(
+    r"\b(?:make|makes|making|turn|change|rewrite|write|age|play|de-?age|have)\s+(?:her|him|them|me|the character|\w+)"
+    r"\s+(?:into\s+|as\s+|be\s+)?(?:an?\s+|only\s+|just\s+|about\s+|around\s+)?"
+    rf"(?:{UNDER}\b{NOT_AN_AGE}(?:[- ]years?[- ]old)?|teen(?:age|ager)?s?\b|minor\b|child\b|kid\b(?!\s+at heart)|school(?:girl|boy)"
+    r"|(?:high|middle|junior high)[- ]school\w*|(?:[1-9]|1[0-2])(?:st|nd|rd|th)[- ]grader?)", re.IGNORECASE)
+SAYS_YOUNG = re.compile(rf"\b(?:age|aged)\b[^.!?]{{0,40}}?\b(?:to|is now|now)\s+{UNDER}\b{NOT_AN_AGE}",
+                        re.IGNORECASE)
 UNDER_18_TEXT = ('Characters are always adults, and your text makes them younger than 18 ("{found}"). Change their age '
                  'in the text, or start from the quick start.')
 # An Appearance that gives an adult a child's or teenager's look.
@@ -103,3 +114,21 @@ def age_value(value) -> int | None:
 def adults_only(age: int | None, about: str = '') -> None:
     if (age is not None and age < 18) or YOUNG.search(about or ''):
         raise DomainError(ADULTS_ONLY, 422, 'under_18')
+
+
+def adult_request(*texts: str) -> None:
+    """Refuses a request to the model (a message to the assistant, a Help me write ask) that would make them a minor,
+    before the model runs: a model asked for it may comply in everything but the age."""
+    for text in texts:
+        found = ASKS_YOUNG.search(text or '')
+        found = found[0] if found else young_text(text)
+        if found:
+            raise DomainError(f'{ADULTS_ONLY} ("{found.strip()}")', 422, 'under_18')
+
+
+def says_young(text: str) -> str:
+    """The words in a model's reply that make them younger than 18 now, or ''."""
+    if found := young_text(text):
+        return found
+    found = SAYS_YOUNG.search(text or '')
+    return found[0] if found else ''

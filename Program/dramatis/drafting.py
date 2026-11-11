@@ -45,7 +45,7 @@ import secrets
 from pydantic import ValidationError
 
 from dramatis import calls, echo, fields, looks, names, slop
-from dramatis.adults import adult_text, adults_only, age_value, looks_adult
+from dramatis.adults import adult_request, adult_text, adults_only, age_value, looks_adult
 from dramatis.asking import Unusable, ask, fill, list_value, over, template, text_value
 from dramatis.character import APPS, PERSONA, Character
 from dramatis.formats.companion import personality
@@ -73,6 +73,10 @@ APP_NAMES = {'companion': "Prospero's Companion (an everyday life and chats)",
 # What a line that talks to the model names when it tells it what to write where.
 FIELD_WORDS = (r'name|surname|age|gender|about|personality|voice|sound|appearance|seen_as|sees_self|background|wants'
                r'|fears|skills|flaws|interests|secret|routine|schedule|json|field|fields|section|output|reply')
+# Who a line headed as a note is for ("OOC:", "NB to the parser:", "For the import:"), and the words that may follow.
+READER = (r"(?:ooc|system|author|editor|converter|formatter|parser|generator|tool|import|ai|model|assistant|llm|bot"
+          r"|instructions?|formatting|processing|override|hidden|todo|reader|p\.?s\.?|nb|n\.b\.)")
+READER_TAIL = r"(?:\s+(?:notes?|request|message|instructions?|only|to|for|from|the|this|card|parser|formatter|ai|model))*"
 # A line in a pasted character that talks to the app or the model rather than describing the character.
 INSTRUCTION = re.compile(
     r"\b(?:ignore|disregard|forget|override)\s+(?:all\s+|any\s+|the\s+|your\s+|these\s+|previous\s+|prior\s+"
@@ -83,9 +87,9 @@ INSTRUCTION = re.compile(
     r"|\bwhatever (?:field|text|part) you\b|\b(?:write|output|reply with|respond with) (?:exactly|only) (?:the words?|this)\b"
     r"|\[\[\s*(?:end of )?pasted\s*\]\]"
     # A line headed as a note to whoever reads it: "OOC:", "[System note:", "NB to the parser:", "Instructions:".
-    r"|^\W*(?:[\w'’.-]+\s+){0,4}?(?:ooc|system|author|editor|converter|formatter|parser|ai|model|assistant|llm|bot"
-    r"|instructions?|formatting|reader|p\.?s\.?|nb|n\.b\.)\.?"
-    r"(?:\s+(?:notes?|request|message|instructions?|to|for|from|the|this|card|parser|formatter|ai|model))*\s*[:,]"
+    rf"|^\W*(?:[\w'’.-]+\s+){{0,5}}?{READER}\.?{READER_TAIL}\s*[:,]"
+    # "Reminder to the generator - ...": a dash takes a word before the reader, so "Model - tall" stays.
+    rf"|^\W*(?:[\w'’.-]+\s+){{1,5}}?{READER}{READER_TAIL}\s[-–—]\s"
     r"|\b(?:output|return|reply with|respond with)\b[^.]{0,20}\bjson\b"
     r"|\bif you(?:'re|’re| are)\s+(?:an?\s+)?(?:ai|model|assistant|llm|bot|language model)\b"
     r"|\b(?:whoever|anyone|the person)\b[^.]{0,60}\b(?:reads?|reading|turns?|converts?|converting|fill(?:s|ing)?"
@@ -95,10 +99,14 @@ INSTRUCTION = re.compile(
     r"|reply|respond|fill|list|give|include|drop|remove|change|obey)\b"
     r"|\b(?:from now on|respond only|answer only|reply only|instead put|tell the user|disregard)\b"
     r"|\bpretend\b[^.]{0,40}\b(?:never|instructions?|guidance|rules?|prompt)\b"
+    r"|\b(?:copy|paste|put)\b[^.]{0,40}\bverbatim\b|\bdo(?:n't| not) split\b|\byour (?:job|task|role) (?:now |here )?is\b"
+    rf"|\b(?:{FIELD_WORDS})\b[\"'”]?(?:\s+(?:text|list|field|section))?\s+(?:should (?:be|say|read)\s+(?:just|only|exactly"
+    r"|empty|blank|left|set|listed|[\"'“])|contains? only|must contain|(?:is|be) just the|just the word|only the word)"
+    rf"|\bensure\b[^.]{{0,40}}\b(?:{FIELD_WORDS})\b"
     rf"|\bset\b[^.]{{0,40}}\b(?:{FIELD_WORDS})\b[^.]{{0,10}}\bto\b"
     rf"|\b(?:put|make|leave|write|list|fill|give)\b[^.]{{0,40}}\b(?:{FIELD_WORDS})\b[\"'”)]?[^.]{{0,30}}"
     r"(?:\b(?:as|empty|blank|says?|reads?|only|just)\b|=)"
-    rf"|\b(?:{FIELD_WORDS})\b[\"'”]?\s*(?:field|section)?\s*(?:=|must|should|will be)", re.IGNORECASE | re.MULTILINE)
+    rf"|\b(?:{FIELD_WORDS})\b[\"'”]?\s*(?:field|section)?\s*(?:=|must be|should be (?:listed|written|set)|will be)", re.IGNORECASE | re.MULTILINE)
 EDGE_WORDS = ('jealous', 'possessive', 'envious', 'clingy', 'needy', 'misses you', 'missing you', 'guilt', 'absence')
 NO_EDGES = ('Leave "emotional_traits" as [] and "absence_reaction" as "". The user has not asked for jealousy, '
             'guilt over absence or similar traits.')
@@ -229,7 +237,17 @@ def for_model(character: dict, interview: bool = False, secret: bool = False) ->
         cover = hidden.get('cover_story') if isinstance(hidden, dict) else ''
         if isinstance(cover, str) and cover.strip():
             shown['what_people_believe'] = cover.strip()
-    return shown
+    return unspoken(shown)
+
+
+def unspoken(value):
+    """A value with the lines that talk to the model left out, at any depth: a note in Interests is as much a pasted
+    instruction as one in a card (Wren's red-team runs: one obeyed in 20)."""
+    if isinstance(value, dict):
+        return {key: unspoken(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [item for item in map(unspoken, value) if item != '']
+    return without_instructions(value) if isinstance(value, str) and INSTRUCTION.search(value) else value
 
 
 def sees_secret(field: str) -> bool:
@@ -562,6 +580,7 @@ def split(picks: dict) -> dict:
 
 def rewrite(character: dict, field: str, request: str = '') -> dict:
     """A new value for one field, written to fit the rest of the character as the form has it."""
+    adult_request(request)
     guides = field_guides()
     if field not in guides:
         raise DomainError(f'{field} cannot be rewritten.', 422)

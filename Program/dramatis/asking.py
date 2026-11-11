@@ -38,21 +38,46 @@ def parse_object(text: str) -> dict:
     """The JSON object in a reply, ignoring a reasoning block, a Markdown fence or a sentence around it."""
     text = re.sub(r'<think>.*?</think>', '', text or '', flags=re.DOTALL)
     start, end = text.find('{'), text.rfind('}')
-    if start < 0 or end < start:
+    if start < 0:
         raise Unusable('it did not contain a JSON object.')
-    found = text[start:end + 1]
+    found = text[start:end + 1] if end > start else text[start:]
     try:
         # Not strict: a line break inside a string, which some models send, is kept rather than refused.
         data = json.loads(found, strict=False)
     except json.JSONDecodeError as error:
-        # A height in feet and inches (5'10") whose inch mark ends the string early: escaped, then read once more.
-        try:
-            data = json.loads(HEIGHT.sub(r'\1\\"', found), strict=False)
-        except json.JSONDecodeError:
-            raise Unusable(f'the JSON was malformed ({error.msg}).') from error
+        data = mended(text[start:], error)
     if not isinstance(data, dict):
         raise Unusable('it was not a JSON object.')
     return undashed(data)
+
+
+def mended(text: str, error: json.JSONDecodeError) -> dict:
+    """A reply that would not parse, mended the two ways models break it: a height in feet and inches (5'10") whose
+    inch mark ends a string early, and an object cut off before its closing brackets."""
+    text = re.sub(r'\s*```\s*$', '', HEIGHT.sub(r'\1\\"', text.rstrip()))
+    for attempt in (text[:text.rfind('}') + 1], closed(text)):
+        try:
+            return json.loads(attempt, strict=False)
+        except json.JSONDecodeError:
+            continue
+    raise Unusable(f'the JSON was malformed ({error.msg}).') from error
+
+
+def closed(text: str) -> str:
+    """The text with the lists and objects it leaves open closed at the end, unless it stops inside a string."""
+    stack, quoted, escaped = [], False, False
+    for char in text:
+        if quoted:
+            escaped, quoted = (False, quoted) if escaped else (char == '\\', char != '"')
+        elif char == '"':
+            quoted = True
+        elif char in '{[':
+            stack.append('}' if char == '{' else ']')
+        elif char in '}]' and stack and stack[-1] == char:
+            stack.pop()
+    if quoted:
+        return text  # cut off inside a text: closing it would keep half a sentence as if it were whole
+    return re.sub(r',\s*$', '', text) + ''.join(reversed(stack))
 
 
 def undashed(value):
@@ -73,23 +98,31 @@ def undashed(value):
 
 def ask(system: str, shape, prompt: str = 'Write the JSON now.'):
     """One request and, if the reply cannot be used, one retry that names the problem. `shape(raw, final)` is strict
-    on the first reply; on the retry it makes do where it can. Each step is told to the screen (dramatis/calls.py)."""
+    on the first reply; on the retry it makes do where it can. Each step is told to the screen (dramatis/calls.py).
+    A retry that comes back broken is refused with the first reply's problem, which says more than broken JSON."""
     calls.step('Writing')
     reply = ai.complete(system, prompt)
     calls.step('Checking what came back')
     try:
         return shape(parse_object(reply), False)
     except Unusable as problem:
-        retry = (f'{prompt}\n\nYour last reply was:\n{reply[:6000]}\n\n'
-                 + fill(template('repair.md'), problem=str(problem)))
+        first = str(problem)
+    retry = f'{prompt}\n\nYour last reply was:\n{reply[:6000]}\n\n' + fill(template('repair.md'), problem=first)
     calls.step('Asking again, naming what to fix')
     try:
         found = parse_object(ai.complete(system, retry))
-        calls.step('Checking again')
+    except Unusable as broken:
+        raise refused(first) from broken
+    calls.step('Checking again')
+    try:
         return shape(found, True)
     except Unusable as problem:
-        raise DomainError(f"The model's draft could not be used: {problem} Try again, or fill in the form yourself.",
-                          502, 'draft_unusable') from problem
+        raise refused(str(problem)) from problem
+
+
+def refused(problem: str) -> DomainError:
+    return DomainError(f"The model's draft could not be used: {problem} Try again, or fill in the form yourself.", 502,
+                       'draft_unusable')
 
 
 # Shaping what came back -------------------------------------------------------------------------------------------

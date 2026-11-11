@@ -1,6 +1,8 @@
 """Their secret kept out of the fields other characters read. A model shown the secret tends to write it into the
 background, the wants or the fears (Wren's red-team runs: the assistant 9 times in 19, the split 8 in 15), so a field
-anyone can read that uses two or more words found only in the secret's truth is sent back once.
+anyone can read that uses two or more words found only in the secret's truth, or one number, is sent back once. The
+assistant, shown the secret, has those fields written again without it (assistant.covered); this check stays for the
+fields Help me write does not write and for the split.
 
 "Only in the secret" means words the truth uses and what is already known does not: what people believe instead and,
 for the assistant, the fields anyone could read before its edit and what the user wrote in their message."""
@@ -11,7 +13,7 @@ from dramatis import fields
 # The fields that may hold the secret: the secret itself, and how they are inside (their arc, psyche and how they see
 # themselves).
 INNER = ('secret', 'arc', 'psyche')
-WORD = re.compile(r"[a-z][a-z'’]+")
+WORD = re.compile(r"[a-z0-9][a-z0-9'’]+")
 # Words too common to say anything about the secret.
 COMMON = set('''
 about above after again against also always among another anyone anything around because been before being below
@@ -30,7 +32,8 @@ def public(key: str) -> bool:
 
 
 def words(text: str) -> set[str]:
-    return {stem(word) for word in WORD.findall((text or '').lower()) if len(word) > 3 and word not in COMMON}
+    return {stem(word) for word in WORD.findall((text or '').lower())
+            if (len(word) > 3 or any(char.isdigit() for char in word)) and word not in COMMON}
 
 
 def stem(word: str) -> str:
@@ -77,9 +80,10 @@ def public_text(character: dict) -> str:
 
 
 def echoed(value, secret: set[str]) -> list[str]:
-    """The secret's own words a value uses, when there are two or more of them; [] otherwise."""
+    """The secret's own words a value uses, when there are two or more of them or one is a number (911, 2019); []
+    otherwise."""
     found = sorted(words(texts(value)) & secret)
-    return found if len(found) >= 2 else []
+    return found if len(found) >= 2 or any(char.isdigit() for word in found for char in word) else []
 
 
 def problem(labels: list[str]) -> str:
