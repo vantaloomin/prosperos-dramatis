@@ -54,7 +54,42 @@ jobs:
           cache: npm
           cache-dependency-path: Program/package-lock.json
       - run: npm ci --no-audit --no-fund
+      - name: Test the screen's own logic
+        run: npm test
       - run: npm run build
+
+  walk:
+    # The screen walked end to end in a browser against the stand-in model (dramatis/stub.py, tests/walk/walk.mjs).
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Program/package-lock.json
+      - run: python -m pip install -e .
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - name: Walk the screen
+        run: |
+          python -m dramatis --stub --no-browser > stub.log 2>&1 &
+          for attempt in $(seq 30); do curl -sf http://127.0.0.1:8815/api/health > /dev/null && break; sleep 1; done
+          WALK_SHOTS=walk-shots node tests/walk/walk.mjs
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: walk
+          path: |
+            Program/walk-shots
+            Program/stub.log
 
   formats:
     # The vendored files must be exactly what each app had at the commit SOURCE.json records, so nobody edits them

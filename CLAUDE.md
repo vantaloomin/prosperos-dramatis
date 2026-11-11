@@ -82,5 +82,9 @@ character creator.
 - The server answers only this computer (`dramatis/local_only.py`): a Host or Origin that isn't localhost, 127.0.0.1
   or ::1 gets a 403 before any route, against DNS rebinding. Tests' `testserver` is let in by `conftest.py`.
 - The model never saves anything: drafts go to the form for review, and only Save writes to the library.
-- Before pushing, from `Program/`: `python -m ruff check .`, `python -m pytest -q`, `npm run build`.
+- `python -m dramatis --stub` (`dramatis/stub.py`) swaps `ai.complete` for fixed answers chosen by a mark each prompt
+  carries (`ANSWERS`; `tests/test_stub.py` checks every prompt still gets its own), in a throwaway library with the
+  profile in memory. CI's `walk` job runs `tests/walk/walk.mjs` (Playwright) against it; a new screen flow gets a step
+  there. The screen's pure logic has Vitest tests in `tests/screen/` (`npm test`).
+- Before pushing, from `Program/`: `python -m ruff check .`, `python -m pytest -q`, `npm test`, `npm run build`.
 - `main` takes changes through pull requests.

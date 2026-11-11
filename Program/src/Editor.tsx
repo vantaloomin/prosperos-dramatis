@@ -294,7 +294,7 @@ export function Editor({ saved, start, seed, filledIn, missing, shortened, note,
 
       <section>
         <h3>Personality</h3>
-        <Sliders character={current} seed={seed} still={brought} onChange={(personality_sliders) => {
+        <Sliders character={current} words={[character.about, character.personality, character.voice, ...character.flaws].join('\n')} seed={seed} still={brought} onChange={(personality_sliders) => {
           // An older character saved before sliders were kept settles them on opening: that is not a change.
           if (!settled.current && saved && !saved.character.personality_sliders && baseline.current === asSaved(saved.character)) {
             baseline.current = asSaved({ ...saved.character, personality_sliders })
