@@ -14,6 +14,8 @@ character creator.
   `dramatis/stand_ins/` replaces the few modules those files import that would pull in a whole app.
 - `dramatis/character.py` is the shared character and each app's shape of it, checked with that app's own models.
   A new field goes there first, with the tightest limit of the apps that read it.
+  An app with no field for part of the character gets it folded into a text it reads (`folded`): Companion's
+  background, Adventure's and Companion's How they see themselves, and Dungeon's About you (`dungeon_about`).
 - A character whose Companion relationship is `persona` is the user themself: Companion's shape of them is its
   `PersonaInput` (`{'persona': …}`), and drafting, the form and the assistant leave Companion's everyday life out.
 - `dramatis/casts.py` is the Cast layer: a story's people as a two-layer four-corner opposition, saved in

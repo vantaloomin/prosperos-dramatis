@@ -33,7 +33,22 @@ def test_adventure_and_dungeon_get_a_persona_and_adventure_its_made_character():
     assert adventure['persona']['name'] == 'Dana Okafor' and adventure['persona']['gender'] == 'woman'
     assert adventure['made']['wants'] == 'Day shifts' and adventure['made']['looks']['age'] == 38
     assert adventure['made']['personality_sliders']['social'] == {'level': 0, 'source': 'rolled'}
-    assert for_dungeon(made())['persona']['about'] == 'An ER nurse.'
+    assert for_dungeon(made())['persona']['about'] == ('An ER nurse.\n\nWhat they want: Day shifts.\n\n'
+                                                       'What they fear: Mistakes.')
+
+
+def test_dungeon_gets_the_whole_character_in_about_you_as_far_as_it_fits():
+    character = made(appearance='Tall.', voice='Dry.', skills=['triage', 'night driving'], flaws=['curt'],
+                     arc={'lie': 'asking for help gets you left', 'truth': ''},
+                     secret={'truth': 'She failed her exam twice', 'cover_story': '', 'known_by': ''})
+    about = for_dungeon(character)['persona']['about'].split('\n\n')
+    assert about == ['An ER nurse.', 'How they look: Tall.', 'How they talk: Dry.', 'What they want: Day shifts.',
+                     'What they fear: Mistakes.', 'Skills: triage; night driving.', 'Flaws: curt.',
+                     'They tell themselves asking for help gets you left.',
+                     'Something they keep to themselves: She failed her exam twice.']
+    crowded = for_dungeon(made(about='x' * 1990, appearance='Tall.'))['persona']['about']
+    assert crowded == 'x' * 1990  # Their own About is kept whole; what doesn't fit stays out.
+    assert for_dungeon(made(about='', wants='', fears=''))['persona']['about'] is None
 
 
 def test_how_others_see_them_reaches_every_app_that_feeds_it_to_other_characters():
@@ -67,4 +82,4 @@ def test_a_user_persona_goes_to_companion_as_a_persona_not_a_companion():
     assert set(shaped) == {'persona'}
     assert shaped['persona']['name'] == 'Dana Okafor' and shaped['persona']['about'] == 'An ER nurse.'
     assert shaped['persona']['looks'] == 'Tall, freckled, red hair.' and shaped['persona']['age'] == 38
-    assert for_dungeon(character)['persona'] == for_dungeon(made())['persona']
+    assert for_dungeon(character)['persona'] == for_dungeon(made(appearance='Tall, freckled, red hair.'))['persona']
