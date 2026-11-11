@@ -26,6 +26,7 @@ from dramatis import (
     model_routes,
     names,
     portraits,
+    settings,
     slop,
 )
 from dramatis.character import APPS, App, Character, Gender, Relationship, problems, shapes
@@ -73,6 +74,8 @@ class FieldBody(Body):
 class SaveBody(Body):
     character: Character
     seed: str = Field(default='', max_length=40)
+    # The revision the form was opened from: a save over a newer one is refused (dramatis/records.py). None saves anyway.
+    revision: int | None = None
 
 
 class CheckBody(Body):
@@ -108,7 +111,7 @@ def format_source() -> dict:
 def checked(raw: dict) -> Character:
     """A character from the form, or a plain error naming the first field that does not fit."""
     try:
-        return Character.model_validate({key: value for key, value in raw.items() if key != 'intimacy'})
+        return Character.model_validate(raw)
     except ValueError as error:
         errors = getattr(error, 'errors', lambda: [])()
         where = '.'.join(map(str, errors[0]['loc'])) if errors else 'character'
@@ -150,7 +153,8 @@ def api() -> APIRouter:  # noqa: C901 - one route each, kept together
 
     @router.get('/health')
     def health():
-        return {'ok': True, 'name': NAME, 'version': VERSION, 'formats': format_source()}
+        return {'ok': True, 'name': NAME, 'version': VERSION, 'formats': format_source(),
+                'notice': settings.notice()}
 
     @router.get('/characters')
     def characters():
@@ -169,7 +173,7 @@ def api() -> APIRouter:  # noqa: C901 - one route each, kept together
 
     @router.put('/characters/{character_id}')
     def update(character_id: str, body: SaveBody):
-        record = library.save(body.character, character_id)
+        record = library.save(body.character, character_id, revision=body.revision)
         return record | {'problems': problems(body.character)}
 
     @router.delete('/characters/{character_id}')

@@ -259,3 +259,22 @@ def test_a_draft_says_which_fields_it_shortened(model):
     found = drafting.draft(PICKS)
     assert found['shortened'] == ['wants']
     assert found['character']['wants'].endswith('back.') and len(found['character']['wants']) <= 300
+
+
+def test_a_draft_marks_every_field_it_wrote_but_a_picked_name(model):
+    model.replies = [reply()]
+    found = drafting.draft(PICKS | {'name': 'Dana Price'})
+    written = found['character']['written']
+    assert 'name' not in written and {'about', 'personality', 'routine', 'arc.lie', 'secret.truth'} <= set(written)
+
+
+def test_help_me_write_holds_only_the_users_own_words_for_them(model):
+    character = {'name': 'Dana', 'about': 'A nurse — tired.', 'personality': 'Dry.', 'written': ['about']}
+    model.replies = ['{"value": "Dry — and kind."}', '{"value": "Dry, and kind."}']
+    found = drafting.rewrite(character, 'personality')
+    # The em dash in About was the model's, so it does not excuse a new one: the reply goes back once.
+    assert found['value'] == 'Dry, and kind.' and len(model.asked) == 2
+    model.asked.clear()
+    model.replies = ['{"value": "Dry — and kind."}']
+    found = drafting.rewrite(character | {'written': []}, 'personality')
+    assert found['value'] == 'Dry — and kind.' and len(model.asked) == 1

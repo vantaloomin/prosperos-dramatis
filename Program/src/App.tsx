@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Drama, Link2, Plus, Swords, Users, X } from 'lucide-react'
 import { APPS, APP_NAMES, getJson, type Health, type Saved, type Summary } from './api'
@@ -36,7 +36,7 @@ function Library({ chosen, onOpen, onOpenDraft, onNew }: {
   const unsaved = drafts.filter((draft) => draft.key.startsWith(NEW))
   const names = new Map<string, number>()
   for (const item of listing.data ?? []) names.set(item.name, (names.get(item.name) ?? 0) + 1)
-  const line = (item: Summary) => [
+  const line = (item: Summary) => item.broken ? "Can't be read" : [
     item.apps.length < APPS.length ? item.apps.map((app) => APP_NAMES[app]).join(', ') : '',
     (names.get(item.name) ?? 0) > 1 ? (item.about.length > 60 ? `${item.about.slice(0, 60).trimEnd()}…` : item.about) : '',
     changed.has(item.id) ? 'Unsaved changes' : '',
@@ -118,6 +118,9 @@ export function App() {
   const [boards, setBoards] = useState<Record<string, Board>>({})
   const [linked, setLinked] = useState<{ castKey: string; text: string } | null>(null)
   const [error, setError] = useState('')
+  // Said once by the server (a settings file it had to set aside), kept until closed.
+  const [notice, setNotice] = useState('')
+  useEffect(() => { if (health.data?.notice) setNotice(health.data.notice) }, [health.data])
   const assisting = useAssistantShown()
   // On a phone the library is a drawer over the page, opened from the top bar.
   const [drawer, setDrawer] = useState(false)
@@ -212,6 +215,12 @@ export function App() {
         {error && <p className="error small">{error}</p>}
       </aside>
       <main id="work" className="pane work" tabIndex={-1}>
+        {notice && (
+          <p className="error link-bar" role="alert">
+            {notice}
+            <button type="button" className="icon" aria-label="Close" onClick={() => setNotice('')}><X size={14} /></button>
+          </p>
+        )}
         {(pendingBoard || linked) && (
           <p className="note link-bar" role="status">
             <Link2 size={14} aria-hidden />

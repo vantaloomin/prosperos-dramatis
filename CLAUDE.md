@@ -53,12 +53,20 @@ character creator.
   `src/proposals.ts`: it stands in its field at once, marked, with Keep / Put back under it, and Save keeps what is
   still open. A model action is a `ModelButton` (bolt icon, Stop while it runs, `src/modelCall.ts`); a field's Help me
   write is the bolt `Field` draws from its `write` prop. Fields have labels only, no hint lines.
+- Characters and casts are kept by `dramatis/records.py`: whole files through a temp file of their own, a `schema`
+  number with ordered `MIGRATIONS` run on load (a removed or renamed field is one more step there, never a hand strip),
+  and a `revision` per save; a save sent with an older revision gets 409 `stale` and the screen asks before saving
+  over (`savedOver` in `src/api.ts`).
 - A character form with unsaved changes is a draft in `src/drafts.ts` (by id, or `new-…` before its first save), kept
-  in localStorage, so switching characters or reloading loses nothing; the library marks them and Discard drops one.
+  in localStorage, one entry per draft (another tab's arrive by the `storage` event), so switching characters or
+  reloading loses nothing; the library marks them and Discard drops one.
 - Every model call goes through `dramatis/ai.py` `complete`, run with Companion's own providers (vendored in
   `formats/companion/providers`). Profiles and which one does each job (`writing`, `assistant`, `cast`) are
   `dramatis/profiles.py` (in settings.json, keys in the keyring), routes in `model_routes.py`; a caller names its job
   with `ai.doing(job)`. The Models screen is Companion's, ported to `src/models/`.
+- `Character.written` keeps the fields a model wrote (form keys), saved with them: the audit of a brought character
+  reads only those, and Help me write and the assistant hold only the other fields as the user's own words
+  (`drafting.own_words`).
 - The AI-slop audit on the form is `src/Audit.tsx`: Fix selected / Fix all go to `dramatis/fixes.py` (`/api/draft/fix`,
   `prompts/fix.md`), where the model answers only replacements for the marked spans and the server puts them in, so
   the rest of a field never changes; Ignore saves the words in `Character.ignored_flags`, which `slop.audit` leaves out.

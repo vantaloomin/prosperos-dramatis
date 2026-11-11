@@ -20,7 +20,7 @@ from typing import Annotated, Literal
 
 from pydantic import ConfigDict, Field, ValidationError, field_validator, model_validator
 
-from dramatis import library, settings
+from dramatis import library, records, settings
 from dramatis.character import Input
 from dramatis.formats.companion.errors import DomainError, require
 
@@ -370,9 +370,9 @@ def listing() -> list[dict]:
     found = []
     for path in folder().glob('*.json') if folder().is_dir() else []:
         try:
-            record = json.loads(path.read_text(encoding='utf-8'))
+            record = records.read(path, 'cast')
             cast = Cast.model_validate(record['cast'])
-        except (OSError, ValueError, KeyError):
+        except (DomainError, ValueError, KeyError):
             continue
         found.append({'id': record['id'], 'title': cast.title, 'theme': cast.theme, 'updated': record['updated'],
                       'characters': len(linked(cast))})
@@ -383,18 +383,21 @@ def get(cast_id: str) -> dict:
     path = path_of(cast_id)
     if not path.is_file():
         raise DomainError('That cast is not in this library any more.', 404)
-    return json.loads(path.read_text(encoding='utf-8'))
+    return records.read(path, 'cast')
 
 
-def save(cast: Cast, cast_id: str | None = None) -> dict:
-    """A new cast, or a new version of one already here."""
-    if cast_id:
-        record = get(cast_id) | {'cast': dumped(cast), 'updated': library.now()}
-    else:
-        stamp = library.now()
-        record = {'id': secrets.token_hex(library.ID_LENGTH // 2), 'created': stamp, 'updated': stamp,
-                  'cast': dumped(cast)}
-    library.write(path_of(record['id']), (json.dumps(record, ensure_ascii=False, indent=1) + '\n').encode('utf-8'))
+def save(cast: Cast, cast_id: str | None = None, revision: int | None = None) -> dict:
+    """A new cast, or a new version of one already here; with `revision`, only over the version it was made from."""
+    with records.LOCK:
+        if cast_id:
+            record = get(cast_id)
+            records.current(record, revision, record['cast'].get('title') or 'This cast')
+            record |= {'cast': dumped(cast), 'updated': library.now()}
+        else:
+            stamp = library.now()
+            record = {'id': secrets.token_hex(library.ID_LENGTH // 2), 'created': stamp, 'updated': stamp,
+                      'cast': dumped(cast)}
+        records.store(path_of(record['id']), record, 'cast')
     return get(record['id'])
 
 

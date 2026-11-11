@@ -16,6 +16,8 @@ from dramatis.formats.companion.errors import DomainError, require
 class CastBody(BaseModel):
     model_config = {'extra': 'forbid'}
     cast: dict  # checked by casts.checked, so a broken rule comes back as one plain sentence
+    # The revision the board was opened from: a save over a newer one is refused. None saves anyway.
+    revision: int | None = None
 
 
 def shown(record: dict) -> dict:
@@ -83,7 +85,7 @@ def router() -> APIRouter:  # noqa: C901 - one route each, kept together
 
     @found.put('/casts/{cast_id}')
     def update(cast_id: str, body: CastBody):
-        return shown(casts.save(casts.checked(body.cast), cast_id))
+        return shown(casts.save(casts.checked(body.cast), cast_id, body.revision))
 
     @found.delete('/casts/{cast_id}')
     def remove(cast_id: str):

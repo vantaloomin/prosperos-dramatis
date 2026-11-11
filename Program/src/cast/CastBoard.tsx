@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Download, Trash2 } from 'lucide-react'
-import { getJson, type Summary } from '../api'
+import { getJson, savedOver, type Summary } from '../api'
 import { CARD_TARGETS } from '../Editor'
 import { LIMITS, castCalls, editCorner, findCorner, linkedCharacters, type Cast, type CastCheck, type Computed, type SavedCast } from '../castApi'
 import { ProposalsProvider, useBoardProposalState } from './boardProposals'
@@ -96,7 +96,7 @@ export function CastBoard({ board, update, onSaved, onDeleted, onDraft, onOpenCh
     setResult(null)
     try {
       proposals.keepAll()
-      const next = await castCalls.save(cast, saved?.id ?? null)
+      const next = await savedOver((revision) => castCalls.save(cast, saved?.id ?? null, revision), saved?.revision)
       await client.invalidateQueries({ queryKey: ['casts'] })
       setComputed(next.computed)
       setResult({ tone: 'note', text: `Saved ${next.cast.title || 'the cast'}.` })
@@ -188,5 +188,5 @@ function ExportCast({ saved }: { saved: SavedCast }) {
 export async function linkSaved(castId: string, cornerId: string, characterId: string): Promise<SavedCast | null> {
   const stored = await castCalls.get(castId)
   if (!findCorner(stored.cast, cornerId)) return null
-  return castCalls.save(editCorner(stored.cast, cornerId, (corner) => ({ ...corner, character_id: characterId })), castId)
+  return castCalls.save(editCorner(stored.cast, cornerId, (corner) => ({ ...corner, character_id: characterId })), castId, stored.revision)
 }

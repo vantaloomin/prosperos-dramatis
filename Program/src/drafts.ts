@@ -1,42 +1,89 @@
 /** Character forms with unsaved changes, so leaving one for another character, a cast or a reload loses nothing. A
  * draft is kept by the saved character's id, or by NEW for one not saved yet (one at a time, like a new cast). The
  * form writes its draft as it changes; the library marks the ones with changes and opens them as they were left.
- * Drafts with changes are kept in this browser's storage too, so a reload brings them back; nothing here is saved to
- * the library until Save. */
+ * Drafts with changes are kept in this browser's storage too, one entry each, so a reload brings them back and a
+ * second tab never writes over the first one's drafts (it hears them change instead); nothing here is saved to the
+ * library until Save. */
 import { useSyncExternalStore } from 'react'
 import type { Character, Saved } from './api'
 import type { Begun } from './Start'
 
 export const NEW = 'new'
-const STORE = 'dramatis:drafts'
+/** One storage entry per draft: PREFIX + its key. */
+const PREFIX = 'dramatis:draft:'
+/** Where every draft was kept together before (one entry for all of them), read once and moved. */
+const OLD_STORE = 'dramatis:drafts'
 
 /** `saved` is the character as last saved (none for a new one); `begun` is how the form opened, with `character`
  * as it stands now. `changed` says whether it differs from what was saved. */
 export interface Draft { key: string; saved: Saved | null; begun: Begun; changed: boolean }
 
-function read(): Record<string, Draft> {
+const parsed = (text: string | null): Draft | null => {
   try {
-    const found = JSON.parse(localStorage.getItem(STORE) ?? '{}') as Record<string, Draft>
-    return found && typeof found === 'object' ? found : {}
-  } catch { return {} }
+    const found = JSON.parse(text ?? 'null') as Draft | null
+    return found && typeof found === 'object' && typeof found.key === 'string' ? found : null
+  } catch { return null }
+}
+
+function read(): Record<string, Draft> {
+  const found: Record<string, Draft> = {}
+  try {
+    const old = JSON.parse(localStorage.getItem(OLD_STORE) ?? '{}') as Record<string, Draft>
+    for (const draft of Object.values(old && typeof old === 'object' ? old : {})) {
+      if (draft?.key) localStorage.setItem(PREFIX + draft.key, JSON.stringify(draft))
+    }
+    localStorage.removeItem(OLD_STORE)
+  } catch { /* storage refused: start from what is there */ }
+  try {
+    for (let index = 0; index < localStorage.length; index++) {
+      const name = localStorage.key(index)
+      const draft = name?.startsWith(PREFIX) ? parsed(localStorage.getItem(name)) : null
+      if (draft) found[draft.key] = draft
+    }
+  } catch { /* nothing stored */ }
+  return found
 }
 
 let drafts: Record<string, Draft> = read()
 let kept = true
 let timer: ReturnType<typeof setTimeout> | undefined
+/** The drafts changed here since the last write to storage. */
+const dirty = new Set<string>()
 const listeners = new Set<() => void>()
 
-/** Only drafts with changes are stored, without a portrait waiting to be saved (too large for storage). */
-function store() {
+/** Only drafts with changes are stored, each in its own entry, without a portrait waiting to be saved (too large for
+ * storage). A draft without changes, or dropped, leaves storage. */
+function store(key: string) {
+  dirty.add(key)
   clearTimeout(timer)
   timer = setTimeout(() => {
-    const changed = Object.fromEntries(Object.entries(drafts).filter(([, draft]) => draft.changed)
-      .map(([key, draft]) => [key, { ...draft, begun: { ...draft.begun, portrait: undefined } }]))
-    try { localStorage.setItem(STORE, JSON.stringify(changed)); kept = true } catch { kept = false }
+    let ok = true
+    for (const each of dirty) {
+      const draft = drafts[each]
+      try {
+        if (draft?.changed) localStorage.setItem(PREFIX + each, JSON.stringify({ ...draft, begun: { ...draft.begun, portrait: undefined } }))
+        else localStorage.removeItem(PREFIX + each)
+      } catch { ok = false }
+    }
+    dirty.clear()
+    kept = ok
   }, 400)
 }
 
-const emit = () => { store(); listeners.forEach((listener) => listener()) }
+const notify = () => listeners.forEach((listener) => listener())
+const emit = (key: string) => { store(key); notify() }
+
+// Another tab wrote or dropped a draft: take it as it is there, without writing it back.
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (event) => {
+    if (!event.key?.startsWith(PREFIX)) return
+    const key = event.key.slice(PREFIX.length)
+    const draft = parsed(event.newValue)
+    if (draft) drafts = { ...drafts, [key]: draft }
+    else { const { [key]: _, ...rest } = drafts; drafts = rest }
+    notify()
+  })
+}
 
 export const draftStore = {
   get: (key: string): Draft | undefined => drafts[key],
@@ -45,14 +92,14 @@ export const draftStore = {
     const before = drafts[draft.key]
     drafts = { ...drafts, [draft.key]: draft }
     // Typing changes the draft but not whether it has changes: the library re-renders only when that flips.
-    if (before?.changed !== draft.changed || before?.begun.character.name !== draft.begun.character.name) emit()
-    else store()
+    if (before?.changed !== draft.changed || before?.begun.character.name !== draft.begun.character.name) emit(draft.key)
+    else store(draft.key)
   },
   drop(key: string) {
     if (!(key in drafts)) return
     const { [key]: _, ...rest } = drafts
     drafts = rest
-    emit()
+    emit(key)
   },
   /** Whether a reload or closing the tab would lose changes: only when the browser would not store them. */
   atRisk: () => !kept && Object.values(drafts).some((draft) => draft.changed),

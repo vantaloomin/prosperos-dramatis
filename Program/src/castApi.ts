@@ -22,7 +22,7 @@ export interface Cast {
 export interface Candidate { a: string; b: string; on: string }
 export interface CastCheck { code: string; severity: 'warn' | 'info'; corners: string[]; message: string; fix: string }
 export interface Computed { candidates: Candidate[]; checks: CastCheck[]; names: Record<string, string> }
-export interface SavedCast { id: string; created: string; updated: string; cast: Cast; computed: Computed }
+export interface SavedCast { id: string; created: string; updated: string; revision: number; cast: Cast; computed: Computed }
 export interface CastSummary { id: string; title: string; theme: string; updated: string; characters: number }
 
 /** `outer_only` marks a kind an inner square may not use (the dilemma). */
@@ -45,7 +45,8 @@ export const LIMITS = { title: 120, theme: 300, axis: 120, question: 300, label:
 export const castCalls = {
   list: () => getJson<CastSummary[]>('/api/casts'),
   get: (id: string) => getJson<SavedCast>(`/api/casts/${id}`),
-  save: (cast: Cast, id: string | null) => id ? sendJson<SavedCast>(`/api/casts/${id}`, 'PUT', { cast }) : sendJson<SavedCast>('/api/casts', 'POST', { cast }),
+  /** With `revision`, only over the version it was opened from (dramatis/records.py). */
+  save: (cast: Cast, id: string | null, revision?: number) => id ? sendJson<SavedCast>(`/api/casts/${id}`, 'PUT', { cast, revision }) : sendJson<SavedCast>('/api/casts', 'POST', { cast }),
   remove: (id: string) => sendJson<{ ok: true }>(`/api/casts/${id}`, 'DELETE'),
   check: (cast: Cast) => sendJson<{ computed: Computed }>('/api/casts/check', 'POST', { cast }),
   templates: () => getJson<Templates>('/api/cast-templates'),

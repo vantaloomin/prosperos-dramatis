@@ -202,7 +202,7 @@ def answer(body: 'AssistantBody') -> dict:
                   # Last, so braces in the user's own words are never read as placeholders.
                   changed=changed_text(body.seen, character), character=character_text(character))
     # What the user typed or pasted, here or on the form, is theirs: the audit never holds it against the model.
-    allowed = ' '.join([json.dumps(character, ensure_ascii=False), body.message,
+    allowed = ' '.join([json.dumps(drafting.own_words(character), ensure_ascii=False), body.message,
                         *(turn['content'] for turn in history if turn['role'] == 'user')])
     with ai.doing('assistant'):
         return drafting.ask(system, Edits(character, allowed), conversation(history, body.message))

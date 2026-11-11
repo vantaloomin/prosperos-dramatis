@@ -57,6 +57,12 @@ TEXT_LIMITS = {'name': 80, 'about': 2000, 'personality': 8000, 'voice': 600, 'so
 LIST_LIMITS = {'skills': (20, 300), 'flaws': (20, 300), 'interests': (50, 120)}
 LIFE_TEXT = {'routine': 8000, 'absence_reaction': 2000}
 REQUIRED = ('name', 'about', 'personality')
+# Companion's fields a model writes, under `companion`.
+LIFE_KEYS = ('routine', 'life_themes', 'schedule', 'absence_reaction', 'emotional_traits', 'history_together')
+# Every field a model can write, by the keys the form uses: what `Character.written` may name.
+WRITTEN_KEYS = (*TEXT_LIMITS, *LIST_LIMITS, *LIFE_KEYS, 'interview', 'arc.lie', 'arc.truth', 'arc.catalyst',
+                'secret.truth', 'secret.cover_story', 'secret.known_by', 'psyche.was', 'psyche.expected',
+                'psyche.wants_to_be', 'psyche.fears_becoming')
 # Fields that never name anyone else, so Help me write needs no names for the people in them.
 NO_PEOPLE = {'sound', 'appearance', 'voice', 'personality', 'skills', 'flaws', 'interests', 'life_themes', 'schedule'}
 GENDERS = ('woman', 'man', 'nonbinary')
@@ -245,7 +251,8 @@ def for_model(character: dict, interview: bool = False, secret: bool = False) ->
     a model), and the long interview only when the request is about it. Their secret only when the request is about them as
     they are inside (`secret`); otherwise only what people believe instead, which is what everyone else knows."""
     shown = {key: value for key, value in character.items()
-             if key not in ('personality_sliders', 'looks_from', 'apps', 'card', 'ignored_flags') and (interview or key != 'interview')}
+             if key not in ('personality_sliders', 'looks_from', 'apps', 'card', 'ignored_flags', 'written')
+             and (interview or key != 'interview')}
     if isinstance(shown.get('psyche'), dict):
         shown['psyche'] = {key: value.get('text', '') for key, value in shown['psyche'].items() if isinstance(value, dict)}
     if not secret and 'secret' in shown:
@@ -487,6 +494,7 @@ class Shape:
         if slop.hard(hits) and not final:
             raise Unusable(slop.problem(slop.hard(hits)))
         character, hits = self.renamed(character, hits)
+        character['written'] = self.written(raw, character)
         result = {'character': character, 'audit': hits}
         life = 'companion' in self.apps and not is_persona(self.picks)
         if shortened := over(raw, TEXT_LIMITS | (LIFE_TEXT if life else {})):
@@ -525,6 +533,16 @@ class Shape:
             found['psyche'] = {key: {'text': text_value(psyche.get(key), 300)} for key in PSYCHE_KEYS}
         return found
 
+    def written(self, raw: dict, character: dict) -> list[str]:
+        """The fields the model wrote: in a split, only those the user's text said nothing about; in a draft, every
+        field it filled, but never a name the user picked."""
+        if self.split:
+            filled = raw.get('filled_in') if isinstance(raw.get('filled_in'), list) else []
+            return [key for key in dict.fromkeys(filled) if isinstance(key, str) and key in WRITTEN_KEYS
+                    and filled_at(character, key)]
+        picked = 'name' if (self.picks.get('name') or '').strip() else ''
+        return [key for key in WRITTEN_KEYS if key != picked and filled_at(character, key)]
+
     def missing(self, character: dict) -> list[str]:
         """The fields a whole draft asked for that came back empty, by the keys the form and Help me write use.
         Emotional edges are left out: they stay empty unless the user asked for them."""
@@ -556,6 +574,29 @@ class Shape:
         else:
             life['absence_reaction'] = ''
         return life
+
+
+def own_words(character: dict) -> dict:
+    """The character with every field a model wrote (`written`) emptied: what is left is the user's own, which the
+    audit never holds against a model."""
+    found = json.loads(json.dumps(character))
+    for key in character.get('written') or []:
+        if key not in WRITTEN_KEYS:
+            continue
+        if key in slop.DEPTH:
+            *outer, last = slop.DEPTH[key][1]
+            place = found
+            for part in outer:
+                place = place.get(part) if isinstance(place, dict) else None
+            if isinstance(place, dict):
+                place[last] = ''
+        elif key in LIFE_KEYS:
+            if isinstance(found.get('companion'), dict):
+                found['companion'][key] = [] if isinstance(found['companion'].get(key), list) else ''
+        else:
+            found[key] = [] if isinstance(found.get(key), list) else ''
+    found.pop('written', None)
+    return found
 
 
 def filled_at(character: dict, key: str) -> bool:
@@ -665,7 +706,7 @@ def rewrite(character: dict, field: str, request: str = '') -> dict:
                   names='' if field in NO_PEOPLE else roll.others_brief(),
                   request=f'What the user wants changed: {request.strip()}' if request.strip() else '',
                   character=json.dumps(current, ensure_ascii=False, indent=1))
-    allowed = f"{json.dumps(character, ensure_ascii=False)} {request}"
+    allowed = f"{json.dumps(own_words(character), ensure_ascii=False)} {request}"
     own = character.get('name') or ''
     return ask(system, lambda raw, final: audited(field, field_value(field, guide, raw, final), allowed, final,
                                                  roll, own))

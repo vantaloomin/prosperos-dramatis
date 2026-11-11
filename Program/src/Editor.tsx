@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { CheckCircle2, Download, MessageSquareText, Trash2, TriangleAlert } from 'lucide-react'
-import { APPS, APP_NAMES, RELATIONSHIPS, cleaned, type AuditHit, sendJson, type App, type Character, type Gender, type Looks, type Problems, type Relationship, type Saved } from './api'
+import { APPS, APP_NAMES, RELATIONSHIPS, cleaned, savedOver, type AuditHit, sendJson, type App, type Character, type Gender, type Looks, type Problems, type Relationship, type Saved } from './api'
 import { assistant, useAssistantShown } from './assistant/store'
 import { trackFocus, useProposalForm } from './assistant/useForm'
 import { EmotionalEdges } from './EmotionalEdges'
@@ -121,7 +121,9 @@ export function Editor({ saved, start, seed, filledIn, missing, shortened, note,
   useEffect(() => {
     draftStore.put({ key, saved, begun: { ...begun, character, filledIn: undefined, missing: undefined, shortened: undefined, note: undefined }, changed })
   }, [character, saved, key, changed]) // eslint-disable-line react-hooks/exhaustive-deps
-  const written = useWritten()
+  // What a model wrote: as saved with them, and what it has written on this form since.
+  const writtenNow = useWritten()
+  const written = [...new Set([...(character.written ?? []), ...writtenNow])]
   // A split's fields that the user's text said nothing about go onto the form as proposals, from empty.
   useEffect(() => {
     const form = proposals.form()
@@ -160,7 +162,7 @@ export function Editor({ saved, start, seed, filledIn, missing, shortened, note,
         .catch((failure: Error) => setCheckError(failure.message))
     }, 500)
     return () => clearTimeout(timer)
-  }, [character, written]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [character, writtenNow]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -169,12 +171,16 @@ export function Editor({ saved, start, seed, filledIn, missing, shortened, note,
     try {
       // Saving keeps what the form shows, proposals included.
       const kept = proposals.keepAll()
-      const sent = proposals.form()?.get() ?? character
+      const form = proposals.form()?.get() ?? character
+      const sent = { ...form, written: [...new Set([...(form.written ?? []), ...proposals.written()])] }
       const body = { character: cleaned(sent), seed }
-      let next = saved ? await sendJson<Saved>(`/api/characters/${saved.id}`, 'PUT', body) : await sendJson<Saved>('/api/characters', 'POST', body)
+      let next = saved
+        ? await savedOver((revision) => sendJson<Saved>(`/api/characters/${saved.id}`, 'PUT', { ...body, revision }), saved.revision)
+        : await sendJson<Saved>('/api/characters', 'POST', body)
       // They are in the library from here: the form knows their id before the portrait goes, so a portrait that fails
       // never makes the next Save post a second copy.
       baseline.current = asSaved(sent)
+      setCharacter((current) => ({ ...current, written: sent.written }))
       if (key !== next.id) { draftStore.drop(key); setKey(next.id) }
       let unpictured = ''
       if (pendingPortrait) {

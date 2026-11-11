@@ -61,7 +61,7 @@ PEOPLES = {
 NAME_RULES = ('names_feminine', 'names_masculine', 'names_romance_hero', 'names_unisex', 'names_stock_full', 'surnames')
 GIVEN_RULES = {'names_feminine': 'she', 'names_masculine': 'he', 'names_romance_hero': 'he'}
 # Keys of a character that are not their words: never swapped in.
-NOT_WORDS = ('personality_sliders', 'looks_from', 'apps', 'card', 'ignored_flags', 'looks')
+NOT_WORDS = ('personality_sliders', 'looks_from', 'apps', 'card', 'ignored_flags', 'looks', 'written')
 TRIES = 12
 # How often Roll a name takes their people's names over the place's, when their words name a people.
 KIN_SHARE = 2 / 3

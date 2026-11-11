@@ -226,6 +226,10 @@ class Character(Input):
     # Words and phrases the AI-slop audit flags that the user keeps on this character ("Irish" for someone from
     # Belfast): the audit leaves them out (dramatis/slop.py). Dramatis' own; no app reads it.
     ignored_flags: list[Annotated[str, Field(max_length=200)]] = Field(default_factory=list, max_length=200)
+    # The fields a model wrote, by the keys the form and Help me write use (`about`, `arc.lie`, `routine`), kept as
+    # looks_from keeps Details: the audit of a character brought from another app reads only these, and Help me write
+    # treats only the other fields as the user's own words (dramatis/drafting.py `own_words`). No app reads it.
+    written: list[Annotated[str, Field(max_length=40)]] = Field(default_factory=list, max_length=80)
 
     @field_validator('lifespan')
     @classmethod
