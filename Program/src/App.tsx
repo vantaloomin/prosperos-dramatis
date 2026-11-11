@@ -10,6 +10,7 @@ import { Assistant } from './assistant/Assistant'
 import { useAssistantShown } from './assistant/store'
 import { castStore, draftStore, NEW, useChangedDrafts } from './drafts'
 import { Editor } from './Editor'
+import { LibraryTools } from './LibraryTools'
 import { ModelSettings } from './ModelSettings'
 import { Start, type Begun, type Picks } from './Start'
 
@@ -36,7 +37,17 @@ const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2)
 function Library({ chosen, onOpen, onOpenDraft, onNew }: {
   chosen: string | null; onOpen: (id: string) => void; onOpenDraft: (key: string) => void; onNew: () => void
 }) {
-  const listing = useQuery({ queryKey: ['characters'], queryFn: () => getJson<Summary[]>('/api/characters') })
+  const [search, setSearch] = useState('')
+  const [asked, setAsked] = useState('')
+  useEffect(() => {
+    const timer = setTimeout(() => setAsked(search.trim()), 250)
+    return () => clearTimeout(timer)
+  }, [search])
+  const listing = useQuery({
+    queryKey: asked ? ['characters', 'search', asked] : ['characters'],
+    queryFn: () => getJson<Summary[]>(asked ? `/api/characters?search=${encodeURIComponent(asked)}` : '/api/characters'),
+    placeholderData: (previous) => previous,
+  })
   const drafts = useChangedDrafts()
   const changed = new Set(drafts.map((draft) => draft.key))
   const unsaved = drafts.filter((draft) => draft.key.startsWith(NEW))
@@ -52,9 +63,11 @@ function Library({ chosen, onOpen, onOpenDraft, onNew }: {
       <h2><Users size={16} aria-hidden /> Characters</h2>
       <button type="button" className="wide" onClick={onNew}><Plus size={14} aria-hidden /> New character</button>
       {listing.isError && <p className="error small">{listing.error.message}</p>}
-      {listing.data && !listing.data.length && !unsaved.length && <p className="muted small">Nobody yet.</p>}
+      <input type="search" className="library-search" aria-label="Search characters" placeholder="Search" value={search} maxLength={200}
+        onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === 'Escape') setSearch('') }} />
+      {listing.data && !listing.data.length && !unsaved.length && <p className="muted small">{asked ? 'No one matches.' : 'Nobody yet.'}</p>}
       <ul className="choices">
-        {unsaved.map((draft) => (
+        {unsaved.filter((draft) => !asked || draft.name.toLowerCase().includes(asked.toLowerCase())).map((draft) => (
           <li key={draft.key}>
             <button type="button" aria-pressed={chosen === draft.key} onClick={() => onOpenDraft(draft.key)}>
               <span className="thumb" aria-hidden>{initials(draft.name)}</span>
@@ -252,6 +265,7 @@ export function App() {
         <Library chosen={chosen} onOpen={(id) => void open(id)} onOpenDraft={openDraft} onNew={() => go({ kind: 'start' })} />
         <Casts chosen={view.kind === 'cast' ? view.key : null} boards={boards} onOpen={(key) => void openCast(key)} onNew={() => go({ kind: 'new-cast' })} />
         {error && <p className="error small">{error}</p>}
+        <LibraryTools />
       </aside>
       <main id="work" className="pane work" tabIndex={-1}>
         {notice && (
@@ -278,11 +292,17 @@ export function App() {
                 if (view.pending) void link(view.pending, saved)
               }}
               onDeleted={() => go({ kind: 'start' })}
+              onDuplicated={(id) => void open(id)}
               onDiscard={() => view.saved ? void open(view.saved.id) : go({ kind: 'start' })} />
           ) : view.kind === 'new-cast' ? (
             <CastStart onBegin={(cast) => {
               setBoards((current) => ({ ...current, [NEW]: { saved: null, cast } }))
               go({ kind: 'cast', key: NEW })
+            }} onOpened={(saved, note) => {
+              setBoards((current) => ({ ...current, [saved.id]: { saved, cast: saved.cast, note } }))
+              void client.invalidateQueries({ queryKey: ['casts'] })
+              void client.invalidateQueries({ queryKey: ['characters'] })
+              go({ kind: 'cast', key: saved.id })
             }} />
           ) : boards[view.key] ? (
             <CastBoard key={view.key} board={boards[view.key]} update={updateBoard(view.key)}

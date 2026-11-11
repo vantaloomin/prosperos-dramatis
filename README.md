@@ -147,7 +147,13 @@ Your model can help with a cast too. **Suggest corners** offers sides for the ou
 split side. **Check my square** points out a stance that reads as the wrong kind, such as a why where a how belongs.
 **Find the turn** says who crosses a confirmed link, when, and what it costs, and **Suggest** fills an empty
 relationship from one character's wants and the other's flaws. Each goes onto the board where it belongs, marked, with
-Keep and Put back, and nothing is saved until you save the cast.
+Keep and Put back, and nothing is saved until you save the cast. **Open a cast file** on a new cast's page opens one
+another Dramatis exported, bringing in any of its characters this library doesn't have.
+
+**The library.** Search finds a character by any of their words, not only their name. **Duplicate** makes a copy to
+try a variant on. **Back up** saves every character, portrait and cast as one file, and **Bring back a backup** adds
+what this library is missing from one, leaving what is here as it is. Deleting someone a cast uses says which casts
+first.
 
 ## Getting started
 

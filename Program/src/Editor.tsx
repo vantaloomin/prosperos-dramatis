@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, Download, MessageSquareText, Trash2, TriangleAlert } from 'lucide-react'
-import { APPS, APP_NAMES, RELATIONSHIPS, cleaned, savedOver, type AuditHit, sendJson, type App, type Character, type Gender, type Looks, type Problems, type Relationship, type Saved } from './api'
+import { CheckCircle2, Copy, Download, MessageSquareText, Trash2, TriangleAlert } from 'lucide-react'
+import { APPS, APP_NAMES, RELATIONSHIPS, cleaned, savedOver, type AuditHit, getJson, sendJson, type App, type Character, type Gender, type Looks, type Problems, type Relationship, type Saved } from './api'
 import { assistant, useAssistantShown } from './assistant/store'
 import { trackFocus, useProposalForm } from './assistant/useForm'
 import { EmotionalEdges } from './EmotionalEdges'
@@ -72,7 +72,7 @@ interface Props {
   /** Where the form keeps its unsaved changes (src/drafts.ts): their id, or a new form's own key; `begun` is how it
    * opened, kept with the draft. */
   draftKey: string; begun: Begun
-  onSaved: (saved: Saved) => void; onDeleted: () => void
+  onSaved: (saved: Saved) => void; onDeleted: () => void; onDuplicated: (id: string) => void
   /** Drop the unsaved changes: back to what was saved, or the form goes for a new one. */
   onDiscard: () => void
 }
@@ -85,7 +85,7 @@ const ZONES: string[] = (() => { try { return Intl.supportedValuesOf('timeZone')
 
 /** One character, every field, for whichever apps they are made for. What a model writes goes into its field as a
  * proposal to keep or put back (src/proposals.ts); nothing is saved until Save. */
-export function Editor({ saved, start, seed, filledIn, missing, shortened, note, portrait, brought, allowed, draftKey, begun, onSaved, onDeleted, onDiscard }: Props) {
+export function Editor({ saved, start, seed, filledIn, missing, shortened, note, portrait, brought, allowed, draftKey, begun, onSaved, onDeleted, onDuplicated, onDiscard }: Props) {
   const client = useQueryClient()
   const ready = useModelReady()
   const [character, setCharacter] = useState<Character>(start)
@@ -210,8 +210,22 @@ export function Editor({ saved, start, seed, filledIn, missing, shortened, note,
     draftStore.drop(key)
     onDiscard()
   }
+  const duplicate = async () => {
+    if (!saved) return
+    try {
+      const copy = await sendJson<Saved>(`/api/library/characters/${saved.id}/duplicate`, 'POST')
+      await client.invalidateQueries({ queryKey: ['characters'] })
+      onDuplicated(copy.id)
+    } catch (failure) {
+      setResult({ tone: 'error', text: failure instanceof Error ? failure.message : 'They could not be duplicated.' })
+    }
+  }
   const remove = async () => {
-    if (!saved || !window.confirm(`Delete ${saved.character.name || 'this character'} from the library? Cards you exported stay where they are.`)) return
+    if (!saved) return
+    // The casts that name them say so first: their corner there will show they are gone (dramatis/library_tools.py).
+    const inCasts = await getJson<{ id: string; title: string }[]>(`/api/library/characters/${saved.id}/casts`).catch(() => [])
+    const where = inCasts.length ? ` They are in ${listed(inCasts.map((cast) => cast.title))}, which will show their corner empty.` : ''
+    if (!window.confirm(`Delete ${saved.character.name || 'this character'} from the library?${where} Cards you exported stay where they are.`)) return
     await sendJson(`/api/characters/${saved.id}`, 'DELETE')
     draftStore.drop(key)
     proposals.forget(key)
@@ -232,6 +246,8 @@ export function Editor({ saved, start, seed, filledIn, missing, shortened, note,
           {changed && <button type="button" className="quiet" onClick={discard}>{saved ? 'Discard changes' : 'Discard'}</button>}
           <button type="submit" className="primary" disabled={busy || blocked || (!!saved && !changed && !waiting && !pendingPortrait)}>{busy ? 'Saving…' : saved ? 'Save' : 'Save to the library'}</button>
           {saved && <>
+            <button type="button" className="icon" aria-label="Duplicate them" title={changed ? 'Save first to duplicate them' : 'Duplicate them'}
+              disabled={changed || busy} onClick={() => void duplicate()}><Copy size={15} /></button>
             <ExportCard id={saved.id} />
             <button type="button" className="icon danger" aria-label="Delete them" onClick={() => void remove()}><Trash2 size={15} /></button>
           </>}

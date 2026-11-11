@@ -37,18 +37,38 @@ def summary(record: dict) -> dict:
             'portrait': path_of(record['id'], '.png').is_file()}
 
 
-def listing() -> list[dict]:
-    """Every character, newest first. A file that cannot be read is listed by its name at the end, so it is never
-    lost quietly; opening it says what is wrong."""
+def matches(character: dict, words: list[str]) -> bool:
+    """Whether every word searched for is somewhere in what they are: their name or any text the form holds."""
+    text = ' '.join(texts(character)).casefold()
+    return all(word in text for word in words)
+
+
+def texts(value) -> list[str]:
+    """Every piece of text in a character, without the field names."""
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, dict):
+        return [found for item in value.values() for found in texts(item)]
+    if isinstance(value, list):
+        return [found for item in value for found in texts(item)]
+    return []
+
+
+def listing(search: str = '') -> list[dict]:
+    """Every character, newest first, or those `search` finds. A file that cannot be read is listed by its name at
+    the end, so it is never lost quietly; opening it says what is wrong."""
+    words = search.casefold().split()
     found, broken = [], []
     for path in folder().glob('*.json') if folder().is_dir() else []:
         try:
-            found.append(summary(records.read(path, 'character')))
+            record = records.read(path, 'character')
+            if not words or matches(record['character'], words):
+                found.append(summary(record))
         except (DomainError, KeyError, TypeError, AttributeError):
             if path.stem.isalnum():
                 broken.append({'id': path.stem, 'name': path.name, 'about': '', 'apps': [], 'updated': '',
                                'portrait': False, 'broken': True})
-    return sorted(found, key=lambda record: record['updated'], reverse=True) + broken
+    return sorted(found, key=lambda record: record['updated'], reverse=True) + ([] if words else broken)
 
 
 def get(character_id: str) -> dict:

@@ -3,6 +3,7 @@
 // or when the page logs an error. WALK_URL is the server (default http://127.0.0.1:8815); WALK_SHOTS, when set, is a
 // folder for a screenshot of each step. WALK_README, when set, is where the README's picture of the form goes.
 import { mkdirSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { chromium } from 'playwright'
 
@@ -143,6 +144,42 @@ async function portrait(page) {
   })
 }
 
+/** The library finds people by their words, duplicates one, and a backup brings back one deleted since. */
+async function library(page) {
+  await step('search finds them by their words', async () => {
+    const search = page.getByLabel('Search characters')
+    await search.fill('zzzz nobody')
+    await page.getByText('No one matches.').waitFor()
+    await search.fill('grudges')
+    await page.locator('aside').getByText('Dana Okafor').first().waitFor()
+    await search.fill('')
+  })
+  await step('Duplicate opens a copy', async () => {
+    await page.locator('aside').getByText('Dana Okafor').first().click()
+    await page.getByRole('button', { name: 'Duplicate them' }).click()
+    await page.getByRole('heading', { name: 'Dana Okafor (copy)' }).waitFor()
+  })
+  let backup = ''
+  await step('Back up downloads the library', async () => {
+    const download = page.waitForEvent('download')
+    await page.getByRole('link', { name: 'Back up' }).click()
+    backup = join(tmpdir(), `walk-backup-${Date.now()}.zip`)
+    await (await download).saveAs(backup)
+  })
+  await step('a backup brings back the copy deleted since, and leaves the rest', async () => {
+    let asked = ''
+    page.once('dialog', (dialog) => { asked = dialog.message(); void dialog.accept() })
+    await page.getByRole('button', { name: 'Delete them' }).click()
+    await page.getByRole('heading', { name: 'A new character' }).waitFor()
+    if (!asked.startsWith('Delete Dana Okafor (copy)')) throw new Error(`Delete asked: ${asked}`)
+    await page.getByLabel('Backup file').setInputFiles(backup)
+    const said = page.locator('.library-tools [role=status]')
+    await said.waitFor()
+    if (!/^Brought back 1 character\. \d+ already here were left as they are\.$/.test(await said.innerText())) throw new Error(`The backup said: ${await said.innerText()}`)
+    await page.locator('aside').getByText('Dana Okafor (copy)').waitFor()
+  })
+}
+
 /** A blank cast board opens, keeps through a reload, and Back and Forward move through the views. */
 async function cast(page) {
   await step('a cast board starts', async () => {
@@ -192,6 +229,7 @@ try {
   if (process.env.WALK_README) await readme(browser)
   await paste(page)
   await portrait(page)
+  await library(page)
   await cast(page)
   await phone(browser)
   if (errors.length) throw new Error(`The page logged errors:\n${errors.join('\n')}`)

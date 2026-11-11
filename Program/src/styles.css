@@ -190,6 +190,10 @@ q.sample { font-family: 'Literata', Georgia, serif; font-style: italic; font-siz
 /* Cast board (src/cast/). */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .casts-title { margin-top: 1.5rem; }
+.library-search { margin-bottom: 0.75rem; }
+.library-tools { margin-top: 1.5rem; padding-top: 0.75rem; border-top: 1px solid var(--line); }
+.library-tools .row { flex-wrap: wrap; gap: 0.25rem; }
+.library-tools p { margin: 0.5rem 0 0; }
 .link-bar { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; margin-top: 0; }
 .cast-start { max-width: 52rem; }
 .genre-sides { margin: 0; padding-left: 1.2rem; display: grid; gap: 0.2rem; font-size: 0.9rem; }
