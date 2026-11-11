@@ -89,3 +89,14 @@ def test_the_fix_and_check_routes(model):
     assert answer.status_code == 200 and answer.json()['fields'][0]['field'] == 'about'
     checked = client.post('/api/check', json={'character': CIARA | {'ignored_flags': ['Irish']}}).json()
     assert 'Irish' not in {hit['match'] for hit in checked['audit']}
+
+
+def test_an_emotional_edge_is_read_and_fixed_by_its_note(model):
+    edged = {'name': 'Dana', 'companion': {'emotional_traits': [
+        {'name': 'Jealousy', 'intensity': 'strong', 'note': 'A vibrant sulk when you are out.'}]}}
+    hits = picked(edged, 'vibrant')
+    assert hits and hits[0]['label'] == 'Emotional edges'
+    model.replies = [json.dumps({'spans': {'1': 'long'}})]
+    found = fixes.fix(edged, hits)
+    assert found['fields'][0]['field'] == 'emotional_traits'
+    assert found['fields'][0]['value'] == [{'name': 'Jealousy', 'intensity': 'strong', 'note': 'A long sulk when you are out.'}]

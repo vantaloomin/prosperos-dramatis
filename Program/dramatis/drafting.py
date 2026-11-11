@@ -342,15 +342,37 @@ def ask(system: str, shape, prompt: str = 'Write the JSON now.'):
 
 # Shaping what came back -------------------------------------------------------------------------------------------
 
+# Where a sentence ends: its stop, any closing quote or bracket, then a space or the end.
+SENTENCE_END = re.compile(r'[.!?…]["”’\')\]]*(?=\s|$)')
+
+
+def cut(text: str, limit: int) -> str:
+    """A text within its limit: at the last full sentence that fits, when that keeps at least half, else at the last
+    whole word. Never mid-word."""
+    if len(text) <= limit:
+        return text
+    kept = text[:limit + 1]
+    ends = [match.end() for match in SENTENCE_END.finditer(kept) if match.end() <= limit]
+    if ends and ends[-1] > limit // 2:
+        return kept[:ends[-1]].rstrip()
+    space = kept.rfind(' ', 0, limit + 1)
+    return (kept[:space] if space > 0 else kept[:limit]).rstrip(' ,;:')
+
+
 def text_value(value, limit: int) -> str:
-    return value.strip()[:limit] if isinstance(value, str) else ''
+    return cut(value.strip(), limit) if isinstance(value, str) else ''
+
+
+def over(raw: dict, limits: dict[str, int]) -> list[str]:
+    """The keys whose text the model wrote longer than its field holds, so `text_value` shortened them."""
+    return [key for key, limit in limits.items() if isinstance(raw.get(key), str) and len(raw[key].strip()) > limit]
 
 
 def list_value(value, count: int, limit: int) -> list[str]:
     items = value if isinstance(value, list) else [value] if isinstance(value, str) else []
     seen, result = set(), []
     for item in items:
-        text = item.strip()[:limit] if isinstance(item, str) else ''
+        text = cut(item.strip(), limit) if isinstance(item, str) else ''
         if text and text.lower() not in seen:
             seen.add(text.lower())
             result.append(text)
@@ -379,14 +401,15 @@ def sleeps_every_day(blocks: list[dict]) -> bool:
     return {day for item in blocks if item['kind'] == 'sleep' for day in item['days']} == set(range(7))
 
 
-def traits_value(value) -> list[dict]:
+def traits_value(value, most: int = 3) -> list[dict]:
+    """Emotional edges from a reply: a draft adds at most 3; the assistant may edit up to Companion's 12."""
     traits = []
     for item in value if isinstance(value, list) else []:
         if isinstance(item, dict) and text_value(item.get('name'), 60):
             intensity = item.get('intensity') if item.get('intensity') in ('mild', 'moderate', 'strong') else 'mild'
             traits.append({'name': text_value(item.get('name'), 60), 'intensity': intensity,
                            'note': text_value(item.get('note'), 500)})
-    return traits[:3]
+    return traits[:most]
 
 
 def age_value(value) -> int | None:
@@ -465,6 +488,9 @@ class Shape:
             raise Unusable(slop.problem(slop.hard(hits)))
         character, hits = self.renamed(character, hits)
         result = {'character': character, 'audit': hits}
+        life = 'companion' in self.apps and not is_persona(self.picks)
+        if shortened := over(raw, TEXT_LIMITS | (LIFE_TEXT if life else {})):
+            result['shortened'] = shortened
         if self.whole:
             result['missing'] = missing
         if self.split:

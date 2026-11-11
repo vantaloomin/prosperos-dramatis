@@ -29,14 +29,15 @@ own code.
 
 ## Where it's at
 
-**v0.1.0 is the first version**, a work in progress. Drafting, the full form, the AI-slop audit, the library and card
-export are in. The Prospero apps import a Dramatis card today as an ordinary character card; reading everything
-Dramatis puts in it is the next step for each of them. Windows is the only platform with scripts so far.
+Dramatis is a work in progress at version 0.1. Drafting, the full form with its depth, the Sidebar Assistant, the
+AI-slop audit, portraits, casts, the library and card export are in. The Prospero apps import a Dramatis card today as
+an ordinary character card; reading everything Dramatis puts in it is the next step for each of them. Windows is the
+only platform with scripts so far.
 
 ## What it does
 
-**A few things to start.** Pick a name, gender, age and where and when they come from (all optional), plus which apps
-they're for. Your model writes the rest: who they are, their personality, how they talk and how they sound, how others
+**A few things to start.** Pick a name, gender, age and where and when they come from (all optional). Your model
+writes the rest: who they are, their personality, how they talk and how they sound, how others
 see them and how they see themselves, background, wants and fears, skills, flaws and interests, and for Companion,
 their week, routine and life themes. Names come from Companion's own name banks: leave Name empty and your model picks
 one of several that people their age were really given where and when they come from (Victorian London, Osaka, the
@@ -47,11 +48,11 @@ Companion, and emotional edges, which are off unless you turn them on. Character
 **Bring a character you already have.** Paste notes, a bio or a scene, or open a character file from another app:
 a Character Card V1 to V3 (PNG or JSON, from SillyTavern, Chub, Agnai, RisuAI and most card sites), CHARX, a Backyard
 Archive (BYAF), a Marinara Engine export, Pygmalion or Backyard / Faraday JSON, or a plain JSON blurb such as
-`{"name": "Mira", "age": 31, "likes": ["ferries"]}`. Files are read with Companion's own importer. **Open in the form**
+`{"name": "Mira", "age": 31, "likes": ["ferries"]}`. Files are read with Companion's own importer. **Use as written**
 fills the fields straight from the file with no model: headed lines (`Age: 34`, `Appearance: ...`) go to their fields,
-a headed secret goes to the secret, and the rest of a description is their Background. **Split into fields** sends the
-text, which you see in the box first, to your model to spread over every field, and it tells you which ones it had to
-fill in; a secret in your text goes into the secret, not the background. Either way the file's first message, other
+a headed secret goes to the secret, and the rest of a description is their Background. **Sort into fields with my model** sends
+the text, which you see in the box first, to your model to spread over every field, and what your text didn't say
+comes in marked, to keep or put back; a secret in your text goes into the secret, not the background. Either way the file's first message, other
 greetings, example messages, scenario, notes, prompts, tags, lorebook, picture and other apps' settings stay with them,
 under **From their card** on the form, and go back into the cards you export, so a character edited here loses
 nothing in SillyTavern or Backyard. None of that is shown to a model. A card Dramatis made comes back whole without
@@ -59,27 +60,26 @@ asking the model at all. A text that makes them younger than 18, or gives them a
 reaches the form or the model, and lines in it written to the app or the model rather than about the character are
 named back to you.
 
-**The full form.** Every field is yours to edit. **Help me write** rewrites one field to fit the rest of the
-character, and **Put back what was there** undoes it. **How they talk** (their words, rhythm and humour) and **How
-they sound** (the voice itself, for text to speech) are separate fields, so neither you nor a model mixes them up.
-**Outward appearance** is how others see them, reputation included, and can disagree with **How they see
-themselves**. There are also the five personality sliders (roll again, or start from a four-letter type), the
+**The full form.** Every field is yours to edit. **Help me write** (the bolt in a field) rewrites that field to fit the
+rest of the character. Whatever a model writes for the form stands in its field at once, marked, with **Keep** and
+**Put back** under it, and **Save** keeps whatever is still waiting. **How they talk** (their words, rhythm and humour)
+and **How they sound aloud** (the voice itself, for text to speech) are separate fields, so neither you nor a model
+mixes them up. **How others see them**, reputation included, can disagree with **How they see themselves**. There are also the five personality sliders (roll again, or start from a four-letter type), the
 Details of their looks field by field (a draft reads what your words say into them and rolls the rest before it writes
-the Appearance, so the two always agree, and marks each From their words or Rolled), kind and lifespan, and Companion's own part: relationship, closeness, routine, weekly schedule and
-texting habits.
+the Appearance, so the two always agree, and marks each From their words or Rolled), kind and lifespan, and Companion's own part: relationship, closeness, routine, weekly schedule, texting habits and
+emotional edges (such as jealousy, each with how strong it is and how it shows).
 
 **The Sidebar Assistant.** **Assistant** beside Save opens a chat next to the form, like Adventure's Sidebar
 Assistant. It reads the form as you type, unsaved changes included, knows which field you're in and what you changed
-since its last answer, and proposes edits to the fields when you ask: "make this shorter", "give her a sister she
-doesn't talk to". Each one has **Compare**, **Apply** and **Dismiss** (and **Apply all** when there are several), and a
-field you applied one to is marked with **Undo the assistant's change**. What it writes goes through the slop audit
-like any draft, and nothing is kept until you save. It can't touch the sliders, the apps,
-Companion's relationship, emotional edges or who presses on their inner square.
+since its last answer, and changes fields when you ask: "make this shorter", "give her a sister she doesn't talk
+to". Each change stands in its field with Keep and Put back like any other. What it writes goes through the slop audit
+like any draft, and nothing is kept until you save. It can't touch the sliders, the apps, Companion's relationship or
+who presses on their inner square.
 
 **Hear them talk.** The model interviews the character in their own voice: about fourteen questions on their day,
 their looks, where they come from and what makes their guard drop, answered with small stage directions between the
-lines. A line of it shows under How they talk. **Use what they said** reads the interview back and suggests changes to
-a few fields, each with a reason, which you **Apply**, **Dismiss** or **Undo**. Nothing changes until you apply it.
+lines. A line of it shows under How they talk. **Use what they said** reads the interview back and changes a few fields
+to match, each with its reason beside Keep and Put back.
 
 **Inner life, inner square and a secret.** Optional, folded sections for the lie they believe, the truth they need and
 what could force it; who they were, are expected to be, want to be and fear becoming, each pressed by other characters
@@ -103,8 +103,8 @@ and the list stays out of the prompts, so the model never sees those words.
 **Works in.** While you edit, each app checks the character with its own rules, and the form shows **Works in
 Companion**, or what that app would refuse.
 
-**Portraits.** Add a PNG of your own, or set up an image maker with **Portraits** at the top right and press **Make
-a portrait**. The image makers are Prospero's Companion's own, run with its code: ComfyUI with one of its model
+**Portraits.** Add a PNG of your own, or set up an image maker under Portraits in **Models** at the top right and press
+**Make a portrait**. The image makers are Prospero's Companion's own, run with its code: ComfyUI with one of its model
 families (Krea 2, Qwen Image 2.1, Z-Image Turbo, Anima, or Booru for SDXL, Pony and Illustrious checkpoints), Codex
 under your ChatGPT sign-in, or an image API with your key (OpenAI, OpenRouter, Google, NanoGPT, NovelAI or another).
 **Check** asks the maker whether it has what it needs without drawing anything. Your model writes the picture's prompt
@@ -112,7 +112,7 @@ from how they look (Appearance, Looks, age and setting; never how they see thems
 pick a style, and the new portrait shows beside the old one until you choose **Use this**. It is cropped to a card's
 2:3, and the prompt always asks for a dressed adult.
 
-**Models.** **Set up** (or **Change**) at the top right opens Models, Companion's own: add a profile for each provider
+**Models.** **Models** at the top right opens Companion's own model setup: add a profile for each provider
 and model you use, **Test connection** to list the models it offers without writing anything, and pick one. Generation
 settings (context size, longest reply, reasoning effort, thinking and sampling) are per profile, and a Claude Code or
 Codex profile can use any of the accounts found on your PC. The first finished profile does the **Writing** (drafts,
@@ -143,8 +143,8 @@ of its characters in either kind above.
 Your model can help with a cast too. **Suggest corners** offers sides for the outer square, or the people inside a
 split side. **Check my square** points out a stance that reads as the wrong kind, such as a why where a how belongs.
 **Find the turn** says who crosses a confirmed link, when, and what it costs, and **Suggest** fills an empty
-relationship from one character's wants and the other's flaws. Each comes back as a proposal you apply, undo or
-dismiss, and nothing is saved until you save the cast.
+relationship from one character's wants and the other's flaws. Each goes onto the board where it belongs, marked, with
+Keep and Put back, and nothing is saved until you save the cast.
 
 ## Getting started
 
@@ -153,10 +153,10 @@ dismiss, and nothing is saved until you save the cast.
 1. Install [Python 3.12+](https://www.python.org/downloads/), [Node.js 22+](https://nodejs.org/) and
    [Git](https://git-scm.com/download/win), and clone this repository.
 2. Open the `Windows` folder and double-click **`install.bat`**. It makes a Python environment in `Program\.venv`,
-   installs the locked dependencies and builds the interface.
+   installs the dependencies and builds the interface.
 3. Double-click **`launch.bat`**. Dramatis opens in your browser at http://127.0.0.1:8815. Keep its window open while
    you use it.
-4. Add a model with **Set up** at the top right, then make your first character.
+4. Add a model with **Models** at the top right, then make your first character.
 
 ### Mac and Linux
 
@@ -188,7 +188,7 @@ Each app keeps its own port and data folder, so they all run at once without cla
 
 | Script | What it does |
 | --- | --- |
-| `install.bat` | Makes the Python environment, installs the locked dependencies and builds the interface. Run it again after updating. |
+| `install.bat` | Makes the Python environment, installs the dependencies and builds the interface. Run it again after updating. |
 | `launch.bat` | Starts Dramatis on http://127.0.0.1:8815 and opens it in the browser. Close its window to stop it. |
 | `update.bat` | Stops Dramatis, gets the latest `main` and reruns the install. |
 | `stop.bat` | Stops a running Dramatis, for when its window is lost. |

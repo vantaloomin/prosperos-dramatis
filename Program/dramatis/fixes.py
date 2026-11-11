@@ -55,7 +55,7 @@ def spans(hits: list[dict]) -> dict[tuple[str, int | None], list[dict]]:
 
 def text_of(character: dict, field: str, item: int | None) -> str:
     value = slop.at(character, path(field))
-    return value[item] if item is not None else value
+    return slop.text_of_item(value[item]) if item is not None else value
 
 
 def trimmed(text: str, span: dict) -> dict:
@@ -128,7 +128,7 @@ class Fixed:
                 values[field] = text
             else:
                 current = values.get(field, list(slop.at(self.character, path(field))))
-                current[item] = text
+                current[item] = {**current[item], 'note': text} if isinstance(current[item], dict) else text
                 values[field] = current
         patched = self.character
         for field, value in values.items():

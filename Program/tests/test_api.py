@@ -133,3 +133,15 @@ def test_drafting_through_the_api(model):
     found = client().post('/api/draft', json={'idea': 'a nurse', 'apps': ['dungeon']}).json()
     assert found['character']['name'] == 'Dana Okafor' and found['character']['apps'] == ['dungeon']
     assert client().post('/api/draft', json={'age': 15}).status_code == 422
+
+
+def test_a_character_whose_file_is_in_use_is_not_deleted_and_says_why(monkeypatch):
+    from pathlib import Path
+    client = TestClient(create_app())
+    made = client.post('/api/characters', json={'character': {'name': 'Dana'}}).json()
+
+    def locked(self, missing_ok=False):
+        raise PermissionError('in use')
+    monkeypatch.setattr(Path, 'unlink', locked)
+    answer = client.delete(f"/api/characters/{made['id']}")
+    assert answer.status_code == 409 and 'another program' in answer.json()['error']

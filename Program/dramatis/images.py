@@ -121,7 +121,7 @@ def failed(error: AdapterError) -> DomainError:
 
 def generate(prompt: str) -> bytes:
     """One portrait-shaped picture from the configured image maker, as the bytes it sent."""
-    require(config()['ready'], 'Set up an image maker first: Portraits, at the top, next to the model.', 409)
+    require(config()['ready'], 'Set up an image maker first: Models, at the top, under Portraits.', 409)
     found, settings_for = backend()
     width, height = size_for(found['kind'], 'portrait')
     with tempfile.TemporaryDirectory(prefix='dramatis-portrait-') as scratch:

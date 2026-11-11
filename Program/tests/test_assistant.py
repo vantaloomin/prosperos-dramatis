@@ -124,3 +124,13 @@ def test_it_sees_the_secret_it_may_edit_and_never_gives_an_adult_a_child_s_look(
     found = ask('Make her look younger.')
     assert found['edits'] == [] and 'younger than 18' in model.asked[1][1]
     assert 'She stole morphine once.' in model.asked[0][0]
+
+
+def test_it_may_edit_emotional_edges_shaped_like_companion_keeps_them(model):
+    model.replies = [said('Jealous, gently.', [{'field': 'emotional_traits', 'value': [
+        {'name': 'Jealousy', 'intensity': 'fierce', 'note': 'Goes quiet when you mention friends.'}, {'name': ''}]}])]
+    found = ask('Give her a jealous streak.')
+    assert found['edits'] == [{'field': 'emotional_traits', 'label': 'Emotional edges',
+                               'path': ['companion', 'emotional_traits'],
+                               'value': [{'name': 'Jealousy', 'intensity': 'mild',
+                                          'note': 'Goes quiet when you mention friends.'}]}]

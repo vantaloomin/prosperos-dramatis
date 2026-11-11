@@ -4,6 +4,7 @@ import { CheckCircle2, Download, MessageSquareText, Trash2, TriangleAlert } from
 import { APPS, APP_NAMES, RELATIONSHIPS, cleaned, type AuditHit, sendJson, type App, type Character, type Gender, type Looks, type Problems, type Relationship, type Saved } from './api'
 import { assistant, useAssistantShown } from './assistant/store'
 import { trackFocus, useProposalForm } from './assistant/useForm'
+import { EmotionalEdges } from './EmotionalEdges'
 import { Field, Fold, ListField, TextArea, TextInput, useModelReady } from './Fields'
 import { FromTheirCard } from './FromTheirCard'
 import { InnerLife, SecretSection } from './InnerLife'
@@ -61,6 +62,8 @@ interface Props {
   saved: Saved | null; start: Character; seed: string; filledIn?: string[]; note?: string
   /** Fields the model's draft left empty, said at the top so a blank section is never a quiet failure. */
   missing?: string[]
+  /** Fields the model wrote past their limit, which end at the last sentence that fit (dramatis/drafting.py `cut`). */
+  shortened?: string[]
   /** No model wrote them (brought from another app as written): the audit reads only what a model writes from here,
    * and their sliders stay In between where their words don't say. `allowed` is the user's own text they came from. */
   brought?: boolean; allowed?: string
@@ -82,7 +85,7 @@ const ZONES: string[] = (() => { try { return Intl.supportedValuesOf('timeZone')
 
 /** One character, every field, for whichever apps they are made for. What a model writes goes into its field as a
  * proposal to keep or put back (src/proposals.ts); nothing is saved until Save. */
-export function Editor({ saved, start, seed, filledIn, missing, note, portrait, brought, allowed, draftKey, begun, onSaved, onDeleted, onDiscard }: Props) {
+export function Editor({ saved, start, seed, filledIn, missing, shortened, note, portrait, brought, allowed, draftKey, begun, onSaved, onDeleted, onDiscard }: Props) {
   const client = useQueryClient()
   const ready = useModelReady()
   const [character, setCharacter] = useState<Character>(start)
@@ -116,7 +119,7 @@ export function Editor({ saved, start, seed, filledIn, missing, note, portrait, 
   const [key, setKey] = useState(draftKey)
   const changed = baseline.current === null ? begunOn(character) : asSaved(character) !== baseline.current
   useEffect(() => {
-    draftStore.put({ key, saved, begun: { ...begun, character, filledIn: undefined, missing: undefined, note: undefined }, changed })
+    draftStore.put({ key, saved, begun: { ...begun, character, filledIn: undefined, missing: undefined, shortened: undefined, note: undefined }, changed })
   }, [character, saved, key, changed]) // eslint-disable-line react-hooks/exhaustive-deps
   const written = useWritten()
   // A split's fields that the user's text said nothing about go onto the form as proposals, from empty.
@@ -132,17 +135,21 @@ export function Editor({ saved, start, seed, filledIn, missing, note, portrait, 
       proposals.propose({ field, label, value, source: 'split', hits: [] })
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
-  // What a draft left empty, by the form's own words: a whole section by its title, else each field's label.
+  // What a draft left empty or wrote too long for, by the form's own words: a whole section by its title, else each
+  // field's label.
   useEffect(() => {
-    if (!missing?.length) return
-    const named = missing.map((field) => {
-      const box = document.querySelector(`.editor [data-field="${CSS.escape(field)}"]`)
-      const fold = box?.closest('details.fold')
+    const labelOf = (field: string) => document.querySelector(`.editor [data-field="${CSS.escape(field)}"] .field-top > :is(label, .label)`)?.textContent ?? field
+    const named = (missing ?? []).map((field) => {
+      const fold = document.querySelector(`.editor [data-field="${CSS.escape(field)}"]`)?.closest('details.fold')
       const all = [...fold?.querySelectorAll('[data-field]') ?? []].map((item) => item.getAttribute('data-field') ?? '')
-      if (fold && all.every((item) => missing.includes(item))) return fold.querySelector('summary')?.textContent?.trim() ?? field
-      return box?.querySelector('.field-top > :is(label, .label)')?.textContent ?? field
+      if (fold && all.every((item) => missing!.includes(item))) return fold.querySelector('summary')?.textContent?.trim() ?? field
+      return labelOf(field)
     })
-    setResult({ tone: 'error', text: `Your model left ${listed([...new Set(named)])} empty.` })
+    const said = [
+      named.length ? `Your model left ${listed([...new Set(named)])} empty.` : '',
+      shortened?.length ? `${named.length ? 'It' : 'Your model'} wrote more than ${listed(shortened.map(labelOf))} ${shortened.length === 1 ? 'holds' : 'hold'}, so ${shortened.length === 1 ? 'it ends' : 'each ends'} at the last sentence that fit.` : '',
+    ].filter(Boolean)
+    if (said.length) setResult(named.length ? { tone: 'error', text: said.join(' ') } : { tone: 'note', text: [note, ...said].filter(Boolean).join(' ') })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // What each app's own models make of the form, a moment after the last change.
@@ -165,17 +172,27 @@ export function Editor({ saved, start, seed, filledIn, missing, note, portrait, 
       const sent = proposals.form()?.get() ?? character
       const body = { character: cleaned(sent), seed }
       let next = saved ? await sendJson<Saved>(`/api/characters/${saved.id}`, 'PUT', body) : await sendJson<Saved>('/api/characters', 'POST', body)
-      if (pendingPortrait) {
-        const pictured = await sendJson<Saved>(`/api/characters/${next.id}/portrait`, 'PUT', { filename: 'portrait.png', data: pendingPortrait })
-        next = { ...pictured, problems: next.problems }
-        setPendingPortrait(null)
-      }
+      // They are in the library from here: the form knows their id before the portrait goes, so a portrait that fails
+      // never makes the next Save post a second copy.
       baseline.current = asSaved(sent)
       if (key !== next.id) { draftStore.drop(key); setKey(next.id) }
-      await client.invalidateQueries({ queryKey: ['characters'] })
-      const proposed = kept === 1 ? ', with the proposal that was waiting' : kept ? `, with the ${kept} proposals that were waiting` : ''
-      setResult({ tone: 'note', text: `Saved ${next.character.name || 'them'}${proposed}.` })
+      let unpictured = ''
+      if (pendingPortrait) {
+        try {
+          const pictured = await sendJson<Saved>(`/api/characters/${next.id}/portrait`, 'PUT', { filename: 'portrait.png', data: pendingPortrait })
+          next = { ...pictured, problems: next.problems }
+          setPendingPortrait(null)
+        } catch (failure) {
+          unpictured = failure instanceof Error ? failure.message : 'The portrait could not be saved.'
+        }
+      }
       onSaved(next)
+      await client.invalidateQueries({ queryKey: ['characters'] })
+      const name = next.character.name || 'them'
+      const proposed = kept === 1 ? ', with the proposal that was waiting' : kept ? `, with the ${kept} proposals that were waiting` : ''
+      setResult(unpictured
+        ? { tone: 'error', text: `Saved ${name}, but not their portrait: ${unpictured.replace(/\.$/, '')}. Save again to try it again.` }
+        : { tone: 'note', text: `Saved ${name}${proposed}.` })
     } catch (failure) {
       setResult({ tone: 'error', text: failure instanceof Error ? failure.message : 'They could not be saved.' })
     } finally { setBusy(false) }
@@ -191,6 +208,7 @@ export function Editor({ saved, start, seed, filledIn, missing, note, portrait, 
     if (!saved || !window.confirm(`Delete ${saved.character.name || 'this character'} from the library? Cards you exported stay where they are.`)) return
     await sendJson(`/api/characters/${saved.id}`, 'DELETE')
     draftStore.drop(key)
+    proposals.forget(key)
     await client.invalidateQueries({ queryKey: ['characters'] })
     onDeleted()
   }
@@ -288,8 +306,8 @@ export function Editor({ saved, start, seed, filledIn, missing, note, portrait, 
           <TextArea name="fears" label="What they fear" write="what they fear" value={character.fears} onChange={(fears) => set({ fears })} maxLength={300} rows={2} />
         </div>
         <div className="grid three">
-          <ListField name="skills" label="Skills" write="skills" add="Add a skill" value={character.skills} onChange={(skills) => set({ skills })} />
-          <ListField name="flaws" label="Flaws" write="flaws" add="Add a flaw" value={character.flaws} onChange={(flaws) => set({ flaws })} />
+          <ListField name="skills" label="Skills" write="skills" add="Add a skill" itemLength={300} value={character.skills} onChange={(skills) => set({ skills })} />
+          <ListField name="flaws" label="Flaws" write="flaws" add="Add a flaw" itemLength={300} value={character.flaws} onChange={(flaws) => set({ flaws })} />
           <ListField name="interests" label="Interests" write="interests" add="Add an interest" value={character.interests} onChange={(interests) => set({ interests })} />
         </div>
       </section>
@@ -339,7 +357,7 @@ export function Editor({ saved, start, seed, filledIn, missing, note, portrait, 
           </div>
           {!persona && <>
             <TextArea name="history_together" label="How you know each other" value={character.companion.history_together} onChange={(history_together) => setLife({ history_together })} maxLength={2000} rows={2} />
-            <TextArea name="routine" label="Their routine, in their words" write="their routine" value={character.companion.routine} onChange={(routine) => setLife({ routine })} maxLength={8000} rows={3} />
+            <TextArea name="routine" label="Their routine" write="their routine" value={character.companion.routine} onChange={(routine) => setLife({ routine })} maxLength={8000} rows={3} />
             <Field name="schedule" label="Their week" write="their week" filled={character.companion.schedule.length > 0} group>{() => (
               <Schedule blocks={character.companion.schedule} onChange={(schedule) => setLife({ schedule })} />
             )}</Field>
@@ -358,6 +376,9 @@ export function Editor({ saved, start, seed, filledIn, missing, note, portrait, 
                 <label key={key} className="check"><input type="checkbox" checked={character.companion.texting[key]} onChange={(event) => setLife({ texting: { ...character.companion.texting, [key]: event.target.checked } })} /> {label}</label>
               ))}
             </fieldset>
+            <Field name="emotional_traits" label="Emotional edges" filled={character.companion.emotional_traits.length > 0} group>{() => (
+              <EmotionalEdges edges={character.companion.emotional_traits} onChange={(emotional_traits) => setLife({ emotional_traits })} />
+            )}</Field>
             <TextArea name="absence_reaction" label="When you are away" value={character.companion.absence_reaction} onChange={(absence_reaction) => setLife({ absence_reaction })} maxLength={2000} rows={2} />
           </>}
         </section>

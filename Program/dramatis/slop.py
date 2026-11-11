@@ -32,12 +32,13 @@ DATA = Path(__file__).parent / 'data'
 LISTS = (DATA / 'ai-slop.json', DATA / 'ai-slop-wikipedia.json', DATA / 'ai-slop-dramatis.json')
 # The character's fields the audit reads, with the names the form shows them by.
 FIELDS = {'name': 'Name', 'about': 'About them', 'personality': 'Personality', 'voice': 'How they talk',
-          'sound': 'How they sound', 'appearance': 'Appearance', 'seen_as': 'Outward appearance',
+          'sound': 'How they sound aloud', 'appearance': 'Appearance', 'seen_as': 'How others see them',
           'sees_self': 'How they see themselves', 'background': 'Background', 'wants': 'What they want',
           'fears': 'What they fear', 'skills': 'Skills', 'flaws': 'Flaws', 'interests': 'Interests',
           'interview': 'Interview'}
+# Emotional edges are read by each one's note (`texts_of`).
 LIFE_FIELDS = {'routine': 'Their routine', 'life_themes': 'Life themes', 'history_together': 'How you know each other',
-               'absence_reaction': 'When you are away'}
+               'absence_reaction': 'When you are away', 'emotional_traits': 'Emotional edges'}
 # Their depth, inside the character: the key the form and Help me write use, its label, and where it sits.
 DEPTH = {'arc.lie': ('Lie they believe', ('arc', 'lie')), 'arc.truth': ('Truth they need', ('arc', 'truth')),
          'arc.catalyst': ('What could force it', ('arc', 'catalyst')),
@@ -134,12 +135,18 @@ def placed_texts(character: dict) -> list[tuple[str, str, int | None, str]]:
         for key, label in labels.items():
             value = source.get(key)
             items = enumerate(value) if isinstance(value, list) else [(None, value)]
-            found += [(key, label, index, item) for index, item in items if isinstance(item, str) and item.strip()]
+            found += [(key, label, index, text) for index, item in items
+                      if isinstance(text := text_of_item(item), str) and text.strip()]
     for key, (label, path) in DEPTH.items():
         value = at(character, path)
         if isinstance(value, str) and value.strip():
             found.append((key, label, None, value))
     return found
+
+
+def text_of_item(item):
+    """The words of one field or list item: an emotional edge's are its note."""
+    return item.get('note') if isinstance(item, dict) else item
 
 
 def ignored(character: dict) -> str:
