@@ -81,18 +81,46 @@ def description(character: Character) -> str:
     return '\n\n'.join(f'{label}: {text}' if label else text for label, text in sections if text)
 
 
-def card(character: Character, created: str, updated: str, target: Target = 'prospero') -> dict:
+def sentence(text: str) -> str:
+    text = text.strip()
+    return text if not text or text[-1] in '.!?…"\'' else f'{text}.'
+
+
+def place_text(cast: dict) -> str:
+    """The description's last paragraph for a card exported from a cast (casts.context_for): their side's why, their
+    own how, who stands beside and against them, and how they see the others they hold a view of."""
+    side, corner = cast.get('side'), cast.get('corner')
+    lines = []
+    if side:
+        lines.append(sentence(f"Their side: {side['label'] or 'unnamed'}" + (f", for {side['stance']}" if side['stance'] else '')))
+    if corner:
+        lines.append(sentence(f"Their way: {corner['label'] or corner['role'] or 'their own'}"
+                              + (f", {corner['stance']}" if corner['stance'] else '')))
+    if cast.get('beside'):
+        lines.append(f"Beside them: {', '.join(cast['beside'])}.")
+    if cast.get('against'):
+        lines.append(f"Against them: {', '.join(cast['against'])}.")
+    for row in cast.get('relationships', []):
+        under = f" Underneath: {sentence(row['hidden_tension'])}" if row['hidden_tension'] else ''
+        lines.append(f"Toward {row['to_name']}: {sentence(row['dynamic'] or 'no settled view')}{under} "
+                     f"Trust {row['trust']} of 10.")
+    return f"Their place in {cast.get('title') or 'the cast'}:\n" + '\n'.join(lines) if lines else ''
+
+
+def card(character: Character, created: str, updated: str, target: Target = 'prospero', cast: dict | None = None) -> dict:
     """The V3 card. Tags are only the ones a card they were imported from had: chat apps file every tag a card brings
     into the user's own tag list. How they know the user is the scenario (a user persona has none), or the imported
-    card's own one."""
+    card's own one. `cast` is their place in a cast they are exported from (casts.context_for): the description ends
+    with it, and the Prospero card keeps it whole; the apps' shapes stay as they are."""
     parts = character.card or CardParts()
     extensions = dict(parts.extensions)
     if target == 'prospero':
         extensions['prospero'] = {'format': FORMAT, 'format_version': FORMAT_VERSION, 'app': NAME,
                                   'app_version': VERSION, 'character': character.model_dump(),
-                                  'apps': shapes(character)}
+                                  'apps': shapes(character), **({'cast': cast} if cast else {})}
     data = {
-        'name': character.name or 'Unnamed', 'description': description(character),
+        'name': character.name or 'Unnamed',
+        'description': '\n\n'.join(text for text in (description(character), place_text(cast or {})) if text),
         'personality': character.personality, 'scenario': ('' if character.is_persona() else character.companion.history_together) or parts.scenario,
         'first_mes': parts.first_mes, 'mes_example': parts.mes_example,
         'creator_notes': parts.creator_notes or MADE_WITH, 'system_prompt': parts.system_prompt,

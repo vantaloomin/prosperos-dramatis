@@ -327,3 +327,38 @@ def test_each_character_exports_as_their_own_card():
     empty = api.post('/api/casts', json={'cast': board()}).json()
     missing = api.get(f"/api/casts/{empty['id']}/cards.zip")
     assert missing.status_code == 404 and missing.json()['error'] == 'No character in this cast is in the library yet.'
+
+
+def test_a_card_exported_from_a_cast_says_where_they_stand():
+    api = client()
+    ida, tom, ash = made('Ida Brandt'), made('Tom Vey'), made('Ash Mire')
+    raw = board(relationships=[{'from': ida, 'to': tom, 'dynamic': 'Thinks he is soft.', 'hidden_tension':
+                                'He saved her once.', 'trust': 3}])
+    raw['outer']['corners'][0]['inner']['corners'][0]['character_id'] = ida  # The Order's Zealot
+    raw['outer']['corners'][0]['inner']['corners'][1]['character_id'] = ash  # beside her
+    raw['outer']['corners'][1]['inner']['corners'][0]['character_id'] = tom  # the Free's Negotiator
+    raw['resonance'] = [{'a': 'a2', 'b': 'b1', 'on': 'negotiation', 'status': 'confirmed'}]
+    record = api.post('/api/casts', json={'cast': raw}).json()
+
+    archive = zipfile.ZipFile(io.BytesIO(api.get(f"/api/casts/{record['id']}/cards.zip",
+                                                 params={'kind': 'json'}).content))
+    card = json.loads(archive.read('Ida Brandt.json'))
+    cast = card['data']['extensions']['prospero']['cast']
+    assert cast['title'] == 'The Salt Crown' and cast['side'] == {'label': 'The Order', 'stance': 'stability'}
+    assert cast['corner']['label'] == 'Zealot' and cast['beside'] == ['Ash Mire', 'Reformer']  # an open corner by its label
+    assert 'Tom Vey' in cast['against'] and 'The Faithful' in cast['against']
+    assert cast['relationships'] == [{'to_name': 'Tom Vey', 'dynamic': 'Thinks he is soft.',
+                                      'hidden_tension': 'He saved her once.', 'trust': 3}]
+    assert ida not in json.dumps(cast)  # Ids never leave Dramatis.
+    place = card['data']['description'].split('\n\n')[-1]
+    assert place.startswith('Their place in The Salt Crown:\nTheir side: The Order, for stability.')
+    assert 'Toward Tom Vey: Thinks he is soft.. ' not in place and 'Toward Tom Vey: Thinks he is soft. Underneath' in place
+    ash_card = json.loads(archive.read('Ash Mire.json'))['data']['extensions']['prospero']['cast']
+    assert ash_card['resonance'] == [{'with_name': 'Tom Vey', 'on': 'negotiation', 'role': '', 'note': ''}]
+
+    chat = zipfile.ZipFile(io.BytesIO(api.get(f"/api/casts/{record['id']}/cards.zip",
+                                              params={'kind': 'json', 'for': 'chat'}).content))
+    plain = json.loads(chat.read('Ida Brandt.json'))['data']
+    assert plain['extensions'] == {} and 'Their place in The Salt Crown' in plain['description']
+    single = api.get(f'/api/characters/{ida}/card.json').json()['data']
+    assert 'cast' not in single['extensions']['prospero'] and 'Their place in' not in single['description']

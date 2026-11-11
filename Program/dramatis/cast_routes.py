@@ -35,10 +35,12 @@ def file_name(title: str, suffix: str) -> str:
 
 
 def card_files(cast_id: str, kind: str, target: cards.Target) -> list[tuple[str, bytes]]:
-    """Each character the cast names that is still in the library, as the card their own Card button makes."""
+    """Each character the cast names that is still in the library, as the card their own Card button makes, with
+    their place in this cast added (casts.context_for)."""
     from dramatis.main import checked
 
     cast = casts.checked(casts.get(cast_id)['cast'])
+    names = casts.known_names(cast)
     found, taken = [], set()
     for character_id in casts.mentioned(cast):
         try:
@@ -46,7 +48,8 @@ def card_files(cast_id: str, kind: str, target: cards.Target) -> list[tuple[str,
         except DomainError:
             continue
         character = checked(record['character'])
-        full = cards.card(character, record['created'], record['updated'], target)
+        full = cards.card(character, record['created'], record['updated'], target,
+                          casts.context_for(cast, character_id, names))
         name, count = file_name(character.name, f'.{kind}'), 1
         while name.lower() in taken:
             count += 1

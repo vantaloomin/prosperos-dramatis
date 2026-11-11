@@ -406,6 +406,35 @@ def delete(cast_id: str):
     path_of(cast_id).unlink(missing_ok=True)
 
 
+def context_for(cast: Cast, character_id: str, names: dict[str, str]) -> dict:
+    """One character's place in the cast, for their exported card (`extensions.prospero.cast` and the description's
+    "Their place in"): their side's why and their own how, who stands beside and against them, the relationships they
+    hold toward others and the resonance they share across the lines. Names come from the library; ids stay here."""
+    sides = side_of(cast)
+    own = next((found for found in people(cast) if found.character_id == character_id), None) or \
+        next((found for found in corners(cast) if found.character_id == character_id), None)
+    side = next((found for found in cast.outer.corners if own and found.id == sides[own.id]), None)
+
+    def who(corner: Corner) -> str:
+        return names.get(corner.character_id or '', '') or name_of(corner)
+
+    others = [found for found in people(cast) if own and found.id != own.id and found.character_id != character_id]
+    return {
+        'title': cast.title, 'theme': cast.theme,
+        'side': {'label': side.label, 'stance': side.stance} if side else None,
+        'corner': {'label': own.label, 'stance': own.stance, 'role': own.role, 'fields': dict(own.fields)}
+        if own and own is not side else None,
+        'beside': [who(found) for found in others if sides[found.id] == sides[own.id]],
+        'against': [who(found) for found in others if sides[found.id] != sides[own.id]],
+        'relationships': [{'to_name': names[row.to_id], 'dynamic': row.dynamic, 'hidden_tension': row.hidden_tension,
+                           'trust': row.trust}
+                          for row in cast.relationships if row.from_id == character_id and row.to_id in names],
+        'resonance': [{'with_name': who(other), 'on': link.on, 'role': link.role, 'note': link.note}
+                      for link in cast.resonance if own and link.status == 'confirmed' and own.id in (link.a, link.b)
+                      for other in corners(cast) if other.id == (link.b if link.a == own.id else link.a)],
+    }
+
+
 def export(cast_id: str) -> dict:
     """The cast and the full record of every character it names that is still in the library, for other apps."""
     cast = checked(get(cast_id)['cast'])
