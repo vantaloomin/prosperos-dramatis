@@ -140,7 +140,7 @@ function QuickStart({ initial, apps, onApps, onBegin }: { initial?: Picks; apps:
 export const listed = (items: string[]) => items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`
 
 const instructionsNote = (lines?: string[]) => lines?.length
-  ? ` Their text had lines that talk to the app or the model rather than describe them (“${lines.join('”, “')}”). The model was told to ignore them; check the fields before you save.`
+  ? ` Their text had lines that talk to the app or the model rather than describe them (“${lines.join('”, “')}”). Your model didn’t see them; check the fields before you save.`
   : ''
 
 /** A character the user already has: pasted, or a character file from another app (Companion's importer reads it). A
