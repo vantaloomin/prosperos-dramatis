@@ -2,6 +2,16 @@
 
 What changed in each release of Prospero's Dramatis. Each release's notes are also in `Program/docs/releases/`.
 
+## Unreleased
+
+### Safer
+
+- More ways of giving a pasted character or an idea an age under 18 are refused ("Mara, 15, lives…", "just turned
+  14", "in ninth grade", "she lives with her mom, and she is 15"), and so are more ways of asking the assistant or Help
+  me write for one ("age her down to 17", "tenth grade"), while "sixteen years sober" is left alone.
+- Help me write on a field other characters read keeps to what people believe of them.
+- A value the split lifted whole from a line telling the model what a field says is taken back out and the line named.
+
 ## 0.2.0: Depth, casts and portraits
 
 Dramatis 0.2 gives a character depth, a cast to stand in, and a picture, and makes the library something you can
