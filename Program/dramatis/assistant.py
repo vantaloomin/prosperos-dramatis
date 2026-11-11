@@ -17,9 +17,13 @@ object, and every change it makes is checked here first.
   themselves) or their message is about them; otherwise the model sees only what people believe, and cannot edit the
   secret. A field anyone can read whose edit uses the secret's own words is sent back once, then dropped
   (dramatis/echo.py).
-- Every text it writes, the reply included, is read for an age under 18 or a school they are still at
-  (`adults.young_text`): an edit that has one is sent back once, then dropped, and a reply that still has one after
-  the retry is replaced, with no edits.
+- With the secret shown, each edit to a field anyone reads is written again by Help me write's call, which sees only
+  what people believe (`covered`).
+- A message asking to make them a minor is refused before the model runs (`adults.adult_request`). Every text it
+  writes, the reply included, is read for an age under 18 or a school they are still at (`adults.young_text`): an
+  edit that has one is sent back once, then dropped, and a reply that still has one after the retry is replaced, with
+  no edits.
+- Lines on the form that talk to the model are left out of what it reads (`drafting.unspoken`).
 
 Nothing is stored here, and the conversation is the screen's to keep.
 """
@@ -33,6 +37,7 @@ from pydantic import BaseModel, Field
 from dramatis import adults, ai, asking, drafting, echo, fields, slop
 from dramatis.character import APPS
 from dramatis.drafting import Unusable, fill, template, text_value
+from dramatis.formats.companion.errors import DomainError
 
 HISTORY_TURNS = 10
 SHOWN_CHARS = 400
@@ -182,7 +187,7 @@ class Edits:
 
     def __call__(self, raw: dict, final: bool) -> dict:
         reply = text_value(raw.get('reply'), REPLY_CHARS)
-        if (young := adults.young_text(reply)) and final:
+        if (young := adults.says_young(reply)) and final:
             return {'reply': adults.ADULTS_ONLY, 'edits': [], 'audit': []}
         edits, hits, problems = {}, [], [f'"reply" makes them younger than 18 ("{young}"). {adults.ADULTS_ONLY}'] if young else []
         for item in raw.get('edits') if isinstance(raw.get('edits'), list) else []:
@@ -213,13 +218,15 @@ class Edits:
         value = value_for(field, self.fields[field], item.get('value'), final)
         if same(slop.at(self.character, path(field)), value):
             return None
-        if echo.public(field) and echo.echoed(value, self.secret):
+        # A field Help me write writes is written again without the secret (`covered`); the rest are checked here.
+        if echo.public(field) and field not in drafting.field_guides() and echo.echoed(value, self.secret):
             raise Unusable(echo.problem([LABELS.get(field, field)]))
         return {'field': field, 'label': LABELS.get(field, field), 'path': list(path(field)), 'value': value}
 
 
 def answer(body: 'AssistantBody') -> dict:
     """One message to the assistant: its reply and the edits for the form; nothing is saved."""
+    adults.adult_request(body.message)
     character = body.character
     history = [turn.model_dump() for turn in body.history]
     shown = inner(body.focus, body.message)
@@ -234,7 +241,34 @@ def answer(body: 'AssistantBody') -> dict:
     secret = set() if not shown or SECRET_OUT.search(body.message) else \
         echo.secret_words(character.get('secret'), echo.public_text(character), body.message)
     with ai.doing('assistant'):
-        return asking.ask(system, Edits(character, allowed, shown, secret), conversation(history, body.message))
+        found = asking.ask(system, Edits(character, allowed, shown, secret), conversation(history, body.message))
+        # Unless the user asked for the secret there: then its words in that field are their wish.
+        return covered(found, character, body.message) if shown and not SECRET_OUT.search(body.message) else found
+
+
+def covered(found: dict, character: dict, message: str) -> dict:
+    """An answer written with the secret in view, with each field anyone reads that Help me write can write written
+    again by a call that sees only what people believe, as Fix does: told the secret, a model writes it into the
+    Background however it is told not to (Wren's runs: 6 in 19, and the job behind it in 13), and its own words for it
+    share none with the secret. What the user asked for goes to that call as their request."""
+    guides = drafting.field_guides()
+    again = {edit['field'] for edit in found['edits']
+             if echo.public(edit['field']) and edit['field'] in guides and edit['value'] not in ('', [])}
+    if not again:
+        return found
+    edits, audit = [], [hit for hit in found['audit'] if hit['field'] not in again]
+    for edit in found['edits']:
+        if edit['field'] in again:
+            try:
+                written = drafting.rewrite(character, edit['field'], message)
+            except DomainError:
+                continue
+            if adults.says_young(echo.texts(written['value'])) or same(slop.at(character, path(edit['field'])),
+                                                                      written['value']):
+                continue
+            edit, audit = edit | {'value': written['value']}, audit + written['audit']
+        edits.append(edit)
+    return found | {'edits': edits, 'audit': audit}
 
 
 # Routes -----------------------------------------------------------------------------------------------------------
