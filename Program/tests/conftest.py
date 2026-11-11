@@ -1,6 +1,6 @@
 import pytest
 
-from dramatis import ai, profiles
+from dramatis import ai, local_only, profiles
 from dramatis.formats.companion.providers.vault import MemoryVault
 
 
@@ -8,6 +8,12 @@ from dramatis.formats.companion.providers.vault import MemoryVault
 def own_home(tmp_path, monkeypatch):
     """Each test keeps its settings and library in its own folder, never the user's."""
     monkeypatch.setenv('DRAMATIS_HOME', str(tmp_path / 'home'))
+
+
+@pytest.fixture(autouse=True)
+def test_host(monkeypatch):
+    """FastAPI's test client calls itself `testserver`: it counts as this computer in tests."""
+    monkeypatch.setattr(local_only, 'LOCAL', local_only.LOCAL | {'testserver'})
 
 
 @pytest.fixture(autouse=True)

@@ -31,6 +31,7 @@ from dramatis import (
 from dramatis.character import APPS, App, Character, Gender, Relationship, problems, shapes
 from dramatis.formats.companion import personality
 from dramatis.formats.companion.errors import DomainError, require
+from dramatis.local_only import LocalOnly
 
 HERE = Path(__file__).resolve().parent
 DIST = HERE.parent / 'dist'
@@ -241,8 +242,10 @@ def api() -> APIRouter:  # noqa: C901 - one route each, kept together
     return router
 
 
-def create_app(dist: Path = DIST) -> FastAPI:
+def create_app(dist: Path = DIST, hosts: set[str] | None = None) -> FastAPI:
+    """The app; `hosts` are the names it answers to (dramatis/local_only.py: this computer's own)."""
     app = FastAPI(title=NAME, version=VERSION)
+    app.add_middleware(LocalOnly, allowed=hosts)
 
     @app.exception_handler(DomainError)
     async def domain_error(_: Request, error: DomainError):
