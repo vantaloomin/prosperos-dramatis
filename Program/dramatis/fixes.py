@@ -8,7 +8,7 @@ as it was, letter for letter.
 - What touches their secret is asked apart from the rest, the way Help me write does it (drafting.sees_secret): the
   secret is only in front of the model while it rewrites what may say it.
 - A replacement that is missing, unchanged, far longer than what it replaces, or brings in a hard hit the field didn't
-  have is sent back once (drafting.ask). Each changed field comes back whole, for the form to show as a proposal with
+  have is sent back once (asking.ask). Each changed field comes back whole, for the form to show as a proposal with
   Keep / Put back. Nothing is saved.
 """
 import json
@@ -17,8 +17,9 @@ from fastapi import APIRouter
 from pydantic import BaseModel, Field, ValidationError
 
 from dramatis import drafting, slop
+from dramatis.asking import Unusable, ask, fill, template
 from dramatis.character import Character
-from dramatis.drafting import Unusable, ask, fenced, fill, template
+from dramatis.drafting import fenced
 from dramatis.formats.companion.errors import DomainError
 
 PUNCTUATION = ',.;:!?)'

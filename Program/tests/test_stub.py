@@ -2,7 +2,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from dramatis import ai, drafting, profiles, slop, stub
+from dramatis import ai, asking, profiles, slop, stub
 from dramatis.main import create_app
 
 
@@ -51,5 +51,5 @@ PROMPTS = {'assistant.md': 'Sidebar Assistant', 'fix.md': '{"spans"', 'interview
 
 @pytest.mark.parametrize(('name', 'mark'), PROMPTS.items())
 def test_each_prompt_gets_the_answer_it_asks_for(name, mark):
-    text = drafting.template(name)
+    text = asking.template(name)
     assert next((found for found, _ in stub.ANSWERS if found in text), None) == mark

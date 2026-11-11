@@ -31,7 +31,7 @@ from pathlib import PureWindowsPath
 from PIL import Image, UnidentifiedImageError
 from pydantic import ValidationError
 
-from dramatis import cards, drafting, library
+from dramatis import adults, asking, cards, drafting, library
 from dramatis.character import CARD_DATA, CARD_TEXT, CardParts, Character, Looks
 from dramatis.formats.companion.errors import DomainError
 from dramatis.formats.companion.imports import cards as reader
@@ -183,7 +183,7 @@ def looks_value(text: str) -> tuple[dict, list[str]]:
         label, _, value = part.partition(':')
         key = LOOKS.get(label.strip().lower())
         if key in ('height_cm', 'weight_kg'):
-            number = drafting.age_value(value)
+            number = adults.age_value(value)
             value = number if number is not None else None
         if key and value not in (None, '') and key not in found:
             try:
@@ -204,7 +204,7 @@ def secret_value(text: str) -> dict:
     for label, value in zip(pieces[1::2], pieces[2::2], strict=False):
         # Dramatis' own cards end each part with a full stop (character.secret_text), which the fields don't have.
         found['cover_story' if label.lower().startswith('what') else 'known_by'] = value.strip().removesuffix('.')
-    return {key: drafting.text_value(found.get(key, ''), limit) for key, limit in drafting.SECRET_LIMITS.items()}
+    return {key: asking.text_value(found.get(key, ''), limit) for key, limit in drafting.SECRET_LIMITS.items()}
 
 
 # The form, filled from the file's words ----------------------------------------------------------------------------
@@ -249,7 +249,7 @@ class Form:
         count, limit = drafting.LIST_LIMITS[field]
         items = items_of(value)
         kept = [item for item in items if len(item) <= limit]
-        self.made[field] = drafting.list_value([*self.made.get(field, []), *kept], count, limit)
+        self.made[field] = asking.list_value([*self.made.get(field, []), *kept], count, limit)
         dropped = [item for item in items if item not in self.made[field]]
         if dropped:
             self.spill(label, '; '.join(dropped))
@@ -289,7 +289,7 @@ class Form:
             self.spill(label, text)
 
     def put_age(self, label, value, text):
-        age = drafting.age_value(value if isinstance(value, int) else text)
+        age = adults.age_value(value if isinstance(value, int) else text)
         if age is not None and age < 18:
             self.young = age
         elif age is not None and age <= 5000 and len(text) <= 40 and self.made.get('age') is None:
@@ -323,9 +323,9 @@ class Form:
 
     def character(self, text: str) -> dict:
         """The form as it stands, after the Paste path's checks: no one younger than 18 and no child's look."""
-        drafting.adult_text(text)
-        drafting.adults_only(self.young)
-        looked = drafting.youthful(self.made.get('appearance', ''))
+        adults.adult_text(text)
+        adults.adults_only(self.young)
+        looked = adults.youthful(self.made.get('appearance', ''))
         if looked:
             raise DomainError(YOUTHFUL_TEXT.format(found=', '.join(f'"{word}"' for word in looked)), 422, 'under_18')
         background, self.cut = fitted(self.background)

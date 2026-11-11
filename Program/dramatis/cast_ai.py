@@ -3,7 +3,7 @@ Suggest a relationship, each a route under /api/cast-ai.
 
 - Every call reads the board as it stands, saved or not, and returns proposals. Nothing here writes to disk: the board
   changes only when the author applies a proposal, and the cast file only when they save it.
-- Each goes through `drafting.ask` like any draft: the reply's JSON is read leniently, a reply that cannot be used is
+- Each goes through `asking.ask` like any draft: the reply's JSON is read leniently, a reply that cannot be used is
   asked for once more with the problem named, and hard hits from the AI-slop audit are sent back once. What is left
   of the audit comes back as `audit`, each hit's `field` saying where it sits (`proposals.0.stance`, `turn`,
   `proposal.dynamic`).
@@ -20,9 +20,9 @@ import re
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict, Field
 
-from dramatis import ai, casts, drafting, library, slop
+from dramatis import adults, ai, casts, drafting, library, slop
+from dramatis.asking import Unusable, ask, cut, fill, template, text_value
 from dramatis.casts import Cast, Corner, Square, name_of
-from dramatis.drafting import Unusable, ask, cut, fill, template, text_value
 from dramatis.formats.companion.errors import require
 
 FEWEST, MOST = 2, 4
@@ -389,7 +389,7 @@ def standing(cast: Cast, character_id: str, names: dict[str, str]) -> list[dict]
 
 
 def trust_value(value) -> int:
-    found = drafting.age_value(value)
+    found = adults.age_value(value)
     return min(10, max(1, found)) if found is not None else 5
 
 
