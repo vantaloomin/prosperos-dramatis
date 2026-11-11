@@ -8,7 +8,6 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 from dramatis import ai, images, portraits
-from dramatis.cards import PLAIN_SIZE
 from dramatis.character import Character
 from dramatis.formats.companion.images.adapters.comfyui import ComfyAdapter
 from dramatis.formats.companion.images.adapters.hosted import HostedAdapter
@@ -88,7 +87,7 @@ def test_image_settings_are_off_until_set_and_keep_the_key_out_of_the_file(keys)
     assert api().put('/api/images', json={'kind': 'hosted', 'provider': 'other', 'base_url': 'http://example.com/v1'}).status_code == 422
 
 
-def test_make_a_portrait_draws_a_card_sized_png_and_saves_nothing(model, maker):
+def test_make_a_portrait_draws_a_full_size_2_3_png_and_saves_nothing(model, maker):
     images.configure('hosted', 'openai', model='gpt-image-1', key='sk-test')
     model.replies = [json.dumps({'prompt': DRAWN})]
     maker.handle = lambda request: httpx.Response(200, json={'data': [{'b64_json': base64.b64encode(picture(kind='JPEG')).decode()}]})
@@ -102,7 +101,7 @@ def test_make_a_portrait_draws_a_card_sized_png_and_saves_nothing(model, maker):
                     'size': '1024x1536'}
     assert maker.sent[0].headers['authorization'] == 'Bearer sk-test'
     with Image.open(io.BytesIO(base64.b64decode(found['image']))) as drawn:
-        assert drawn.format == 'PNG' and drawn.size == PLAIN_SIZE
+        assert drawn.format == 'PNG' and drawn.size == (1024, 1536)  # as drawn, not shrunk to a card's
     system, _ = model.asked[0]
     assert not any(text in system for text in [*PRIVATE.values(), SECRET]) and 'Dana' not in system
     assert api().get(f"/api/characters/{made['id']}").json()['portrait'] is False
@@ -183,3 +182,25 @@ def test_nothing_is_asked_until_an_image_maker_is_set(model, keys):
     assert found.status_code == 409 and model.asked == []
     assert api().post('/api/portrait/make', json={'character': DANA, 'style': 'cubist'}).status_code == 422
     assert [style['name'] for style in api().get('/api/portrait/styles').json()][0] == 'Photo'
+
+
+def test_a_jpeg_or_webp_portrait_is_kept_as_a_png_and_only_the_chat_card_is_shrunk():
+    made = api().post('/api/characters', json={'character': DANA}).json()
+    for kind in ('JPEG', 'WEBP'):
+        data = base64.b64encode(picture((1200, 1800), kind)).decode()
+        assert api().put(f"/api/characters/{made['id']}/portrait", json={'filename': f'p.{kind}', 'data': data}).status_code == 200
+        with Image.open(io.BytesIO(api().get(f"/api/characters/{made['id']}/portrait.png").content)) as kept:
+            assert kept.format == 'PNG' and kept.size == (1200, 1800)
+    sizes = {}
+    for target in ('prospero', 'chat'):
+        card = api().get(f"/api/characters/{made['id']}/card.png", params={'for': target}).content
+        assert b'ccv3' in card and b'chara' in card
+        with Image.open(io.BytesIO(card)) as shown:
+            sizes[target] = shown.size
+    assert sizes == {'prospero': (1200, 1800), 'chat': (512, 768)}
+
+
+def test_a_picture_that_is_not_one_is_refused_in_plain_words():
+    made = api().post('/api/characters', json={'character': DANA}).json()
+    refused = api().put(f"/api/characters/{made['id']}/portrait", json={'filename': 'p.jpg', 'data': base64.b64encode(b'\xff\xd8 nope').decode()})
+    assert refused.status_code == 422 and refused.json()['error'] == 'Choose a PNG, JPEG or WebP picture.'

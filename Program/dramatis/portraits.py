@@ -86,7 +86,7 @@ def described(character: Character) -> str:
 
 
 def make(character: Character, style: str) -> dict:
-    """A portrait to look at, as a card-sized PNG in base64, and the prompt it was drawn from. Nothing is saved."""
+    """A portrait to look at, as a 2:3 PNG in base64, and the prompt it was drawn from. Nothing is saved."""
     line = style_line(style)
     require(images.config()['ready'], 'Set up an image maker first: Models, at the top, under Portraits.', 409)
     drafting.adults_only(character.age, character.about)

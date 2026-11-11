@@ -6,7 +6,7 @@ import { Bolt, ModelButton, useModelReady } from './Fields'
 
 interface Props {
   saved: Saved | null; name: string; character: () => Character
-  /** A picture picked before they were saved, as base64 PNG; the editor saves it with them. */
+  /** A picture picked before they were saved, as base64 (PNG, JPEG or WebP); the editor saves it with them. */
   pending: string | null; onPending: (data: string | null) => void
   onSaved: (saved: Saved) => void
 }
@@ -66,7 +66,7 @@ export function Portrait({ saved, name, character, pending, onPending, onSaved }
         {current ? <img src={current} alt={name ? `${name}'s portrait` : 'Their portrait'} /> : <div className="no-portrait" aria-hidden />}
         {made && <img className="made" src={`data:image/png;base64,${made.image}`} alt="The portrait just made" />}
       </div>
-      <input ref={picker} type="file" accept=".png,image/png" hidden onChange={(event) => upload(event.target.files?.[0])} />
+      <input ref={picker} type="file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" hidden onChange={(event) => upload(event.target.files?.[0])} />
       {made ? (
         <>
           <div className="row">

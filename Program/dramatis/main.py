@@ -21,6 +21,7 @@ from dramatis import (
     cast_routes,
     drafting,
     fixes,
+    images,
     imports,
     interview,
     library,
@@ -189,7 +190,7 @@ def api() -> APIRouter:  # noqa: C901 - one route each, kept together
             data = base64.b64decode(body.data, validate=True)
         except (ValueError, binascii.Error) as error:
             raise DomainError('Choose the picture again; it did not arrive whole.', 422) from error
-        return library.set_portrait(character_id, data)
+        return library.set_portrait(character_id, images.portrait_png(data))
 
     @router.delete('/characters/{character_id}/portrait')
     def no_portrait(character_id: str):
@@ -212,7 +213,7 @@ def api() -> APIRouter:  # noqa: C901 - one route each, kept together
         name = file_name(found.name, f" (Prospero).{kind}" if target == 'prospero' else f'.{kind}')
         if kind == 'json':
             return download(json.dumps(full, ensure_ascii=False, indent=1).encode('utf-8'), name, 'application/json')
-        picture = library.portrait(character_id) or cards.plain_png()
+        picture = images.for_target(library.portrait(character_id) or cards.plain_png(), target)
         return download(cards.with_card(picture, full), name, 'image/png')
 
     @router.post('/check')
