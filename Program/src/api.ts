@@ -3,9 +3,14 @@ export class ApiError extends Error {
   constructor(message: string, readonly code: string) { super(message) }
 }
 
+/** The run a model call's signal belongs to (src/modelCall.ts): sent as X-Dramatis-Run, so the screen can ask the
+ * server which step that call is at (dramatis/calls.py). */
+export const runs = new WeakMap<AbortSignal, string>()
+
 /** Calls to the local Dramatis server. Errors carry the server's own message. */
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, init)
+  const run = init?.signal ? runs.get(init.signal) : undefined
+  const response = await fetch(path, run ? { ...init, headers: { ...init?.headers, 'X-Dramatis-Run': run } } : init)
   const body = await response.json().catch(() => ({}))
   if (!response.ok) {
     const detail = Array.isArray(body.detail) ? 'The request was not understood.' : body.detail

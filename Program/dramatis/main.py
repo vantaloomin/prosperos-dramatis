@@ -15,6 +15,7 @@ from dramatis import (
     NAME,
     VERSION,
     assistant,
+    calls,
     cards,
     cast_ai,
     cast_routes,
@@ -249,6 +250,7 @@ def api() -> APIRouter:  # noqa: C901 - one route each, kept together
 def create_app(dist: Path = DIST, hosts: set[str] | None = None) -> FastAPI:
     """The app; `hosts` are the names it answers to (dramatis/local_only.py: this computer's own)."""
     app = FastAPI(title=NAME, version=VERSION)
+    app.add_middleware(calls.Calls)
     app.add_middleware(LocalOnly, allowed=hosts)
 
     @app.exception_handler(DomainError)
@@ -256,6 +258,7 @@ def create_app(dist: Path = DIST, hosts: set[str] | None = None) -> FastAPI:
         return JSONResponse({'error': error.message, 'code': error.code}, status_code=error.status)
 
     app.include_router(api())
+    app.include_router(calls.router)
     app.include_router(cast_routes.router())
     app.include_router(interview.router)
     app.include_router(names.router)
