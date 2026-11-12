@@ -11,6 +11,15 @@ What changed in each release of Prospero's Dramatis. Each release's notes are al
   me write for one ("age her down to 17", "tenth grade"), while "sixteen years sober" is left alone.
 - Help me write on a field other characters read keeps to what people believe of them.
 - A value the split lifted whole from a line telling the model what a field says is taken back out and the line named.
+- A pasted character's field that still gives their secret away after the model's second try is left empty, and the
+  form names it, rather than other characters reading the secret there. So is one that says outright that what people
+  believe isn't so ("the truth is", "people think… but").
+- Asked for while the secret is in view, the assistant's rewrite of a field others read no longer hears the user's talk
+  of the secret, and a rewrite that still says the cover story is false is dropped.
+- A draft or a split is refused when the model reads the user's words as giving an age under 18 now, behind the word
+  checks that catch most of them first.
+- "Make her a high school teacher" is no longer refused, and "a teenager again", "a minor living with her parents" and
+  "a teen runaway" are.
 
 ## 0.2.0: Depth, casts and portraits
 

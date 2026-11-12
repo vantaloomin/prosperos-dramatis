@@ -160,7 +160,8 @@ def test_with_the_secret_shown_a_field_anyone_reads_is_written_again_without_it(
     assert 'froze' in model.asked[0][0]
     # The second call is Help me write's, and sees only what people believe.
     assert 'froze' not in model.asked[1][0] and 'She left the county job for nursing.' in model.asked[1][0]
-    assert 'With her secret in mind' in model.asked[1][0]
+    # Without the user's talk of the secret, which would have the call write it there.
+    assert 'secret in mind' not in model.asked[1][0]
     assert [(edit['field'], edit['value']) for edit in found['edits']] == [
         ('background', 'Left the county job for nursing and never explains why.'),
         ('arc.lie', 'One mistake makes her a danger.')]
@@ -178,6 +179,22 @@ def test_the_secret_goes_where_the_user_asks_for_it(model):
     model.replies = [said(edits=[{'field': 'background', 'value': 'She froze on a call once, and a man died.'}])]
     found = ask('Put her secret in the background, everyone knows now.', character=SECRET)
     assert len(model.asked) == 1 and found['edits'][0]['field'] == 'background'
+
+
+def test_with_the_secret_shown_a_rewrite_that_still_says_the_cover_is_false_is_dropped(model):
+    leak = {'field': 'background', 'value': 'She froze on a 911 call once, and a man died on the line.'}
+    broke = json.dumps({'value': 'People think she left for nursing, but there was more to it.'})
+    model.replies = [said(edits=[leak]), broke, broke]
+    found = ask('Keeping her secret in mind, rewrite her background.', character=SECRET)
+    assert found['edits'] == []
+
+
+def test_the_rewrite_request_leaves_out_the_users_talk_of_the_secret():
+    assert assistant.unasked('Make her background warmer. She hides the 911 call, remember that.') == \
+        'Make her background warmer.'
+    assert assistant.unasked('Tighten the wants, keeping what she hides in view, and make it one sentence.') == \
+        'Tighten the wants, and make it one sentence.'
+    assert assistant.unasked('Polish everything.') == 'Polish everything.'
 
 
 def test_a_text_edit_or_reply_that_makes_them_a_minor_never_lands(model):

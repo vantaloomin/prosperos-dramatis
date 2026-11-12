@@ -199,8 +199,8 @@ function PasteCharacter({ apps, onBegin }: { apps: App[]; onBegin: (begun: Begun
     note: `${asRead.name || 'They'} opened as the file has them. Read the fields through, fill in the rest, then save.${instructionsNote(file?.instructions)}`,
   })
   const split = () => void call.run((signal) => sendJson<Drafted>('/api/draft/split', 'POST', { text, apps, timezone }, signal), (found) => onBegin({
-    character: withFile(found.character), seed: found.seed, filledIn: found.filled_in, portrait: file?.portrait ?? undefined, allowed: text,
-    note: `Your character, sorted into the fields.${found.filled_in?.length ? ' What your text didn’t say is marked for you to keep or put back.' : ''}${instructionsNote(found.instructions)}`,
+    character: withFile(found.character), seed: found.seed, filledIn: found.filled_in, missing: found.missing, portrait: file?.portrait ?? undefined, allowed: text,
+    note: `Your character, sorted into the fields.${found.filled_in?.length ? ' What your text didn’t say is marked for you to keep or put back.' : ''}${found.missing?.length ? ' Fields that still gave their secret away to other characters were left empty.' : ''}${instructionsNote(found.instructions)}`,
   }), 'The character could not be sorted into the fields.')
   return (
     <section className="card" aria-labelledby="paste-title">

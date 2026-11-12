@@ -219,8 +219,11 @@ class Edits:
         if same(slop.at(self.character, path(field)), value):
             return None
         # A field Help me write writes is written again without the secret (`covered`); the rest are checked here.
-        if echo.public(field) and field not in drafting.field_guides() and echo.echoed(value, self.secret):
-            raise Unusable(echo.problem([LABELS.get(field, field)]))
+        if echo.public(field) and field not in drafting.field_guides() and self.secret:
+            if echo.echoed(value, self.secret):
+                raise Unusable(echo.problem([LABELS.get(field, field)]))
+            if found := echo.breaks_cover(echo.texts(value)):
+                raise Unusable(echo.problem([LABELS.get(field, field)], found))
         return {'field': field, 'label': LABELS.get(field, field), 'path': list(path(field)), 'value': value}
 
 
@@ -257,18 +260,34 @@ def covered(found: dict, character: dict, message: str) -> dict:
     if not again:
         return found
     edits, audit = [], [hit for hit in found['audit'] if hit['field'] not in again]
+    request = unasked(message)
     for edit in found['edits']:
         if edit['field'] in again:
             try:
-                written = drafting.rewrite(character, edit['field'], message)
+                written = drafting.rewrite(character, edit['field'], request)
             except DomainError:
                 continue
-            if adults.says_young(echo.texts(written['value'])) or same(slop.at(character, path(edit['field'])),
-                                                                      written['value']):
+            text = echo.texts(written['value'])
+            if adults.says_young(text) or echo.breaks_cover(text) or same(slop.at(character, path(edit['field'])),
+                                                                         written['value']):
                 continue
             edit, audit = edit | {'value': written['value']}, audit + written['audit']
         edits.append(edit)
     return found | {'edits': edits, 'audit': audit}
+
+
+# "with her secret in mind", "keeping what she hides in view": a clause that brings the secret into a request.
+SECRET_CLAUSE = re.compile(r",?\s*\b(?:with|keeping|bearing|given|considering|knowing|remembering|minding)\b[^.,;!?]{0,60}?"
+                           r"\b(?:secrets?|hid(?:e|es|den|ing)|truth|cover(?:[- ]up| story))\b[^.,;!?]{0,30}", re.IGNORECASE)
+
+
+def unasked(message: str) -> str:
+    """The user's message as a request to a call that writes a field anyone reads: without the clauses and sentences
+    that talk about their secret or how they are inside, so the call can't write it there (Wren's fourth pass: told
+    "keeping her secret in mind", it did)."""
+    kept = [sentence for sentence in re.split(r'(?<=[.!?])\s+|\n+', SECRET_CLAUSE.sub('', message or ''))
+            if sentence.strip() and not INNER_TALK.search(sentence)]
+    return ' '.join(kept).strip()
 
 
 # Routes -----------------------------------------------------------------------------------------------------------

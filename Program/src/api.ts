@@ -71,7 +71,8 @@ export interface AuditHit { field: string; label: string; severity: 'hard' | 'fl
 export type Problems = Partial<Record<App, string[]>>
 export interface Saved { id: string; created: string; updated: string; revision: number; seed: string; character: Character; portrait: boolean; problems: Problems }
 export interface Summary { id: string; name: string; about: string; apps: App[]; updated: string; portrait: boolean; broken?: boolean }
-/** `missing`: the fields a quick-start draft came back without, after its one retry (dramatis/drafting.py). */
+/** `missing`: the fields a quick-start draft came back without after its one retry, or that a split left empty because
+ * they still gave the secret away (dramatis/drafting.py). */
 export interface Drafted { character: Character; seed: string; filled_in?: string[]; instructions?: string[]; missing?: string[]; shortened?: string[] }
 export interface Opened { kind: 'character'; character: Character }
 /** Another app's character file, read: its text for the paste box, the form filled from it (or why not), and what it

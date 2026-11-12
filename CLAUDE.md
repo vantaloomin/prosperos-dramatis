@@ -64,9 +64,11 @@ character creator.
   `Field`, the same keys as Help me write), and answers `{"reply", "edits"}`; each edit is a proposal on the form.
   A field it may edit is in `assistant.guides()`. It sees the secret only when the focus or message is about how they
   are inside, and then each edit to a field anyone reads is written again by Help me write without it (`covered`);
-  the fields Help me write doesn't write, and the split, get `dramatis/echo.py`'s check. A message asking for a minor
-  is refused before the model (`adults.adult_request`), every text it writes goes through `adults.says_young`, and
-  `drafting.for_model` leaves out lines on the form that talk to the model (`unspoken`).
+  the fields Help me write doesn't write, and the split, get `dramatis/echo.py`'s check (the secret's own words, or
+  `breaks_cover`: "the truth is", "people think… but"). That rewrite gets the message without its secret talk
+  (`unasked`); a split field still giving the secret away after the retry is emptied and named in `missing`. A
+  message asking for a minor is refused before the model (`adults.adult_request`), every text it writes goes through
+  `adults.says_young`, and `drafting.for_model` leaves out lines on the form that talk to the model (`unspoken`).
 - Every model output for the character form (Help me write, the assistant, the interview, the split) is a proposal in
   `src/proposals.ts`: it stands in its field at once, marked, with Keep / Put back under it, and Save keeps what is
   still open. A model action is a `ModelButton` (bolt icon, Stop while it runs, `src/modelCall.ts`); a field's Help me
@@ -102,7 +104,8 @@ character creator.
 - The model never saves anything: drafts go to the form for review, and only Save writes to the library.
 - Every model call that wants JSON back goes through `dramatis/asking.py` (`ask`: the prompt file filled, the reply
   parsed with its dashes made commas, a 5'10" height mended and missing closing brackets added, one retry, `Unusable` when it still isn't). The adults-only policy (ages, youthful wording, "not theirs")
-  is `dramatis/adults.py`, used by every route that takes the user's words. `drafting.py` is the drafts themselves.
+  is `dramatis/adults.py`, used by every route that takes the user's words; behind it, a draft or split whose
+  `stated_age` (the model's reading of the user's words) is under 18 is refused. `drafting.py` is the drafts themselves.
 - The character form is `src/Editor.tsx` with its sections in `src/editor/sections.tsx` and the export and Works in
   rows in `src/editor/status.tsx`.
 - `python -m dramatis --stub` (`dramatis/stub.py`) swaps `ai.complete` for fixed answers chosen by a mark each prompt

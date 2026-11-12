@@ -168,6 +168,9 @@ def test_a_draft_fills_every_section_and_names_what_it_could_not(model):
     'He is in ninth grade, like his best friend.',
     'Her dad works nights, so at sixteen she raises her brothers.',
     'Since her parents split she is 13 and on her own a lot.',
+    # Wren's fourth pass.
+    'A 16 y/o drummer who skips class to busk.',
+    "At fifteen, Ruth already runs the till at her mum's shop.",
 ])
 def test_a_pasted_minor_is_refused_before_any_model_call(model, text):
     with pytest.raises(DomainError) as refused:
@@ -202,6 +205,8 @@ def test_a_pasted_minor_is_refused_before_any_model_call(model, text):
     'She works with Jess, 16, at the diner.',
     'Ten, maybe twelve people work there.',
     'The year she turned sixteen, they moved.',
+    'At sixteen, Ruth ran away.',
+    'A 34 y/o nurse.',
 ])
 def test_an_adult_with_young_people_around_them_is_not_refused(text):
     assert adults.young_text(text) == ''
@@ -316,6 +321,9 @@ def test_a_broken_retry_is_refused_with_the_first_replys_problem(model):
     'Age her down to 17 and update everything.', 'Make her a junior in high school.',
     "Turn back the clock: she's in tenth grade now.", 'Can you make her younger, like a teenager?',
     'Make her a freshman at Toledo Central.', "Let's set this before she turned eighteen, while she's still at school.",
+    # Wren's fourth pass.
+    'Rewrite her so she is a teenager again.', 'Let her be a minor living with her parents.',
+    'She should be a teen runaway now.',
 ])
 def test_a_request_for_a_minor_is_refused(ask):
     with pytest.raises(DomainError):
@@ -325,6 +333,8 @@ def test_a_request_for_a_minor_is_refused(ask):
 @pytest.mark.parametrize('ask', [
     'Make her sixteen years sober.', 'Make her younger, around 25.', 'She teaches tenth grade now instead of dispatching.',
     'Give her a 16-year-old daughter.', 'Make her a senior at the law firm.', 'Make her ten times angrier.',
+    'Make her a high school teacher instead.', 'Make her a middle school principal.', 'Give her a teenage son.',
+    'Give her a minor scar on the chin.', 'She was a teen runaway, now a lawyer.', 'Give her a minor in art history.',
 ])
 def test_an_adult_request_is_not_refused(ask):
     adults.adult_request(ask)
@@ -364,6 +374,49 @@ def test_the_split_sends_a_secret_told_in_another_field_back_once(model):
     assert 'it put their secret into What they want,' in model.asked[1][1]
     assert found['character']['wants'] == "To buy back her father's boat."
     assert 'wants and fears included' in system_of(model)
+
+
+def test_a_split_field_that_still_gives_the_secret_away_is_left_empty_and_named(model):
+    secret = {'truth': 'She skims cash from the till to cover her brother\'s gambling.', 'cover_story': 'Honest porter.',
+              'known_by': 'Her brother.'}
+    leak = reply(secret=secret, wants='To stop skimming before the gambling debts are paid.',
+                 fears='People think she is honest, but one audit would end that.', filled_in=['wants', 'fears'],
+                 emotional_traits=[])
+    model.replies = [leak, leak]
+    found = drafting.split(PICKS | {'text': 'Dana is a porter. She skims from the till for her brother.'})
+    character = found['character']
+    assert character['wants'] == '' and character['fears'] == '' and character['secret']['truth'].startswith('She')
+    assert found['missing'] == ['wants', 'fears'] and found['filled_in'] == []
+    assert 'into What they want, What they fear' in model.asked[1][1]
+    # Without a secret, the same words are only what people say of her.
+    model.replies = [reply(fears='People think she is honest, but she cuts corners.', emotional_traits=[],
+                           secret={'truth': '', 'cover_story': '', 'known_by': ''})]
+    found = drafting.split(PICKS | {'text': 'Dana is a porter.'})
+    assert found['character']['fears'] and found['missing'] == []
+
+
+def test_a_draft_whose_model_reads_an_age_under_18_is_refused(model):
+    model.replies = [reply(stated_age=15)]
+    with pytest.raises(DomainError) as refused:
+        drafting.split(PICKS | {'text': 'Since her mom left, Ava cooks for her little sisters. She has two years until '
+                                         'she can vote.'})
+    assert refused.value.code == 'under_18'
+    model.replies = [reply(stated_age=None), reply(stated_age='34')]
+    drafting.draft(PICKS)
+    drafting.split(PICKS | {'text': 'Dana is a porter.'})
+    assert '"stated_age"' in system_of(model)
+
+
+def test_help_me_write_sends_back_a_field_others_read_that_says_the_cover_is_false(model):
+    character = {'name': 'Dana', 'secret': {'truth': 'She froze on a call.', 'cover_story': 'Left for nursing.'}}
+    model.replies = ['{"value": "The truth is she never wanted to leave dispatch."}',
+                     '{"value": "Left the county job for nursing."}']
+    assert drafting.rewrite(character, 'background')['value'] == 'Left the county job for nursing.'
+    assert '("The truth is")' in model.asked[1][1]
+    # Their inner fields may say it, and so may anyone without a secret.
+    model.replies = ['{"value": "The truth is I never wanted to leave."}'] * 2
+    assert drafting.rewrite(character, 'sees_self')['value'].startswith('The truth')
+    assert drafting.rewrite({'name': 'Dana'}, 'background')['value'].startswith('The truth')
 
 
 def test_a_childlike_appearance_is_sent_back_then_refused(model):

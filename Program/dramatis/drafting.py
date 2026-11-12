@@ -135,7 +135,8 @@ LOWERCASE = re.compile(r'lower-?case|avoids? capital|no capital|without capital|
                        r'|(?:rarely|seldom|hardly ever|never) (?:uses? |bothers? with )?capital', re.IGNORECASE)
 SLEEP_PROBLEM = 'the schedule needs sleep blocks that cover every day, 0 to 6.'
 
-CORE_SHAPE = '''  "name": "first and last name, or the one name they go by",
+CORE_SHAPE = '''  "stated_age": the age the user's own words give them now (not at an earlier time) as a whole number, or null when they give none,
+  "name": "first and last name, or the one name they go by",
   "gender": "woman | man | nonbinary",
   "age": a whole number of years, 18 or more,
   "kind": "\\"\\" for an ordinary human, else one lowercase word for what they are, such as \\"elf\\"",
@@ -369,6 +370,15 @@ def kind_value(value) -> str:
     return '' if text in ('human', 'person', 'none') else text
 
 
+def stated_adult(raw: dict) -> None:
+    """Refuses a draft whose model read the user's words as making them younger than 18 now: `stated_age`, after the
+    regex gate (adults.adult_text) has missed what the model caught ("Ava (15) cooks for her sisters")."""
+    stated = age_value(raw.get('stated_age'))
+    if raw.get('under_18') is True or (stated is not None and 0 < stated < 18):
+        raise DomainError('Characters are always adults, and this character reads as younger than 18. Change '
+                          'their age in the text, or start from the quick start.', 422, 'under_18')
+
+
 class Shape:
     """Turns a model's reply into a character the form can show, with the user's picks winning. A `whole` draft (the
     quick start's) is asked for every field: one left empty sends the first reply back, and after the retry it is
@@ -381,9 +391,7 @@ class Shape:
         self.depth = DRAFT_DEPTH if whole else depth_asked(picks)
 
     def __call__(self, raw: dict, final: bool) -> dict:
-        if raw.get('under_18') is True:
-            raise DomainError('Characters are always adults, and this character reads as younger than 18. Change '
-                              'their age in the text, or start from the quick start.', 422, 'under_18')
+        stated_adult(raw)
         made = {key: text_value(raw.get(key), limit) for key, limit in TEXT_LIMITS.items()}
         made |= {key: list_value(raw.get(key), *limits) for key, limits in LIST_LIMITS.items()}
         made['name'] = (self.picks.get('name') or '').strip() or made['name']
@@ -406,8 +414,12 @@ class Shape:
         missing = self.missing(character) if self.whole else []
         if missing and not final:
             raise Unusable(f"it left {', '.join(missing)} empty. Write every key.")
-        if self.split and (echoes := self.echoes(character)) and not final:
-            raise Unusable(echo.problem(echoes))
+        # A split's secret in a field anyone reads goes back once; still there after that, the field is left empty
+        # and named, so the user writes it rather than the secret reaching other characters.
+        if self.split and (echoes := self.echoes(character)):
+            if not final:
+                raise Unusable(echo.problem([fields.LABELS[key] for key in echoes]))
+            character = emptied(character, echoes)
         hits = slop.audit(character, self.allowed())
         if slop.hard(hits) and not final:
             raise Unusable(slop.problem(slop.hard(hits)))
@@ -420,17 +432,22 @@ class Shape:
         if self.whole:
             result['missing'] = missing
         if self.split:
+            result['missing'] = echoes
             filled = raw.get('filled_in') if isinstance(raw.get('filled_in'), list) else []
             result['filled_in'] = [key for key in dict.fromkeys(filled)
-                                   if key in made and key not in ('name', 'arc', 'psyche', 'secret')]
+                                   if key in made and key not in ('name', 'arc', 'psyche', 'secret', *echoes)]
         return result
 
     @staticmethod
     def echoes(character: dict) -> list[str]:
-        """The fields anyone can read that use their secret's own words (dramatis/echo.py), by their labels."""
-        secret = echo.secret_words(character.get('secret'))
-        return [spec.label for spec in fields.SPECS if echo.public(spec.key) and secret
-                and echo.echoed(slop.at(character, spec.at()), secret)]
+        """The fields anyone can read that give their secret away (dramatis/echo.py), by the form's keys: they use the
+        secret's own words, or say outright that what people believe is not the truth."""
+        secret = character.get('secret') if isinstance(character.get('secret'), dict) else {}
+        if not (secret.get('truth') or '').strip():
+            return []
+        words = echo.secret_words(secret)
+        return [spec.key for spec in fields.SPECS if echo.public(spec.key) and spec.key != 'name'
+                and (echo.echoed(value := slop.at(character, spec.at()), words) or echo.breaks_cover(echo.texts(value)))]
 
     def renamed(self, character: dict, hits: list[dict]) -> tuple[dict, list[dict]]:
         """After the retry: the stock and made-up names the model kept, swapped for drawn ones (names.Roll.swaps)."""
@@ -642,8 +659,15 @@ def rewrite(character: dict, field: str, request: str = '') -> dict:
                   character=json.dumps(current, ensure_ascii=False, indent=1))
     allowed = f"{json.dumps(own_words(character), ensure_ascii=False)} {request}"
     own = character.get('name') or ''
-    return ask(system, lambda raw, final: audited(field, field_value(field, guide, raw, final), allowed, final,
-                                                 roll, own))
+    # A field anyone reads, for someone with a secret: one that says what people believe isn't so goes back once.
+    hidden = not sees_secret(field) and bool(((character.get('secret') or {}).get('truth') or '').strip())
+
+    def shaped(raw: dict, final: bool) -> dict:
+        value = field_value(field, guide, raw, final)
+        if hidden and not final and (found := echo.breaks_cover(echo.texts(value))):
+            raise Unusable(echo.problem([fields.LABELS[field]], found))
+        return audited(field, value, allowed, final, roll, own)
+    return ask(system, shaped)
 
 
 def audited(field: str, value, allowed: str, final: bool, roll: names.Roll | None = None, own: str = '') -> dict:
@@ -656,6 +680,18 @@ def audited(field: str, value, allowed: str, final: bool, roll: names.Roll | Non
         value = names.replaced(value, swaps)
         hits = slop.audit(placed(field, value), allowed)
     return {'field': field, 'value': value, 'audit': hits}
+
+
+def emptied(character: dict, keys: list[str]) -> dict:
+    """The character with these fields (the form's keys) left empty: a text as '', a list as []."""
+    character = json.loads(json.dumps(character))
+    for key in keys:
+        *outer, last = fields.path(key)
+        holder = character
+        for part in outer:
+            holder = holder.setdefault(part, {})
+        holder[last] = [] if isinstance(holder.get(last), list) else '' if isinstance(holder.get(last), str) else None
+    return character
 
 
 def placed(field: str, value) -> dict:
