@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from dramatis import adults, asking, drafting
+from dramatis import adults, asking, drafting, echo
 from dramatis.formats.companion.errors import DomainError
 from tests.helpers import SLEEP, WORK, reply
 
@@ -171,6 +171,10 @@ def test_a_draft_fills_every_section_and_names_what_it_could_not(model):
     # Wren's fourth pass.
     'A 16 y/o drummer who skips class to busk.',
     "At fifteen, Ruth already runs the till at her mum's shop.",
+    # Wren's fifth pass.
+    'Born in 2011, a quiet kid who loves trains.',
+    'Year ten at Hollins Comprehensive, captain of netball.',
+    'Her GCSEs are next spring and she is dreading them.',
 ])
 def test_a_pasted_minor_is_refused_before_any_model_call(model, text):
     with pytest.raises(DomainError) as refused:
@@ -207,6 +211,8 @@ def test_a_pasted_minor_is_refused_before_any_model_call(model, text):
     'The year she turned sixteen, they moved.',
     'At sixteen, Ruth ran away.',
     'A 34 y/o nurse.',
+    'She teaches Year 10 at Hollins.', 'She sat her GCSEs in 1998.', 'Her son has his GCSEs next year.',
+    'He has a 16-year-old daughter and a mortgage.', 'Born in 1990 in Leeds.',
 ])
 def test_an_adult_with_young_people_around_them_is_not_refused(text):
     assert adults.young_text(text) == ''
@@ -371,7 +377,7 @@ def test_the_split_sends_a_secret_told_in_another_field_back_once(model):
                            emotional_traits=[]),
                      reply(secret=secret, wants='To buy back her father\'s boat.', filled_in=[], emotional_traits=[])]
     found = drafting.split(PICKS | {'text': 'Dana is a porter. She skims from the till for her brother.'})
-    assert 'it put their secret into What they want,' in model.asked[1][1]
+    assert 'it put their secret into' in model.asked[1][1] and 'What they want ("' in model.asked[1][1]
     assert found['character']['wants'] == "To buy back her father's boat."
     assert 'wants and fears included' in system_of(model)
 
@@ -387,12 +393,72 @@ def test_a_split_field_that_still_gives_the_secret_away_is_left_empty_and_named(
     character = found['character']
     assert character['wants'] == '' and character['fears'] == '' and character['secret']['truth'].startswith('She')
     assert found['missing'] == ['wants', 'fears'] and found['filled_in'] == []
-    assert 'into What they want, What they fear' in model.asked[1][1]
+    assert 'What they want ("' in model.asked[1][1] and 'What they fear ("People think' in model.asked[1][1]
     # Without a secret, the same words are only what people say of her.
     model.replies = [reply(fears='People think she is honest, but she cuts corners.', emotional_traits=[],
                            secret={'truth': '', 'cover_story': '', 'known_by': ''})]
     found = drafting.split(PICKS | {'text': 'Dana is a porter.'})
     assert found['character']['fears'] and found['missing'] == []
+
+
+TEO = '''Name: Teodor "Teo" Brandt
+Age: 34
+Teo runs the night desk at a small hotel by the train station in Leipzig. Dry, careful, kind to the cleaning staff.
+Secret: Teo skimmed money from the hotel safe for two years to pay his mother's care home, and the owner still thinks
+the night porter did it.
+Likes: chess problems, cheap noodles, the 4 a.m. quiet.'''
+
+
+def test_what_the_card_says_outside_its_secret_may_go_anywhere(model):
+    secret = {'truth': "He skimmed money from the hotel safe to pay his mother's care home; the owner blames the night "
+                       'porter.', 'cover_story': 'A careful night clerk.', 'known_by': 'No one.'}
+    model.replies = [reply(secret=secret, about='Teo runs the night desk at a small hotel by the station in Leipzig.',
+                           background='Years of night shifts at the same small hotel.', emotional_traits=[])]
+    found = drafting.split(PICKS | {'text': TEO})
+    assert found['character']['about'].startswith('Teo runs') and found['missing'] == [] and len(model.asked) == 1
+    assert 'hotel' not in echo.secret_words(secret, echo.outside_secret(TEO, secret))
+
+
+def test_one_secret_word_is_left_alone_but_a_fear_of_being_exposed_is_not(model):
+    secret = {'truth': 'Ines never finished the conservatory; she forged her diploma.', 'cover_story': 'Trained in '
+              'Budapest.', 'known_by': 'No one.'}
+    text = 'Ines teaches piano.\nSecret: she forged her conservatory diploma.'
+    model.replies = [reply(secret=secret, background='She studied at the conservatory.', emotional_traits=[])]
+    found = drafting.split(PICKS | {'text': text})
+    assert found['character']['background'] == 'She studied at the conservatory.' and found['missing'] == []
+    model.replies = [reply(secret=secret, fears='Being exposed as a fraud.', emotional_traits=[])] * 2
+    found = drafting.split(PICKS | {'text': text})
+    assert found['missing'] == ['fears'] and 'What they fear ("exposed as a fraud")' in model.asked[-1][1]
+
+
+@pytest.mark.parametrize('text', [
+    'The truth about the county job.', "There's a thing she'd never tell anyone.", 'She left not for nursing but to hide.',
+    'Her secret weighs on her.', 'Afraid of being found out.', 'He never talks about his last post.',
+])
+def test_words_that_say_the_cover_is_false(text):
+    assert echo.breaks_cover(text)
+
+
+@pytest.mark.parametrize('text', [
+    'The secret to her bread is patience.', 'She left the county job for nursing.', 'Everyone sees her as reliable.',
+])
+def test_words_that_keep_the_cover(text):
+    assert not echo.breaks_cover(text)
+
+
+def test_someone_elses_age_in_their_about_is_not_theirs(model):
+    adults.adults_only(52, 'He has a 16-year-old daughter and a mortgage.')
+    with pytest.raises(DomainError):
+        adults.adults_only(None, 'She is 16 and works at a diner.')
+    assert adults.young_text('Born in 2011, a quiet kid who loves trains.') == 'Born in 2011'
+    assert adults.young_text('Born in 1990 in Leeds.') == ''
+
+
+def test_the_model_is_asked_for_minors_its_words_imply(model):
+    model.replies = [reply()]
+    drafting.draft(PICKS)
+    system = system_of(model)
+    assert "learner's permit" in system and 'lied about being 17' in system
 
 
 def test_a_draft_whose_model_reads_an_age_under_18_is_refused(model):

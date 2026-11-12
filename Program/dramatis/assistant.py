@@ -171,8 +171,6 @@ def value_for(field: str, guide: dict, raw, final: bool):
     if raw in (None, '', []):
         return [] if listed else ''
     value = drafting.field_value(field, guide, {'value': raw}, final)
-    if field == 'about' and adults.YOUNG.search(value):
-        raise Unusable(adults.ADULTS_ONLY)
     if found := adults.young_text(echo.texts(value)):
         raise Unusable(f'"{field}" makes them younger than 18 ("{found}"). {adults.ADULTS_ONLY}')
     return value
@@ -181,9 +179,12 @@ def value_for(field: str, guide: dict, raw, final: bool):
 class Edits:
     """The reply and its edits, each checked against the form it was shown."""
 
-    def __init__(self, character: dict, allowed: str, shown: bool = True, secret: set[str] = frozenset()):
+    def __init__(self, character: dict, allowed: str, shown: bool = True, secret: set[str] = frozenset(),
+                 cover: bool = False):
         self.character, self.allowed, self.fields = character, allowed, editable(character, shown)
-        self.secret = secret
+        # `cover`: they have a secret the user didn't ask to put anywhere, so no field anyone reads may say what
+        # people believe isn't so, whether or not the assistant was shown it (Wren's fifth pass: it guessed).
+        self.secret, self.cover = secret, cover
 
     def __call__(self, raw: dict, final: bool) -> dict:
         reply = text_value(raw.get('reply'), REPLY_CHARS)
@@ -218,6 +219,10 @@ class Edits:
         value = value_for(field, self.fields[field], item.get('value'), final)
         if same(slop.at(self.character, path(field)), value):
             return None
+        if self.cover and echo.public(field) and (found := echo.breaks_cover(echo.texts(value))):
+            if final:
+                return None
+            raise Unusable(echo.problem([LABELS.get(field, field)], found))
         # A field Help me write writes is written again without the secret (`covered`); the rest are checked here.
         if echo.public(field) and field not in drafting.field_guides() and self.secret:
             if echo.echoed(value, self.secret):
@@ -243,8 +248,10 @@ def answer(body: 'AssistantBody') -> dict:
     # The secret's own words, held against an edit to a field anyone reads, unless the user asked for it there.
     secret = set() if not shown or SECRET_OUT.search(body.message) else \
         echo.secret_words(character.get('secret'), echo.public_text(character), body.message)
+    cover = echo.has_secret(character) and not SECRET_OUT.search(body.message)
     with ai.doing('assistant'):
-        found = asking.ask(system, Edits(character, allowed, shown, secret), conversation(history, body.message))
+        found = asking.ask(system, Edits(character, allowed, shown, secret, cover),
+                           conversation(history, body.message))
         # Unless the user asked for the secret there: then its words in that field are their wish.
         return covered(found, character, body.message) if shown and not SECRET_OUT.search(body.message) else found
 

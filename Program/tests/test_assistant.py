@@ -189,6 +189,19 @@ def test_with_the_secret_shown_a_rewrite_that_still_says_the_cover_is_false_is_d
     assert found['edits'] == []
 
 
+def test_unshown_a_field_anyone_reads_may_not_say_the_cover_is_false(model):
+    guess = {'field': 'background', 'value': "Left dispatch for nursing, but there's a thing she'd never tell anyone."}
+    model.replies = [said(edits=[guess]), said(edits=[guess])]
+    found = ask("Flesh out her background; remember the thing she'd never tell anyone.", character=SECRET)
+    assert 'froze' not in model.asked[0][0] and found['edits'] == []
+    assert '("never tell anyone")' in model.asked[1][1]
+    # Asked to put the secret there, it may; and someone with no secret may be described any way.
+    model.replies = [said(edits=[guess])]
+    assert ask('Put her secret into the background.', character=SECRET)['edits']
+    model.replies = [said(edits=[guess])]
+    assert ask('Flesh out her background.', character=CHARACTER | {'secret': None})['edits']
+
+
 def test_the_rewrite_request_leaves_out_the_users_talk_of_the_secret():
     assert assistant.unasked('Make her background warmer. She hides the 911 call, remember that.') == \
         'Make her background warmer.'

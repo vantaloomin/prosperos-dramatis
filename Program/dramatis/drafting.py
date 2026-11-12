@@ -135,7 +135,8 @@ LOWERCASE = re.compile(r'lower-?case|avoids? capital|no capital|without capital|
                        r'|(?:rarely|seldom|hardly ever|never) (?:uses? |bothers? with )?capital', re.IGNORECASE)
 SLEEP_PROBLEM = 'the schedule needs sleep blocks that cover every day, 0 to 6.'
 
-CORE_SHAPE = '''  "stated_age": the age the user's own words give them now (not at an earlier time) as a whole number, or null when they give none,
+CORE_SHAPE = '''  "under_18": true when the user's own words make them younger than 18 now, even without an age: a school year (Year ten, tenth grade), school exams (GCSEs), a learner's permit, a parent who signs their forms, an older sibling who just turned 18, a birth year less than 18 years ago; else false,
+  "stated_age": the age the user's own words give them now as a whole number, or null when they give none; an age they were once (married at 17, lied about being 17) is not it,
   "name": "first and last name, or the one name they go by",
   "gender": "woman | man | nonbinary",
   "age": a whole number of years, 18 or more,
@@ -416,10 +417,12 @@ class Shape:
             raise Unusable(f"it left {', '.join(missing)} empty. Write every key.")
         # A split's secret in a field anyone reads goes back once; still there after that, the field is left empty
         # and named, so the user writes it rather than the secret reaching other characters.
+        # Sent back once, named, then left empty. Two of the secret's words, not one: one comes by chance too often
+        # ("home" in a personality, when the secret is his mother's care home).
         if self.split and (echoes := self.echoes(character)):
             if not final:
-                raise Unusable(echo.problem([fields.LABELS[key] for key in echoes]))
-            character = emptied(character, echoes)
+                raise Unusable(echo.problem([f'{fields.LABELS[key]} ("{found}")' for key, found in echoes.items()]))
+            character = emptied(character, list(echoes))
         hits = slop.audit(character, self.allowed())
         if slop.hard(hits) and not final:
             raise Unusable(slop.problem(slop.hard(hits)))
@@ -432,22 +435,27 @@ class Shape:
         if self.whole:
             result['missing'] = missing
         if self.split:
-            result['missing'] = echoes
+            result['missing'] = list(echoes)
             filled = raw.get('filled_in') if isinstance(raw.get('filled_in'), list) else []
             result['filled_in'] = [key for key in dict.fromkeys(filled)
                                    if key in made and key not in ('name', 'arc', 'psyche', 'secret', *echoes)]
         return result
 
-    @staticmethod
-    def echoes(character: dict) -> list[str]:
-        """The fields anyone can read that give their secret away (dramatis/echo.py), by the form's keys: they use the
-        secret's own words, or say outright that what people believe is not the truth."""
-        secret = character.get('secret') if isinstance(character.get('secret'), dict) else {}
-        if not (secret.get('truth') or '').strip():
-            return []
-        words = echo.secret_words(secret)
-        return [spec.key for spec in fields.SPECS if echo.public(spec.key) and spec.key != 'name'
-                and (echo.echoed(value := slop.at(character, spec.at()), words) or echo.breaks_cover(echo.texts(value)))]
+    def echoes(self, character: dict) -> dict[str, str]:
+        """The fields anyone can read that give their secret away (dramatis/echo.py), by the form's keys, with the
+        words that do: the secret's own words that the pasted card uses nowhere else, or words saying that what people
+        believe is not the truth."""
+        if not echo.has_secret(character):
+            return {}
+        secret = character['secret']
+        words = echo.secret_words(secret, echo.outside_secret(self.picks.get('text') or '', secret))
+        found = {}
+        for spec in fields.SPECS:
+            if echo.public(spec.key) and spec.key != 'name':
+                value = slop.at(character, spec.at())
+                if said := echo.echoed(value, words) or echo.breaks_cover(echo.texts(value)):
+                    found[spec.key] = ', '.join(said) if isinstance(said, list) else said
+        return found
 
     def renamed(self, character: dict, hits: list[dict]) -> tuple[dict, list[dict]]:
         """After the retry: the stock and made-up names the model kept, swapped for drawn ones (names.Roll.swaps)."""
