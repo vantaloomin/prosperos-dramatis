@@ -3,14 +3,12 @@
 since a model told to make them adult would quietly age them up instead. An Appearance that gives an adult a child's
 or teenager's look is refused wherever it came from."""
 import re
+from datetime import date
 
 from dramatis.asking import Unusable
 from dramatis.formats.companion.errors import DomainError
 
 ADULTS_ONLY = 'Characters are always adults. Give them an age of 18 or older, or leave their age open.'
-# An age the about line gives that is under 18 ("is 16", "a 15-year-old").
-YOUNG = re.compile(r"\b(?:is|am|aged?)\s+(?:1[0-7]|[1-9])\b(?!\s*(?:years?\s+(?:ago|later|since)|%|:))"
-                   r"|\b(?:1[0-7]|[1-9])[- ]years?[- ]old\b", re.IGNORECASE)
 # What the user's own words (a pasted character, an idea, a vibe) say about the character's age now: an age under 18
 # in figures or words, or a school year. Read one sentence at a time, see `young_text`.
 UNDER = (r'(?:1[0-7]|[2-9]|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen'
@@ -40,7 +38,11 @@ YOUNG_TEXT = re.compile(
     rf"|\b(?:still|currently)\s+(?:in|at|attending)\s+{SCHOOL}"
     rf"|\b(?:finishing|finishes|attends|attending|goes\s+to|going\s+to)\s+{SCHOOL}"
     rf"|\b(?:a|one|two|three)\s+(?:more\s+)?years?\s+(?:left|to go)\s+(?:of|in|at|until|before)\s+{SCHOOL}"
-    r"|\bstudent council\b", re.IGNORECASE | re.MULTILINE)
+    r"|\bstudent council\b"
+    # A school year in Britain ("Year ten at Hollins"), and GCSEs still ahead ("her GCSEs are next spring").
+    r"|\b(?-i:Year)\s+(?:[7-9]|1[0-3]|seven|eight|nine|ten|eleven|twelve|thirteen)\b(?=\s+(?:at|student|pupil)\b|\s*[,.;]|\s*$)"
+    r"|\b(?:her|his|their|my) (?:GCSEs|A[- ]levels)\b[^.!?;]{0,20}\b(?:next|this|soon|coming)\b"
+    r"|\b(?:revising|sitting|studying) for (?:her|his|their|my) (?:GCSEs|A[- ]levels)\b", re.IGNORECASE | re.MULTILINE)
 # An age set beside the name a sentence opens with: "Mara, 15, lives with her aunt", "Theo (16) skateboards". The
 # name is matched as written.
 NAMED_AGE = re.compile(rf"^\W*[A-Z][\w'’-]+(?:\s+[A-Z][\w'’-]+)?(?:,\s*|\s*\(\s*)(?i:{UNDER})\s*[,)]")
@@ -98,11 +100,17 @@ YOUTHFUL_PROBLEM = ('the appearance made them look younger than 18 ({found}). Th
                     'looks the age they are.')
 
 
+# A birth year: theirs makes them younger than 18 when it is fewer than 18 years ago.
+BORN = re.compile(r"\bborn\s+(?:in\s+)?(?:(?:early|late|mid|spring|summer|autumn|fall|winter|january|february|march|april"
+                  r"|may|june|july|august|september|october|november|december)\s+)?(?:of\s+)?((?:19|20)\d\d)\b", re.IGNORECASE)
+
+
 def young_text(text: str) -> str:
     """The words in the user's own text that make the character younger than 18 now, or ''. Someone else's age (her
     son is 12), their past (when she was a junior at Lincoln High) and work with young people are left alone."""
     for sentence in re.split(r'(?<=[.!?;])\s+|\n+', text or ''):
-        for found in [*YOUNG_TEXT.finditer(sentence), *NAMED_AGE.finditer(sentence)]:
+        born = [found for found in BORN.finditer(sentence) if date.today().year - int(found[1]) < 18]
+        for found in [*YOUNG_TEXT.finditer(sentence), *NAMED_AGE.finditer(sentence), *born]:
             if not theirs(sentence, found):
                 continue
             return found[0].strip(' ,;:()')
@@ -163,7 +171,8 @@ def age_value(value) -> int | None:
 
 
 def adults_only(age: int | None, about: str = '') -> None:
-    if (age is not None and age < 18) or YOUNG.search(about or ''):
+    """Refuses an age under 18, and an About that gives them one now; a relative's age there is theirs (young_text)."""
+    if (age is not None and age < 18) or young_text(about):
         raise DomainError(ADULTS_ONLY, 422, 'under_18')
 
 

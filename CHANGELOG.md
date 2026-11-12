@@ -18,6 +18,13 @@ What changed in each release of Prospero's Dramatis. Each release's notes are al
   of the secret, and a rewrite that still says the cover story is false is dropped.
 - A draft or a split is refused when the model reads the user's words as giving an age under 18 now, behind the word
   checks that catch most of them first.
+- The split no longer empties a field for words the pasted card itself uses outside its secret (a night clerk whose
+  secret is about the hotel safe keeps "runs the night desk at a small hotel"), and a relative's age in About ("a
+  16-year-old daughter") is no longer read as theirs, for drafts and portraits alike.
+- More ways of giving the secret away are caught ("exposed as a fraud", "the truth about", "the thing she'd never tell
+  anyone"), and the assistant checks every field others read for them whenever there is a secret, shown or not.
+- A birth year under 18 years ago, a British school year ("Year ten") and GCSEs still ahead are refused, and the model
+  is asked to say when the user's words make someone a minor without an age.
 - "Make her a high school teacher" is no longer refused, and "a teenager again", "a minor living with her parents" and
   "a teen runaway" are.
 
