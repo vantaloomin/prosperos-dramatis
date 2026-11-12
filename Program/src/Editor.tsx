@@ -104,7 +104,7 @@ export function Editor({ saved, start, seed, filledIn, missing, shortened, note,
       named.length ? `Your model left ${listed([...new Set(named)])} empty.` : '',
       shortened?.length ? `${named.length ? 'It' : 'Your model'} wrote more than ${listed(shortened.map(labelOf))} ${shortened.length === 1 ? 'holds' : 'hold'}, so ${shortened.length === 1 ? 'it ends' : 'each ends'} at the last sentence that fit.` : '',
     ].filter(Boolean)
-    if (said.length) setResult(named.length ? { tone: 'error', text: said.join(' ') } : { tone: 'note', text: [note, ...said].filter(Boolean).join(' ') })
+    if (said.length) setResult({ tone: named.length ? 'error' : 'note', text: [note, ...said].filter(Boolean).join(' ') })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // What each app's own models make of the form, a moment after the last change.

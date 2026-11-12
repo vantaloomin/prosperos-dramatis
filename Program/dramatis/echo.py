@@ -86,6 +86,24 @@ def echoed(value, secret: set[str]) -> list[str]:
     return found if len(found) >= 2 or any(char.isdigit() for word in found for char in word) else []
 
 
-def problem(labels: list[str]) -> str:
-    return (f"it put their secret into {', '.join(labels)}, which other characters read. Keep the secret in "
-            '"secret" (and their inner fields): everywhere else, write only what people believe.')
+# Words that say what people believe of them isn't so, which give a secret away without its own words: "the truth
+# is", "but really", "what nobody knows", "people think she's a nurse, but".
+BREAKS_COVER = re.compile(
+    r"\b(?:the (?:real |whole )?truth is|in truth|but really|really (?:is|was) (?:a|an|the)|the real reason|secretly"
+    r"|in secret|behind (?:closed doors|everyone's back)|(?:what|something|things?) (?:people|nobody|no one|few|others"
+    r"|everyone|anyone)\s+(?:else\s+)?(?:(?:do|does|did)(?:n't|n’t| not)\s+|never\s+|would(?:n't|n’t| not)\s+)?"
+    r"(?:knows?|suspects?|sees?|guess(?:es)?|realis(?:es?)|realiz(?:es?))|(?:nobody|no one|few people) (?:else )?"
+    r"(?:knows?|suspects?)|(?:people|everyone|others|most people|they|the town|her friends|his friends) (?:think|thinks"
+    r"|believe|believes|assume|assumes|suppose|see|sees)\b[^.!?;]{0,80}?\bbut\b)", re.IGNORECASE)
+
+
+def breaks_cover(text: str) -> str:
+    """The words in a field anyone reads that say what people believe isn't so, or ''."""
+    found = BREAKS_COVER.search(text or '')
+    return found[0] if found else ''
+
+
+def problem(labels: list[str], found: str = '') -> str:
+    said = f' ("{found}")' if found else ''
+    return (f"it put their secret into {', '.join(labels)}{said}, which other characters read. Keep the secret in "
+            '"secret" (and their inner fields): everywhere else, write only what people believe, as plainly true.')
