@@ -2,7 +2,7 @@
 
 What changed in each release of Prospero's Dramatis. Each release's notes are also in `Program/docs/releases/`.
 
-## Unreleased
+## 0.2.1: Secrets kept, adults only
 
 ### Safer
 
