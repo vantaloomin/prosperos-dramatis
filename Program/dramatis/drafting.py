@@ -371,9 +371,12 @@ def kind_value(value) -> str:
     return '' if text in ('human', 'person', 'none') else text
 
 
-def stated_adult(raw: dict) -> None:
-    """Refuses a draft whose model read the user's words as making them younger than 18 now: `stated_age`, after the
-    regex gate (adults.adult_text) has missed what the model caught ("Ava (15) cooks for her sisters")."""
+def stated_adult(raw: dict, final: bool) -> None:
+    """Refuses a draft whose model read the user's words as making them younger than 18 now (`under_18`,
+    `stated_age`), after the regex gate (adults.adult_text) has missed what the model caught ("Ava (15) cooks for her
+    sisters"). A reply that leaves `under_18` out goes back once: some models skip it and age the character up."""
+    if not isinstance(raw.get('under_18'), bool) and not final:
+        raise Unusable('it left out "under_18". Write it: true or false.')
     stated = age_value(raw.get('stated_age'))
     if raw.get('under_18') is True or (stated is not None and 0 < stated < 18):
         raise DomainError('Characters are always adults, and this character reads as younger than 18. Change '
@@ -392,7 +395,7 @@ class Shape:
         self.depth = DRAFT_DEPTH if whole else depth_asked(picks)
 
     def __call__(self, raw: dict, final: bool) -> dict:
-        stated_adult(raw)
+        stated_adult(raw, final)
         made = {key: text_value(raw.get(key), limit) for key, limit in TEXT_LIMITS.items()}
         made |= {key: list_value(raw.get(key), *limits) for key, limits in LIST_LIMITS.items()}
         made['name'] = (self.picks.get('name') or '').strip() or made['name']

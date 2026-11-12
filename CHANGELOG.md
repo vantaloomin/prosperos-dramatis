@@ -24,7 +24,8 @@ What changed in each release of Prospero's Dramatis. Each release's notes are al
 - More ways of giving the secret away are caught ("exposed as a fraud", "the truth about", "the thing she'd never tell
   anyone"), and the assistant checks every field others read for them whenever there is a secret, shown or not.
 - A birth year under 18 years ago, a British school year ("Year ten") and GCSEs still ahead are refused, and the model
-  is asked to say when the user's words make someone a minor without an age.
+  is asked to say when the user's words make someone a minor without an age; a reply that leaves that out goes back
+  once.
 - "Make her a high school teacher" is no longer refused, and "a teenager again", "a minor living with her parents" and
   "a teen runaway" are.
 

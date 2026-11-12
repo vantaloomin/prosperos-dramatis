@@ -74,7 +74,7 @@ ANSWERS = [
 
 def answer(system: str, prompt: str) -> str:
     time.sleep(DELAY)
-    found = next((reply for mark, reply in ANSWERS if mark in system), CHARACTER)
+    found = next((reply for mark, reply in ANSWERS if mark in system), CHARACTER | {'under_18': False})
     return json.dumps(found, ensure_ascii=False)
 
 
