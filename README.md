@@ -87,7 +87,10 @@ in your library; and a secret, with what people believe instead and who knows. A
 three, with an ordinary secret; anything the model still leaves empty is named at the top of the form. A pasted
 character gets them only where its text gives them. Each app gets them folded into fields it already reads, the secret included, so the character knows what they are keeping. **Help me write** shows the
 secret only when it writes the secret itself, their inner life or how they see themselves; for every other field it
-sees what people believe instead, so the truth doesn't slip into a field other characters read.
+sees what people believe instead, so the truth doesn't slip into a field other characters read. When a pasted
+character is sorted into fields, or the Sidebar Assistant changes a field others read, a second call to the same model
+reads those fields for the secret said in other words; a sentence it catches is sent back once, then cut, and a field
+with nothing left is named at the top of the form.
 
 **An audit for AI slop.** Everything the model writes is checked against Wren Halloway's list of stock names (Elara
 Voss), Companion's own check for names that read as made up (Vaelith Duskwhisper), words and patterns that mark text as model-written, plus the signs from Wikipedia's
@@ -118,7 +121,9 @@ and model you use, **Test connection** to list the models it offers without writ
 settings (context size, longest reply, reasoning effort, thinking and sampling) are per profile, and a Claude Code or
 Codex profile can use any of the accounts found on your PC. The first finished profile does the **Writing** (drafts,
 Help me write, the interview and portrait prompts); the Sidebar Assistant and the Cast board use it too unless you give
-them a profile of their own.
+them a profile of their own. The check for a secret said in other words runs on the same profile as the job it checks, and a small
+model there (around 12B) reads ordinary lines as hints, so it cuts more than it needs to: give the Writing and the
+Assistant a larger model if your characters keep secrets.
 
 **Cards.** **Export card** saves a character card (Character Card V3, PNG or JSON) in one of two kinds. The PNG
 puts the card into their portrait, or a plain picture if they have none.

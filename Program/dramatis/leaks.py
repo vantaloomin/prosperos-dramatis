@@ -46,8 +46,8 @@ def leaked(secret: dict, values: dict[str, str], known: str = '') -> dict[str, s
                   fields=shown)
     calls.step('Checking their secret stays theirs')
     try:
-        return talking | ask(system, Flags(clean, echo.words(f'{cover} {known}')),
-                             'Name the fields that give the secret away, as JSON.')
+        return ask(system, Flags(clean, echo.words(f'{cover} {known}'), echo.words(truth)),
+                   'Name the fields that give the secret away, as JSON.') | talking
     except ai.Stopped:
         raise
     except DomainError:
@@ -70,8 +70,8 @@ class Flags:
     """The check's reply: the fields it names among those it read, without the flags that only say what people
     believe."""
 
-    def __init__(self, fields_read: dict[str, str], believed: set[str]):
-        self.fields_read, self.believed = fields_read, believed
+    def __init__(self, fields_read: dict[str, str], believed: set[str], truth: set[str] = frozenset()):
+        self.fields_read, self.believed, self.truth = fields_read, believed, truth
 
     def __call__(self, raw: dict, final: bool) -> dict[str, str]:
         items = raw.get('leaks')
@@ -82,17 +82,52 @@ class Flags:
             key = item.get('field') if isinstance(item, dict) else None
             if key in self.fields_read:
                 words = re.sub(r'\s+', ' ', str(item.get('words') or '')).strip()[:200]
-                if not believed_only(words, self.believed):
+                if not believed_only(words, self.believed, self.truth):
                     found[key] = words
             elif not final:
                 raise Unusable(f'"{key}" is not one of the fields. Name only: {", ".join(self.fields_read)}.')
         return found
 
 
-def believed_only(words: str, believed: set[str]) -> bool:
-    """Whether a flag's words are mostly what people believe or already know of them."""
+# The cover story denied: "she never finished the conservatory", when people believe she graduated from it.
+DENIED = re.compile(r"\b(?:never|not|no longer|without|failed to|gave up|dropped out|quit|fake|forged|lied)\b|n't\b",
+                    re.IGNORECASE)
+
+
+def believed_only(words: str, believed: set[str], truth: set[str] = frozenset()) -> bool:
+    """Whether a flag's words are mostly what people believe or already know of them, and neither deny it nor use a
+    word of the truth that the cover story and the known words don't (Wren: "She never finished the conservatory"
+    passed as the cover's "conservatory")."""
     found = echo.words(words)
-    return bool(found) and len(found & believed) * 2 >= len(found)
+    if not found or DENIED.search(words) or found & (truth - believed):
+        return False
+    return len(found & believed) * 2 >= len(found)
+
+
+def cut(value, words: str):
+    """The value without the sentences (a text) or items (a list of texts) that hold the flagged words, or None when
+    the words are not found in it or nothing would be left: then the whole field goes. Most flags are one planted
+    hint ("avoids any scrutiny of the hotel's accounts"), and the rest of the field is the card's (Wren). A field with
+    a line talking to the checker goes whole: what else it says was written to get past."""
+    from dramatis.drafting import INSTRUCTION  # drafting imports this module
+
+    if INSTRUCTION.search(words):
+        return None
+    tokens = re.findall(r"[\w'\u2019]+", words.lower())
+    pattern = r'\W+'.join(re.escape(echo.stem(token)) + r"[\w'\u2019]*" for token in tokens)
+    if not pattern:
+        return None
+    found = re.compile(pattern, re.IGNORECASE)
+    if isinstance(value, list) and all(isinstance(item, str) for item in value):
+        kept = [item for item in value if not found.search(item)]
+        return kept if kept and len(kept) < len(value) else None
+    if not isinstance(value, str) or not (match := found.search(value)):
+        return None
+    for part in reversed(list(re.finditer(r'[^.!?\n]+(?:[.!?]+["\u201d\')]*|$)', value))):
+        if part.start() < match.end() and part.end() > match.start():
+            value = value[:part.start()] + value[part.end():]
+    value = re.sub(r'\n{3,}', '\n\n', re.sub(r'[ \t]*\n[ \t]*', '\n', re.sub(r'[ \t]{2,}', ' ', value))).strip()
+    return value or None
 
 
 def problem(found: dict[str, str]) -> str:

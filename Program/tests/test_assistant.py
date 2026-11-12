@@ -221,6 +221,17 @@ def test_an_edit_a_model_reads_as_giving_the_secret_away_is_dropped_shown_or_not
     assert len(model.judged) == 2
 
 
+def test_an_edit_keeps_what_is_left_when_only_a_line_gives_the_secret_away(model):
+    guess = {'field': 'background', 'value': 'Raised in Toledo. Left dispatch after a call that went badly.'}
+    model.replies = [said(edits=[guess]), said(edits=[guess])]
+    flag = '{"leaks": [{"field": "background", "words": "a call that went badly"}]}'
+    model.leaks = [flag, flag]
+    found = ask('Flesh out her background.', character=SECRET)
+    assert found['edits'][0]['value'] == 'Raised in Toledo.'
+    assert found['reply'].endswith('I took a line out of my change to Background: other characters read it, and it '
+                                   'gave their secret away.')
+
+
 def test_an_edit_the_check_passes_the_second_time_lands(model):
     guess = {'field': 'background', 'value': 'Left dispatch after a call that went badly.'}
     plain = {'field': 'background', 'value': 'Left the county job for the better hours in nursing.'}
