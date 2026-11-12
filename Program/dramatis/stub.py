@@ -68,6 +68,7 @@ ANSWERS = [
     ('{"dynamic"', {'dynamic': 'Thinks he is soft, and relies on him anyway.',
                     'hidden_tension': 'He covered for her once.', 'trust': 6}),
     ('{"prompt"', {'prompt': 'A tall woman in her late thirties in scrubs under a parka, waist up, plain light.'}),
+    ('{"leaks"', {'leaks': []}),
     ('{"value"', {'value': 'Short sentences, dry jokes, and a long pause before she says anything kind.'}),
 ]
 

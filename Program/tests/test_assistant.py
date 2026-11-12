@@ -202,6 +202,23 @@ def test_unshown_a_field_anyone_reads_may_not_say_the_cover_is_false(model):
     assert ask('Flesh out her background.', character=CHARACTER | {'secret': None})['edits']
 
 
+def test_an_edit_a_model_reads_as_giving_the_secret_away_is_dropped_shown_or_not(model):
+    guess = {'field': 'background', 'value': 'Left dispatch after a call that went badly, and never went back.'}
+    flaws = {'field': 'flaws', 'value': ['Holds grudges for years']}
+    model.replies = [said(edits=[guess, flaws])]
+    model.leaks = ['{"leaks": [{"field": "background", "words": "a call that went badly"}]}']
+    found = ask('Rewrite her background so it fits what happened on her last shift.', character=SECRET)
+    assert [edit['field'] for edit in found['edits']] == ['flaws']
+    assert found['reply'].endswith('I left out my change to Background: other characters read it, and it gave their '
+                                   'secret away.')
+    assert 'froze on a 911 call' in model.judged[0][0] and 'Left dispatch after a call' in model.judged[0][0]
+    # No secret, or the user asked for it there: no check.
+    model.replies = [said(edits=[guess]), said(edits=[guess])]
+    ask('Rewrite her background.', character=CHARACTER | {'secret': None})
+    ask('Put her secret into the background.', character=SECRET)
+    assert len(model.judged) == 1
+
+
 def test_the_rewrite_request_leaves_out_the_users_talk_of_the_secret():
     assert assistant.unasked('Make her background warmer. She hides the 911 call, remember that.') == \
         'Make her background warmer.'

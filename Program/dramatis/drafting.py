@@ -44,7 +44,7 @@ import secrets
 
 from pydantic import ValidationError
 
-from dramatis import calls, echo, fields, looks, names, slop
+from dramatis import calls, echo, fields, leaks, looks, names, slop
 from dramatis.adults import adult_request, adult_text, adults_only, age_value, looks_adult
 from dramatis.asking import Unusable, ask, fill, list_value, over, template, text_value
 from dramatis.character import APPS, PERSONA, Character
@@ -649,7 +649,23 @@ def split(picks: dict) -> dict:
     found = ask(system, Shape({key: value for key, value in picks.items() if key != 'name'}, sliders, plan, roll,
                               split=True), pasted)
     told = lifted(picks['text'], found['character'])
+    found = unleaked(found)
     return found | {'seed': seed, 'instructions': list(dict.fromkeys([*instructions_in(picks['text']), *told]))[:5]}
+
+
+def unleaked(found: dict) -> dict:
+    """A split whose fields anyone reads were judged by a model call to give the secret away (dramatis/leaks.py):
+    those fields left empty and named in `missing`, as the word checks' are."""
+    character = found['character']
+    if not echo.has_secret(character):
+        return found
+    found_leaks = leaks.leaked(character['secret'], leaks.public_values(character))
+    if not found_leaks:
+        return found
+    return found | {'character': emptied(character, list(found_leaks)),
+                    'missing': list(dict.fromkeys([*found.get('missing', []), *found_leaks])),
+                    'filled_in': [key for key in found.get('filled_in', []) if key not in found_leaks],
+                    'audit': [hit for hit in found.get('audit', []) if hit.get('field') not in found_leaks]}
 
 
 def rewrite(character: dict, field: str, request: str = '') -> dict:

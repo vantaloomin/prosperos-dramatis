@@ -34,7 +34,7 @@ from typing import Literal
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-from dramatis import adults, ai, asking, drafting, echo, fields, slop
+from dramatis import adults, ai, asking, drafting, echo, fields, leaks, slop
 from dramatis.character import APPS
 from dramatis.drafting import Unusable, fill, template, text_value
 from dramatis.formats.companion.errors import DomainError
@@ -253,7 +253,23 @@ def answer(body: 'AssistantBody') -> dict:
         found = asking.ask(system, Edits(character, allowed, shown, secret, cover),
                            conversation(history, body.message))
         # Unless the user asked for the secret there: then its words in that field are their wish.
-        return covered(found, character, body.message) if shown and not SECRET_OUT.search(body.message) else found
+        if shown and not SECRET_OUT.search(body.message):
+            found = covered(found, character, body.message)
+        return unleaked(found, character) if cover else found
+
+
+def unleaked(found: dict, character: dict) -> dict:
+    """The answer without the edits to fields anyone reads that a model call judged to give the secret away
+    (dramatis/leaks.py), shown or not: the word checks miss it said in other words, or guessed."""
+    values = {edit['field']: echo.texts(edit['value']) for edit in found['edits'] if echo.public(edit['field'])}
+    found_leaks = leaks.leaked(character.get('secret'), values)
+    if not found_leaks:
+        return found
+    dropped = ', '.join(LABELS.get(key, key) for key in found_leaks)
+    return found | {'reply': f"{found['reply']} I left out my change to {dropped}: other characters read it, and it "
+                             'gave their secret away.',
+                    'edits': [edit for edit in found['edits'] if edit['field'] not in found_leaks],
+                    'audit': [hit for hit in found['audit'] if hit.get('field') not in found_leaks]}
 
 
 def covered(found: dict, character: dict, message: str) -> dict:

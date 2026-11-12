@@ -471,6 +471,34 @@ def test_a_reply_that_leaves_out_under_18_goes_back_once(model):
     assert drafting.draft(PICKS)['character']['name']
 
 
+INES = 'Ines teaches piano.\nSecret: she forged her conservatory diploma.'
+INES_SECRET = {'truth': 'Ines never finished the conservatory; she forged her diploma.', 'cover_story': 'Trained in '
+               'Budapest.', 'known_by': 'No one.'}
+
+
+def test_a_split_field_a_model_reads_as_giving_the_secret_away_is_left_empty(model):
+    model.replies = [reply(secret=INES_SECRET, fears='That her students learn she left before graduating.',
+                           filled_in=['fears'], emotional_traits=[])]
+    model.leaks = ['{"leaks": [{"field": "fears", "words": "left before graduating"}, {"field": "secret.truth"}]}',
+                   '{"leaks": [{"field": "fears", "words": "left before graduating"}]}']
+    found = drafting.split(PICKS | {'text': INES})
+    assert found['character']['fears'] == '' and found['missing'] == ['fears'] and found['filled_in'] == []
+    system, _ = model.judged[0]
+    assert 'she forged her diploma' in system and '[[field fears]]\nThat her students learn' in system
+    assert '[[field name]]' not in system and '[[field sees_self]]' not in system
+    assert '"secret.truth" is not one of the fields' in model.judged[1][1]
+
+
+def test_without_a_secret_or_a_usable_check_the_split_stands(model):
+    model.replies = [reply(secret={'truth': '', 'cover_story': '', 'known_by': ''}, emotional_traits=[])]
+    drafting.split(PICKS | {'text': 'Dana is a porter.'})
+    assert model.judged == []
+    model.replies = [reply(secret=INES_SECRET, emotional_traits=[])]
+    model.leaks = ['I cannot judge that.', 'Still no.']
+    found = drafting.split(PICKS | {'text': INES})
+    assert found['missing'] == [] and found['character']['fears'] and len(model.judged) == 2
+
+
 def test_a_draft_whose_model_reads_an_age_under_18_is_refused(model):
     model.replies = [reply(stated_age=15)]
     with pytest.raises(DomainError) as refused:
