@@ -445,8 +445,10 @@ class Shape:
 
     def secret_kept(self, character: dict, final: bool) -> tuple[dict, dict[str, str]]:
         """A split's fields anyone reads that give the secret away, by the word checks and then by a model's reading
-        (dramatis/leaks.py), each with its words: sent back once, named, then left empty. Two of the secret's words,
-        not one: one comes by chance too often ("home" in a personality, when the secret is his mother's care home)."""
+        (dramatis/leaks.py), each with its words: sent back once, then left empty and named, or, for the model's
+        reading, with only the sentences that hold its words cut (named only when that empties it). Two of the secret's
+        words, not one: one comes by chance too often ("home" in a personality, when the secret is his mother's care
+        home)."""
         if echoes := self.echoes(character):
             if not final:
                 raise Unusable(echo.problem([f'{fields.LABELS[key]} ("{found}")' for key, found in echoes.items()]))
@@ -456,7 +458,8 @@ class Shape:
             if judged := leaks.leaked(character['secret'], leaks.public_values(character), known):
                 if not final:
                     raise Unusable(leaks.problem(judged))
-                character, echoes = emptied(character, list(judged)), echoes | judged
+                character, gone = trimmed(character, judged)
+                echoes = echoes | {key: judged[key] for key in gone}
         return character, echoes
 
     def echoes(self, character: dict) -> dict[str, str]:
@@ -718,6 +721,23 @@ def emptied(character: dict, keys: list[str]) -> dict:
             holder = holder.setdefault(part, {})
         holder[last] = [] if isinstance(holder.get(last), list) else '' if isinstance(holder.get(last), str) else None
     return character
+
+
+def trimmed(character: dict, flagged: dict[str, str]) -> tuple[dict, list[str]]:
+    """The character with the sentences holding each flagged field's words cut (leaks.cut), and the fields that cut
+    left empty."""
+    gone = []
+    for key, words in flagged.items():
+        if (kept := leaks.cut(slop.at(character, fields.path(key)), words)) is None:
+            gone.append(key)
+        else:
+            character = json.loads(json.dumps(character))
+            *outer, last = fields.path(key)
+            holder = character
+            for part in outer:
+                holder = holder[part]
+            holder[last] = kept
+    return emptied(character, gone), gone
 
 
 def placed(field: str, value) -> dict:

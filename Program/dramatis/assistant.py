@@ -277,17 +277,31 @@ def answer(body: 'AssistantBody') -> dict:
 
 
 def unleaked(found: dict, character: dict, known: str = '') -> dict:
-    """The answer without the edits to fields anyone reads that a model call judged to give the secret away
-    (dramatis/leaks.py), shown or not: the word checks miss it said in other words, or guessed."""
+    """The answer without what a model call judged to give the secret away in its edits to fields anyone reads
+    (dramatis/leaks.py), shown or not: the word checks miss it said in other words, or guessed. Only the sentences
+    holding the judged words go when the rest of the edit stands without them."""
     values = {edit['field']: echo.texts(edit['value']) for edit in found['edits'] if echo.public(edit['field'])}
     found_leaks = leaks.leaked(character.get('secret'), values, known) if values else {}
     if not found_leaks:
         return found
-    dropped = ', '.join(LABELS.get(key, key) for key in found_leaks)
-    return found | {'reply': f"{found['reply']} I left out my change to {dropped}: other characters read it, and it "
-                             'gave their secret away.',
-                    'edits': [edit for edit in found['edits'] if edit['field'] not in found_leaks],
-                    'audit': [hit for hit in found['audit'] if hit.get('field') not in found_leaks]}
+    edits, dropped, cut, kept_values = [], [], [], {}
+    for edit in found['edits']:
+        if edit['field'] not in found_leaks:
+            edits.append(edit)
+        elif (kept := leaks.cut(edit['value'], found_leaks[edit['field']])) is None:
+            dropped.append(LABELS.get(edit['field'], edit['field']))
+        else:
+            edits.append(edit | {'value': kept})
+            kept_values[edit['field']] = kept
+            cut.append(LABELS.get(edit['field'], edit['field']))
+    said = [f'I left out my change to {", ".join(dropped)}'] if dropped else []
+    said += [f'I took a line out of my change to {", ".join(cut)}'] if cut else []
+    return found | {'reply': f"{found['reply']} {' and '.join(said)}: other characters read it, and it gave their "
+                             'secret away.',
+                    'edits': edits,
+                    'audit': [hit for hit in found['audit'] if hit.get('field') not in found_leaks
+                              or (hit.get('field') in kept_values
+                                  and str(hit.get('match') or '') in echo.texts(kept_values[hit['field']]))]}
 
 
 def covered(found: dict, character: dict, message: str) -> dict:
