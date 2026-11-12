@@ -180,11 +180,12 @@ class Edits:
     """The reply and its edits, each checked against the form it was shown."""
 
     def __init__(self, character: dict, allowed: str, shown: bool = True, secret: set[str] = frozenset(),
-                 cover: bool = False):
+                 cover: bool = False, known: str = ''):
         self.character, self.allowed, self.fields = character, allowed, editable(character, shown)
         # `cover`: they have a secret the user didn't ask to put anywhere, so no field anyone reads may say what
-        # people believe isn't so, whether or not the assistant was shown it (Wren's fifth pass: it guessed).
-        self.secret, self.cover = secret, cover
+        # people believe isn't so, whether or not the assistant was shown it (Wren's fifth pass: it guessed). `known`
+        # is what anyone could read before, and the user's message: words from it never count as the secret.
+        self.secret, self.cover, self.known = secret, cover, known
 
     def __call__(self, raw: dict, final: bool) -> dict:
         reply = text_value(raw.get('reply'), REPLY_CHARS)
@@ -201,15 +202,31 @@ class Edits:
                 edits[found['field']] = found
                 hits += slop.audit(drafting.placed(found['field'], found['value']), self.allowed)
         if not final:
-            if problems:
-                raise Unusable(' '.join(problems))
-            if slop.hard(hits):
-                raise Unusable(slop.problem(slop.hard(hits)))
-            if not reply:
-                raise Unusable('"reply" was empty.')
+            self.send_back(problems, hits, reply, edits)
         if not reply:
             reply = 'I changed the fields below.' if edits else 'I have nothing to change.'
         return {'reply': reply, 'edits': list(edits.values()), 'audit': hits}
+
+    def send_back(self, problems: list[str], hits: list[dict], reply: str, edits: dict[str, dict]) -> None:
+        """The first reply goes back once for what is wrong with it, a secret given away last: that check costs a
+        model call."""
+        if problems:
+            raise Unusable(' '.join(problems))
+        if slop.hard(hits):
+            raise Unusable(slop.problem(slop.hard(hits)))
+        if not reply:
+            raise Unusable('"reply" was empty.')
+        if self.cover and (leaked := self.leaked(edits)):
+            raise Unusable(' '.join(leaked))
+
+    def leaked(self, edits: dict[str, dict]) -> list[str]:
+        """The first reply's edits to fields anyone reads that a model's reading finds give the secret away
+        (dramatis/leaks.py), as a problem to send back. Those `covered` writes again are left to it."""
+        guides = drafting.field_guides() if self.secret else {}
+        values = {key: echo.texts(edit['value']) for key, edit in edits.items()
+                  if echo.public(key) and key not in guides and edit['value'] not in ('', [])}
+        found = leaks.leaked(self.character.get('secret'), values, self.known) if values else {}
+        return [leaks.problem(found)] if found else []
 
     def edit(self, item, final: bool) -> dict | None:
         """One field's new value, or None when it would change nothing."""
@@ -250,19 +267,20 @@ def answer(body: 'AssistantBody') -> dict:
         echo.secret_words(character.get('secret'), echo.public_text(character), body.message)
     cover = echo.has_secret(character) and not SECRET_OUT.search(body.message)
     with ai.doing('assistant'):
-        found = asking.ask(system, Edits(character, allowed, shown, secret, cover),
+        known = f'{echo.public_text(character)} {body.message}'
+        found = asking.ask(system, Edits(character, allowed, shown, secret, cover, known),
                            conversation(history, body.message))
         # Unless the user asked for the secret there: then its words in that field are their wish.
         if shown and not SECRET_OUT.search(body.message):
             found = covered(found, character, body.message)
-        return unleaked(found, character) if cover else found
+        return unleaked(found, character, known) if cover else found
 
 
-def unleaked(found: dict, character: dict) -> dict:
+def unleaked(found: dict, character: dict, known: str = '') -> dict:
     """The answer without the edits to fields anyone reads that a model call judged to give the secret away
     (dramatis/leaks.py), shown or not: the word checks miss it said in other words, or guessed."""
     values = {edit['field']: echo.texts(edit['value']) for edit in found['edits'] if echo.public(edit['field'])}
-    found_leaks = leaks.leaked(character.get('secret'), values)
+    found_leaks = leaks.leaked(character.get('secret'), values, known) if values else {}
     if not found_leaks:
         return found
     dropped = ', '.join(LABELS.get(key, key) for key in found_leaks)

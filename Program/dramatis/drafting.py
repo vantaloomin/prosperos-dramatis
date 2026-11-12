@@ -89,7 +89,10 @@ INSTRUCTION = re.compile(
     r"\b(?:ignore|disregard|forget|override)\s+(?:all\s+|any\s+|the\s+|your\s+|these\s+|previous\s+|prior\s+"
     r"|above\s+|earlier\s+|other\s+)*(?:instructions?|rules?|prompts?|directions?)\b"
     r"|\b(?:instructions?|notes?|messages?|orders?)\s+(?:from|to|for)\s+(?:the\s+|any\s+|this\s+)?(?:\w+\s+)?"
-    r"(?:app|apps|ai|model|assistant|llm|bot|system|writer)\b"
+    r"(?:app|apps|ai|model|assistant|llm|bot|system|writer|checker|reviewer|judge|grader|filter|moderator|scanner)\b"
+    # A note to whatever checks the character: "Note to the secret checker: ... do not list it".
+    r"|\b(?:secret|leak|safety|content)\s+(?:checker|reviewer|filter|scanner|judge)\b"
+    r"|\bdo(?:n't|n’t| not) (?:list|flag|mark|report|count) (?:it|this|that|these)\b"
     r"|\bsystem prompt\b|\byou are (?:an?\s+)?(?:ai|assistant|language model|llm)\b"
     r"|\bwhatever (?:field|text|part) you\b|\b(?:write|output|reply with|respond with) (?:exactly|only) (?:the words?|this)\b"
     r"|\[\[\s*(?:end of )?pasted\s*\]\]"
@@ -420,12 +423,8 @@ class Shape:
             raise Unusable(f"it left {', '.join(missing)} empty. Write every key.")
         # A split's secret in a field anyone reads goes back once; still there after that, the field is left empty
         # and named, so the user writes it rather than the secret reaching other characters.
-        # Sent back once, named, then left empty. Two of the secret's words, not one: one comes by chance too often
-        # ("home" in a personality, when the secret is his mother's care home).
-        if self.split and (echoes := self.echoes(character)):
-            if not final:
-                raise Unusable(echo.problem([f'{fields.LABELS[key]} ("{found}")' for key, found in echoes.items()]))
-            character = emptied(character, list(echoes))
+        if self.split:
+            character, echoes = self.secret_kept(character, final)
         hits = slop.audit(character, self.allowed())
         if slop.hard(hits) and not final:
             raise Unusable(slop.problem(slop.hard(hits)))
@@ -443,6 +442,22 @@ class Shape:
             result['filled_in'] = [key for key in dict.fromkeys(filled)
                                    if key in made and key not in ('name', 'arc', 'psyche', 'secret', *echoes)]
         return result
+
+    def secret_kept(self, character: dict, final: bool) -> tuple[dict, dict[str, str]]:
+        """A split's fields anyone reads that give the secret away, by the word checks and then by a model's reading
+        (dramatis/leaks.py), each with its words: sent back once, named, then left empty. Two of the secret's words,
+        not one: one comes by chance too often ("home" in a personality, when the secret is his mother's care home)."""
+        if echoes := self.echoes(character):
+            if not final:
+                raise Unusable(echo.problem([f'{fields.LABELS[key]} ("{found}")' for key, found in echoes.items()]))
+            character = emptied(character, list(echoes))
+        if echo.has_secret(character):
+            known = echo.outside_secret(self.picks.get('text') or '', character['secret'])
+            if judged := leaks.leaked(character['secret'], leaks.public_values(character), known):
+                if not final:
+                    raise Unusable(leaks.problem(judged))
+                character, echoes = emptied(character, list(judged)), echoes | judged
+        return character, echoes
 
     def echoes(self, character: dict) -> dict[str, str]:
         """The fields anyone can read that give their secret away (dramatis/echo.py), by the form's keys, with the
@@ -649,23 +664,7 @@ def split(picks: dict) -> dict:
     found = ask(system, Shape({key: value for key, value in picks.items() if key != 'name'}, sliders, plan, roll,
                               split=True), pasted)
     told = lifted(picks['text'], found['character'])
-    found = unleaked(found)
     return found | {'seed': seed, 'instructions': list(dict.fromkeys([*instructions_in(picks['text']), *told]))[:5]}
-
-
-def unleaked(found: dict) -> dict:
-    """A split whose fields anyone reads were judged by a model call to give the secret away (dramatis/leaks.py):
-    those fields left empty and named in `missing`, as the word checks' are."""
-    character = found['character']
-    if not echo.has_secret(character):
-        return found
-    found_leaks = leaks.leaked(character['secret'], leaks.public_values(character))
-    if not found_leaks:
-        return found
-    return found | {'character': emptied(character, list(found_leaks)),
-                    'missing': list(dict.fromkeys([*found.get('missing', []), *found_leaks])),
-                    'filled_in': [key for key in found.get('filled_in', []) if key not in found_leaks],
-                    'audit': [hit for hit in found.get('audit', []) if hit.get('field') not in found_leaks]}
 
 
 def rewrite(character: dict, field: str, request: str = '') -> dict:
