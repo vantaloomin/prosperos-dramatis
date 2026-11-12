@@ -73,8 +73,8 @@ character creator.
   `prompts/leak-check.md`; Vanta chose the extra call), sent back once like the word checks, then the sentences or
   list items holding the flagged words are cut (`leaks.cut`), and a split field left empty goes into `missing`; the
   assistant's reply says which edits it cut or dropped. A flag whose words are mostly the cover story's or already
-  known is dropped, unless it denies the cover or uses a word only the truth has; a field with a line talking to the
-  checker goes whole. Tests
+  known is dropped, unless it denies the cover or uses a word only the truth has, and so is one quoting the truth at a
+  field with nothing like it; a field with a line talking to the checker goes whole. Tests
   answer it apart (`model.leaks`, `model.judged`). A
   message asking for a minor is refused before the model (`adults.adult_request`), every text it writes goes through
   `adults.says_young`, and `drafting.for_model` leaves out lines on the form that talk to the model (`unspoken`).
