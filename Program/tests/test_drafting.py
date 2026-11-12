@@ -461,6 +461,16 @@ def test_the_model_is_asked_for_minors_its_words_imply(model):
     assert "learner's permit" in system and 'lied about being 17' in system
 
 
+def test_a_reply_that_leaves_out_under_18_goes_back_once(model):
+    left_out = json.dumps({key: value for key, value in json.loads(reply()).items() if key != 'under_18'})
+    model.replies = [left_out, reply(under_18=True)]
+    with pytest.raises(DomainError) as refused:
+        drafting.draft(PICKS)
+    assert refused.value.code == 'under_18' and 'left out "under_18"' in model.asked[1][1]
+    model.replies = [left_out, left_out]
+    assert drafting.draft(PICKS)['character']['name']
+
+
 def test_a_draft_whose_model_reads_an_age_under_18_is_refused(model):
     model.replies = [reply(stated_age=15)]
     with pytest.raises(DomainError) as refused:

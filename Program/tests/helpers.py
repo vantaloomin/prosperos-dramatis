@@ -8,7 +8,7 @@ WORK = {'label': 'Ward shifts', 'kind': 'work', 'days': [2, 4, 6], 'start': '07:
 def reply(**changes) -> str:
     """A model's whole-character reply, as JSON text: every field a draft asks for, filled."""
     found = {
-        'name': 'Dana Okafor', 'gender': 'woman', 'age': 38, 'kind': '',
+        'under_18': False, 'name': 'Dana Okafor', 'gender': 'woman', 'age': 38, 'kind': '',
         'about': 'Dana is 38 and works night shifts as an ER nurse in Baltimore. She lives with her brother.',
         'personality': 'Steady at work, scattered at home. Holds grudges over small things.',
         'voice': 'Short sentences, dry jokes, rarely uses capital letters.',
