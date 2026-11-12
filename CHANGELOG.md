@@ -2,7 +2,7 @@
 
 What changed in each release of Prospero's Dramatis. Each release's notes are also in `Program/docs/releases/`.
 
-## Unreleased
+## 0.2.1: Secrets kept, adults only
 
 ### Safer
 
@@ -16,9 +16,10 @@ What changed in each release of Prospero's Dramatis. Each release's notes are al
   believe isn't so ("the truth is", "people think… but").
 - Asked for while the secret is in view, the assistant's rewrite of a field others read no longer hears the user's talk
   of the secret, and a rewrite that still says the cover story is false is dropped.
-- When a character has a secret, a split and the assistant's edits now get one more model call that reads the fields
-  other characters see for the secret, however it is worded. A split leaves a field it flags empty and names it; the
-  assistant leaves that edit out and says so.
+- When a character has a secret, a split and the assistant's edits now get a model call that reads the fields other
+  characters see for the secret, however it is worded, and the model writes a flagged field once more. Still flagged,
+  a split leaves the field empty and names it; the assistant leaves that edit out and says so. What people believe,
+  told in any words, and the card's own words are never flagged, and a field that talks to the check counts as one.
 - A draft or a split is refused when the model reads the user's words as giving an age under 18 now, behind the word
   checks that catch most of them first.
 - The split no longer empties a field for words the pasted card itself uses outside its secret (a night clerk whose

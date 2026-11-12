@@ -205,9 +205,11 @@ def test_unshown_a_field_anyone_reads_may_not_say_the_cover_is_false(model):
 def test_an_edit_a_model_reads_as_giving_the_secret_away_is_dropped_shown_or_not(model):
     guess = {'field': 'background', 'value': 'Left dispatch after a call that went badly, and never went back.'}
     flaws = {'field': 'flaws', 'value': ['Holds grudges for years']}
-    model.replies = [said(edits=[guess, flaws])]
-    model.leaks = ['{"leaks": [{"field": "background", "words": "a call that went badly"}]}']
+    model.replies = [said(edits=[guess, flaws]), said(edits=[guess, flaws])]
+    flag = '{"leaks": [{"field": "background", "words": "a call that went badly"}]}'
+    model.leaks = [flag, flag]
     found = ask('Rewrite her background so it fits what happened on her last shift.', character=SECRET)
+    assert 'Background ("a call that went badly")' in model.asked[1][1]
     assert [edit['field'] for edit in found['edits']] == ['flaws']
     assert found['reply'].endswith('I left out my change to Background: other characters read it, and it gave their '
                                    'secret away.')
@@ -216,7 +218,17 @@ def test_an_edit_a_model_reads_as_giving_the_secret_away_is_dropped_shown_or_not
     model.replies = [said(edits=[guess]), said(edits=[guess])]
     ask('Rewrite her background.', character=CHARACTER | {'secret': None})
     ask('Put her secret into the background.', character=SECRET)
-    assert len(model.judged) == 1
+    assert len(model.judged) == 2
+
+
+def test_an_edit_the_check_passes_the_second_time_lands(model):
+    guess = {'field': 'background', 'value': 'Left dispatch after a call that went badly.'}
+    plain = {'field': 'background', 'value': 'Left the county job for the better hours in nursing.'}
+    model.replies = [said(edits=[guess]), said(edits=[plain])]
+    model.leaks = ['{"leaks": [{"field": "background", "words": "a call that went badly"}]}',
+                   '{"leaks": [{"field": "background", "words": "Left the county job for nursing"}]}']
+    found = ask('Flesh out her background.', character=SECRET)
+    assert found['edits'][0]['value'] == plain['value'] and 'left out' not in found['reply']
 
 
 def test_the_rewrite_request_leaves_out_the_users_talk_of_the_secret():
