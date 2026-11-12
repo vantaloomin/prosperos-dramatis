@@ -26,12 +26,17 @@ def own_keyring(monkeypatch):
 
 @pytest.fixture
 def model(monkeypatch):
-    """A stand-in for the user's model: answers in order from `model.replies`, and keeps what it was asked."""
+    """A stand-in for the user's model: answers in order from `model.replies`, and keeps what it was asked. The check
+    for a secret in the fields others read (dramatis/leaks.py) is answered apart, in `model.judged`: from
+    `model.leaks` when a test gives it answers, else with no leaks."""
     class Model:
         def __init__(self):
-            self.replies, self.asked = [], []
+            self.replies, self.asked, self.leaks, self.judged = [], [], [], []
 
         def __call__(self, system, prompt):
+            if '{"leaks"' in system:
+                self.judged.append((system, prompt))
+                return self.leaks.pop(0) if self.leaks else '{"leaks": []}'
             self.asked.append((system, prompt))
             return self.replies.pop(0)
 

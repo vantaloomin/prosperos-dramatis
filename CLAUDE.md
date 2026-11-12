@@ -68,7 +68,10 @@ character creator.
   `breaks_cover`: "the truth is", "people think… but"). That rewrite gets the message without its secret talk
   (`unasked`); a split field still giving the secret away after the retry is emptied and named in `missing` (the
   card's own words outside its secret, `echo.outside_secret`, never count). Whenever they have a secret the user
-  didn't ask to put somewhere, no assistant edit to a field anyone reads may break the cover, shown or not. A
+  didn't ask to put somewhere, no assistant edit to a field anyone reads may break the cover, shown or not, and a
+  model call judges those edits and a split's public fields for the secret in other words (`dramatis/leaks.py`,
+  `prompts/leak-check.md`; Vanta chose the extra call): flagged split fields are emptied into `missing`, flagged
+  edits dropped with a line in the reply. Tests answer it apart (`model.leaks`, `model.judged`). A
   message asking for a minor is refused before the model (`adults.adult_request`), every text it writes goes through
   `adults.says_young`, and `drafting.for_model` leaves out lines on the form that talk to the model (`unspoken`).
 - Every model output for the character form (Help me write, the assistant, the interview, the split) is a proposal in
