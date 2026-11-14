@@ -453,6 +453,8 @@ class SettingsUpdate(Input):
     ooc_markers: list[OocMarker] | None = Field(default=None, max_length=12)
     # Automatic backups of every world (companion/auto_backup.py).
     auto_backups: Literal['off', 'daily', 'weekly'] | None = None
+    # Celsius or Fahrenheit (companion/world/temperature.py); 'auto' picks by the companion's city.
+    temperature_unit: Literal['auto', 'C', 'F'] | None = None
     review_complete: bool | None = None
     # The first-run notice: the characters are AI, and the user is 18 or older. Only ever confirmed.
     ai_notice_confirmed: Literal[True] | None = None
