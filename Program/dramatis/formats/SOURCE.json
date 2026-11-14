@@ -8,7 +8,7 @@
   },
   "companion": {
     "repo": "vantaloomin/prosperos-companion",
-    "commit": "822f5f5b3a01ba634aff575eac03f6711a18877f",
+    "commit": "fe950def4003d8d1dfa9fe3335311833fb7f8385",
     "files": {
       "Program/companion/errors.py": "errors.py",
       "Program/companion/models.py": "models.py",

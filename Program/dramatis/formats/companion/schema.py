@@ -372,6 +372,7 @@ class TownGoal(Record):
     id: Id
     text: Text  # Completes 'trying to ...'.
     steps: int = Field(ge=1, le=12)
+    news: bool = True  # The town paper prints it when reached; false for a private win (world/paper.py).
     practice: tuple[PracticeSpot, DayPart] | None = None
     progress: Text  # Starts with {name}.
     done: Text  # Starts with {name}.
