@@ -2,6 +2,24 @@
 
 What changed in each release of Prospero's Dramatis. Each release's notes are also in `Program/docs/releases/`.
 
+## 0.2.2: Less lost to the secret check
+
+### Better
+
+- The check for a secret in fields others read takes out only the sentence or list item that gives it away, after the
+  model's second try, and empties the field (naming it on the form) only when nothing else is in it. The assistant
+  keeps the rest of its change the same way and says which line it took out.
+- A line that denies what people believe ("she never finished the conservatory") is caught as giving the secret away.
+- A flag is dropped when its words are the secret's own and the field says nothing like them, and words the check
+  joined from two list items, or paraphrased, are found where they are instead of costing the whole field.
+- A split is asked not to hint that a secret exists ("avoids talking about her training", "guilt about something").
+- The README says what the check does, and that a small model there takes out more than it should.
+- The Coming-of-age cast template is about adults in their twenties: the hero, the friends, the family and the rival
+  circle. Its id and name are unchanged.
+- A name drawn to replace a stock one is read mid-sentence before it is offered, so "Raven" can no longer be swapped
+  in and flagged in its turn.
+- The vendored formats match Companion's main (a settings field and a town goal's flag; no character field changed).
+
 ## 0.2.1: Secrets kept, adults only
 
 ### Safer

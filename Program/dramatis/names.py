@@ -140,8 +140,11 @@ class Place:
 
 
 def ok(name: str) -> bool:
-    """A name to offer: nothing in it the audit lists, hard or flagged, and nothing Companion reads as invented."""
-    return bool(name.strip()) and not slop.scan(name) and not naming.is_invented(name)
+    """A name to offer: nothing in it the audit lists, hard or flagged, and nothing Companion reads as invented. The
+    audit reads an ordinary word as a name only mid-sentence (Raven, Sky), so the name is read there too: alone,
+    "Raven Rivers" passed, and swapped into "Her mother Raven raised her" it was a hard hit."""
+    return bool(name.strip()) and not slop.scan(name) and not slop.scan(f'They met {name} there.') and \
+        not naming.is_invented(name)
 
 
 class Roll:
