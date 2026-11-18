@@ -88,6 +88,13 @@ def test_help_me_write_swaps_a_stock_name_it_keeps_after_the_retry(model):
     assert not slop.hard(found['audit'])
 
 
+def test_a_name_the_audit_flags_only_mid_sentence_is_never_drawn():
+    assert not names.ok('Raven Rivers') and names.ok('Maria Lopez')
+    for index in range(300):
+        drawn = names.Roll(f'seed{index}', gender='woman').drawn('swap-seraphina')
+        assert not slop.scan(f"Her mother {drawn['given']} raised her, and {drawn['family']} was her name.")
+
+
 def test_roll_a_name_draws_one_from_what_the_form_says_with_no_model():
     client = TestClient(create_app())
     found = client.post('/api/names/roll', json={'gender': 'woman', 'age': 34, 'setting': '', 'about': ''}).json()

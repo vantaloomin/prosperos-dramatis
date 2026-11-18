@@ -16,6 +16,8 @@ What changed in each release of Prospero's Dramatis. Each release's notes are al
 - The README says what the check does, and that a small model there takes out more than it should.
 - The Coming-of-age cast template is about adults in their twenties: the hero, the friends, the family and the rival
   circle. Its id and name are unchanged.
+- A name drawn to replace a stock one is read mid-sentence before it is offered, so "Raven" can no longer be swapped
+  in and flagged in its turn.
 - The vendored formats match Companion's main (a settings field and a town goal's flag; no character field changed).
 
 ## 0.2.1: Secrets kept, adults only
