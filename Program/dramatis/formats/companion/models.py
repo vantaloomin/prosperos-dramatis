@@ -96,6 +96,8 @@ class MoneySetup(Input):
     # Their hours (companion/life/shifts.py): empty follows their work (shifts that change each week for a bartender,
     # gigs for a freelancer), or the same days every week ('staff'), shifts ('rota') or gigs ('freelance').
     employment: Literal['', 'staff', 'rota', 'freelance'] = ''
+    # Where they stand at work (companion/life/position.py): empty is the app's pick from their career and words.
+    position: Literal['', 'owner', 'lead', 'staff'] = ''
     # What a student studies (companion/life/job_words.py); empty reads it from who they are.
     field: str = Field(default='', max_length=60)
     # Work of their own (career 'own', companion/life/money.py OWN): what it is, as the user wrote it.
@@ -436,7 +438,6 @@ class SettingsUpdate(Input):
     # 'system' matches the computer (Paper or Ink), 'paper' is the light profile, 'scheme' uses color_scheme.
     theme: Literal['system', 'scheme', 'paper'] | None = None
     ask_about_people: bool | None = None
-    story_mode: bool | None = None
     show_secret_slips: bool | None = None
     show_moods: bool | None = None
     show_news: bool | None = None
@@ -586,6 +587,8 @@ class LifeSettingsUpdate(Input):
     # Next steps (companion/life/steps.py): 0 only when the user brings it up, 1 slow, 2 true to life, 3 fast.
     steps_pace: int | None = Field(default=None, ge=0, le=3)
     friends_fall: bool | None = None
+    # Scenes count (companion/story_visits.py): time with a companion in the Story is part of their life together.
+    story_counts: bool | None = None
     # Their own love life (companion/life/love_life.py): 0 nothing new, 1 quiet, 2 true to life, 3 lots going on.
     love_life: int | None = Field(default=None, ge=0, le=3)
     # Life's big turns (companion/life/big_turns.py): 0 off, 1 gentle (good turns only), 2 true to life, 3 eventful.
@@ -599,6 +602,8 @@ class LifeSettingsUpdate(Input):
     loss: int | None = Field(default=None, ge=0, le=3)
     # Local politics (companion/life/politics.py): 0 off, 1 quiet, 2 true to life, 3 lively.
     politics_realism: int | None = Field(default=None, ge=0, le=3)
+    # Storylines you are part of (companion/life/shared_storylines.py): 0 off, 1 now and then, 2 true to life, 3 often.
+    shared_storylines: int | None = Field(default=None, ge=0, le=3)
     # Trolls and snark on posts (companion/life/social.py): 0 off, 1 rivals only, 2 snarky, 3 trolls.
     trolls_realism: int | None = Field(default=None, ge=0, le=3)
     # Breaks and breakups (companion/life/breakups.py): on for real life and drama, off for an easy life.

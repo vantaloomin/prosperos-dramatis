@@ -92,6 +92,8 @@ class ReportedCapabilities(Input):
     max_output_tokens: int | None = Field(default=None, gt=0)
     supported_parameters: list[str] | None = Field(default=None, max_length=100)
     supported_efforts: list[str] | None = Field(default=None, max_length=20)
+    # Learned, not reported: it ran out of reply room while reasoning (providers/chat.py), so it is asked to think less.
+    thinks_past_limit: bool | None = None
 
 
 class ProfileConfig(Input):

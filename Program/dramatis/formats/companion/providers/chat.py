@@ -175,6 +175,8 @@ class ChatProvider:
         self.builtin_chat = None
         # Told when a model turns down the profile's reasoning effort (efforts.py): (config, instead, levels).
         self.learned_effort = None
+        # Told when a model ran out of reply room while reasoning, so its profile remembers past a restart: (config).
+        self.learned_thinking = None
 
     async def builtin_address(self, config: dict) -> dict:
         """The built-in chat profile asks the server where it runs now, starting it on the first reply."""
@@ -240,7 +242,7 @@ class ChatProvider:
             yield kobold_result(response)
             return
         model = (config['provider'], body.get('model'))
-        if model in THINKS_PAST_THE_LIMIT and (lower := low_effort(config, body)):
+        if thinks_past_the_limit(config, model) and (lower := low_effort(config, body)):
             body = lower
         completion = Completion()
         held = []
@@ -256,7 +258,7 @@ class ChatProvider:
         if completion.spent_on_thinking() and (lighter := lighter_body(config, body)):
             # The model spent the whole reply limit thinking (Sonnet 5.5 on OpenRouter cannot turn thinking
             # off). Ask once more with less thinking and more room rather than show an empty reply.
-            THINKS_PAST_THE_LIMIT.add(model)
+            self.learn_thinking(config, model)
             completion, held = Completion(), []
             async for chunk in self.attempt(client, config, key, url, lighter, completion):
                 yield chunk
@@ -266,8 +268,15 @@ class ChatProvider:
         if completion.reasoning and completion.finish_reason == 'length':
             # It also cuts replies short after some text, which can't be asked again once shown: from now on this
             # model is asked to think less from the start.
-            THINKS_PAST_THE_LIMIT.add(model)
+            self.learn_thinking(config, model)
         completion.validate()
+
+    def learn_thinking(self, config: dict, model: tuple) -> None:
+        """Remember it for this run, and tell the profile once (text_models.learn_thinking), so the first long reply
+        after the next start is not cut again."""
+        if not thinks_past_the_limit(config, model) and self.learned_thinking:
+            self.learned_thinking(config)
+        THINKS_PAST_THE_LIMIT.add(model)
 
     async def attempt(self, client, config, key, url, body, completion) -> AsyncIterator[Chunk]:
         parser = PARSERS[config['provider']]
@@ -302,9 +311,18 @@ class ChatProvider:
         return await balance.cached(profile_key, config, key, fresh, transport=self.transport, codex=self.codex)
 
 
-# (provider, model) pairs that ran out of reply room while reasoning, for this run of the app.
+# (provider, model) pairs that ran out of reply room while reasoning, for this run of the app. The profile keeps it
+# too (`thinks_past_limit` beside what the service reported about the model), so it holds past a restart.
 THINKS_PAST_THE_LIMIT: set[tuple[str, str | None]] = set()
 OUTPUT_LIMITS = ('max_tokens', 'max_completion_tokens', 'max_output_tokens')
+
+
+def thinks_past_the_limit(config: dict, model: tuple) -> bool:
+    """Whether this model is known to spend its reply room reasoning: seen in this run, or remembered by its profile
+    for the model it has now."""
+    reported = config.get('reported_capabilities') or {}
+    return model in THINKS_PAST_THE_LIMIT or \
+        (bool(reported.get('thinks_past_limit')) and reported.get('model_id') == config.get('model'))
 
 
 def lighter_body(config: dict, body: dict) -> dict | None:
