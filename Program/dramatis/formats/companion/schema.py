@@ -44,6 +44,8 @@ Era = Literal['modern', 'victorian', 'medieval', 'fantasy', 'steampunk', 'fronti
 ScheduleKind = Literal['office', 'shift-day', 'shift-night', 'rotating', 'evening', 'early', 'flexible', 'academic']
 # Same days every week, a rota of shifts that changes weekly, or freelance gigs (companion/life/shifts.py).
 Employment = Literal['staff', 'rota', 'freelance']
+# Where someone in the career stands at work (companion/life/position.py): runs the place, or manages people.
+Position = Literal['owner', 'lead']
 
 
 class Record(BaseModel):
@@ -186,6 +188,8 @@ class Career(Record):
     schedule: ScheduleKind
     # Left out, it is read from the career's words (companion/life/shifts.py `employment_of`).
     employment: Employment | None = None
+    # Left out, they work for someone, unless their own words say otherwise (companion/life/position.py).
+    position: Position | None = None
     pay: Cost
     summary: Text
     # Themes the life simulation may draw on for this work.
